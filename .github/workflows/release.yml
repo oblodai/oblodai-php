@@ -1,0 +1,18 @@
+# Packagist publishes automatically on push once the package is registered and the
+# GitHub webhook / Packagist app is enabled (no secret needed in CI). This workflow
+# just creates a GitHub Release on a v* tag.
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub Release
+        run: gh release create "${GITHUB_REF_NAME}" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
