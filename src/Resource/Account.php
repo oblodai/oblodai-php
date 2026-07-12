@@ -38,7 +38,7 @@ final class Account extends AbstractResource
      */
     public function transferToPersonal(array $params): array
     {
-        return $this->client->request('/v1/transfer/to-personal', $params);
+        return $this->client->request('/v1/transfer/to-personal', $this->withIdempotencyKey($params));
     }
 
     /**

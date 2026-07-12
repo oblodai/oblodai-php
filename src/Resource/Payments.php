@@ -19,7 +19,7 @@ final class Payments extends AbstractResource
      */
     public function create(array $params): array
     {
-        return $this->client->request('/v1/payment', $params);
+        return $this->client->request('/v1/payment', $this->withIdempotencyKey($params));
     }
 
     /**

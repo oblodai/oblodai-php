@@ -7,7 +7,7 @@ namespace Oblodai\Exception;
 /**
  * Ошибка, вернувшаяся от API (конверт {"error":{"code","message"}}).
  *
- * Ветвитесь по машиночитаемому коду ($e->getCode2()), а не по тексту сообщения.
+ * Ветвитесь по машиночитаемому коду ($e->getErrorCode()), а не по тексту сообщения.
  */
 final class ApiException extends OblodaiException
 {
@@ -61,10 +61,8 @@ final class ApiException extends OblodaiException
     /** Временная ли ошибка (стоит ли повторять с backoff). */
     public function isRetriable(): bool
     {
-        if ($this->statusCode >= 500 || $this->statusCode === 429) {
-            return true;
-        }
-
-        return $this->errorCode === 'payout.funds_maturing';
+        // Повторяем только транспортные/лимитные сбои. Прикладные коды (в т.ч.
+        // payout.funds_maturing) терминальны: повтор их не разрешит.
+        return $this->statusCode >= 500 || $this->statusCode === 429;
     }
 }
