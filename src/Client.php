@@ -340,15 +340,17 @@ final class Client
     {
         $maxDelayMs = $this->retry['max_delay_ms'];
         if ($retryAfterSeconds !== null) {
-            $ms = min((int) ($retryAfterSeconds * 1000), $maxDelayMs);
+            // Явное указание сервера (Retry-After) уважаем сверх max_delay:
+            // клампим лишь абсолютным потолком 300000 мс, чтобы Retry-After: 60 ждал ~60с.
+            $ms = min((int) ($retryAfterSeconds * 1000), 300000);
 
             return $ms * 1000;
         }
 
         $initial = $this->retry['initial_delay_ms'];
         $base = min($initial * (2 ** ($attempt - 1)), $maxDelayMs);
-        // Небольшой детерминированный джиттер без mt_rand (доля от initial).
-        $jitter = (int) ($initial / 4);
+        // Случайный джиттер, чтобы разнести одновременные повторы (thundering herd).
+        $jitter = random_int(0, (int) ($initial / 2));
 
         return (int) (($base + $jitter) * 1000);
     }
