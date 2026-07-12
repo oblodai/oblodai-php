@@ -29,7 +29,10 @@ abstract class AbstractResource
      */
     protected function withIdempotencyKey(array $params): array
     {
-        if (!isset($params['order_id']) || $params['order_id'] === '') {
+        // Инжектим сгенерированный ключ, если вызывающий не дал непустой строки:
+        // покрывает отсутствие, null, '', пробельные '   ' и не-строковые значения.
+        $v = $params['order_id'] ?? null;
+        if (!is_string($v) || trim($v) === '') {
             $params['order_id'] = 'idem-' . bin2hex(random_bytes(16));
         }
 

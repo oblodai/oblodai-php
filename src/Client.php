@@ -341,8 +341,10 @@ final class Client
         $maxDelayMs = $this->retry['max_delay_ms'];
         if ($retryAfterSeconds !== null) {
             // Явное указание сервера (Retry-After) уважаем сверх max_delay:
-            // клампим лишь абсолютным потолком 300000 мс, чтобы Retry-After: 60 ждал ~60с.
-            $ms = min((int) ($retryAfterSeconds * 1000), 300000);
+            // клампим абсолютным потолком 300000 мс (чтобы Retry-After: 60 ждал ~60с)
+            // и нижней границей 0 (отрицательный Retry-After не должен давать
+            // отрицательный usleep → ValueError).
+            $ms = max(0, min((int) ($retryAfterSeconds * 1000), 300000));
 
             return $ms * 1000;
         }
