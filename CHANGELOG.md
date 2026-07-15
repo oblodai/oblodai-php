@@ -3,6 +3,39 @@
 Значимые изменения этого пакета. Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/),
 версии — [SemVer](https://semver.org/lang/ru/).
 
+## [1.1.0] — 2026-07-15
+
+### ЛОМАЮЩЕЕ
+- Идемпотентность переведена с авто-подстановки `order_id` на HTTP-заголовок **`Idempotency-Key`**:
+  - `payments()->create()` и `account()->transferToPersonal()` больше **не генерируют** `order_id`
+    (`idem-…`), если он не задан, — `order_id` уходит в тело **как есть**. Если ваш код полагался
+    на сгенерированное значение в ответе, задавайте `order_id` явно.
+  - Взамен все создающие вызовы (`payments()->create/refund/resolve`, `payouts()->create/createMass`,
+    `createBatch`/`refundBatch`, `transferToPersonal`) шлют заголовок `Idempotency-Key` (UUID v4),
+    сгенерированный **один раз до цикла повторов** — все внутренние ретраи несут одно значение,
+    и повтор после таймаута не создаёт дубль. Заголовок не входит в подпись и в тело.
+  - Свой ключ — новым опциональным параметром `idempotency_key` (в массиве параметров либо
+    аргументом `$idempotencyKey` у батч-методов): уйдёт в заголовок, не в тело.
+  - Исключение: `payoutLinks()` (`/v1/payout/link*`) заголовок не поддерживает — дедупликация
+    там через per-link `reference`.
+
+### Добавлено
+- **Массовые операции** (до 5000 элементов одним запросом): `payments()->createBatch()`,
+  `payments()->refundBatch()`, `payouts()->createBatch()` и `batches()->info()` (прогресс и
+  результаты по элементам). Режим `on_error`: `continue` (по умолчанию) или `stop`.
+- **Платёжные ссылки** `links()` (алиас `paymentLinks()`): `create`, `list`, `info`, `toggle` +
+  публичные `publicGet` и `checkout` (без подписи).
+- **Payout-ссылки («крипто-чеки»)** `payoutLinks()`: `create`, `createBatch` (до 500), `list`,
+  `info`, `cancel` + публичные `claimInfo($token)` (GET `/v1/claim/{token}`, без подписи) и
+  `claim($token, $address, $memo)` (POST, без подписи). Задавайте `expires_in_hours` явно —
+  без него бэкенд клампит срок жизни ссылки к 1 часу.
+- **Сплит-платежи** `splits()`: `splitToAddress`, `splitToMerchant`, `createRule`, `listRules`,
+  `deleteRule`, `getConfig`, `setConfig` (окно удержания `refund_hold_hours`).
+- **Счёт на e-mail**: `payments()->sendEmail($uuid, $orderId, $email)` — письмо покупателю с
+  кнопкой «Оплатить» (лимит бэкенда: 10 писем/час на адрес).
+- **Судьба недоплаты**: `payments()->resolve(['uuid'|'order_id' => …, 'action' => 'accept'|'refund'])` —
+  оставить частичную оплату себе или вернуть плательщику (глушит авто-возврат).
+
 ## [1.0.2] — 2026-07-12
 
 ### Исправлено

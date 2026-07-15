@@ -9,10 +9,10 @@ use Oblodai\Http\Response;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Робастность повторов (v1.0.2):
+ * Робастность повторов:
  *  - отрицательный Retry-After не роняет клиент через ValueError из usleep();
- *  - пробельный/невалидный order_id нормализуется (авто-идемпотентность);
- *  - реальный order_id вызывающего сохраняется и стабилен между попытками.
+ *  - order_id вызывающего уходит как есть (с v1.1.0 SDK его не подставляет и не переписывает)
+ *    и стабилен между попытками.
  */
 final class HardeningTest extends TestCase
 {
@@ -47,19 +47,17 @@ final class HardeningTest extends TestCase
         self::assertCount(2, $t->calls);
     }
 
-    public function testWhitespaceOrderIdIsNormalized(): void
+    public function testOrderIdIsSentVerbatimWithoutRewriting(): void
     {
+        // Ломающее изменение v1.1.0: SDK не нормализует и не подставляет order_id —
+        // что передали, то и уходит (защита от дублей теперь в заголовке Idempotency-Key).
         $t = new MockTransport([new Response(200, json_encode(['state' => 0, 'result' => []]))]);
         $client = new Client('pub', 'sec', ['base_url' => 'https://api.test', 'transport' => $t, 'retry' => false]);
 
         $client->payments()->create(['amount' => '10', 'currency' => 'USD', 'order_id' => '   ']);
 
         $body = $this->decodeBody($t->calls[0]['body']);
-        self::assertArrayHasKey('order_id', $body);
-        self::assertIsString($body['order_id']);
-        self::assertNotSame('   ', $body['order_id'], 'пробельный order_id должен быть заменён');
-        self::assertNotSame('', trim($body['order_id']));
-        self::assertStringStartsWith('idem-', $body['order_id']);
+        self::assertSame('   ', $body['order_id'], 'order_id должен уходить как есть, без переписывания');
     }
 
     public function testRealOrderIdPreservedAndStableAcrossRetries(): void
