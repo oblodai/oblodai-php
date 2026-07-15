@@ -16,26 +16,27 @@ abstract class AbstractResource
     }
 
     /**
-     * Гарантирует стабильный order_id для идемпотентности повторов.
+     * Извлекает опциональный ключ идемпотентности из параметров вызова.
      *
-     * Бэкенд дедуплицирует платежи/переводы по order_id, а клиент повторяет
-     * неидемпотентные POST при сетевых/5xx-сбоях. Ключ генерируется единожды
-     * (если не задан вызывающим), поэтому во всех попытках уходит ОДИН и тот же
-     * order_id и повтор не создаёт дубль.
+     * С v1.1.0 защита от дублей при повторах — HTTP-заголовок Idempotency-Key
+     * (см. Client::requestIdempotent): он генерируется один раз до цикла ретраев
+     * и НЕ входит в тело/подпись. Параметр idempotency_key позволяет задать ключ
+     * самому — он вынимается из тела и уходит заголовком. order_id больше НЕ
+     * подставляется автоматически и передаётся как есть.
      *
      * @param array<string,mixed> $params
      *
-     * @return array<string,mixed>
+     * @return array{0:array<string,mixed>,1:?string} [параметры без idempotency_key, ключ либо null]
      */
-    protected function withIdempotencyKey(array $params): array
+    protected function splitIdempotencyKey(array $params): array
     {
-        // Инжектим сгенерированный ключ, если вызывающий не дал непустой строки:
-        // покрывает отсутствие, null, '', пробельные '   ' и не-строковые значения.
-        $v = $params['order_id'] ?? null;
-        if (!is_string($v) || trim($v) === '') {
-            $params['order_id'] = 'idem-' . bin2hex(random_bytes(16));
+        $key = null;
+        $v = $params['idempotency_key'] ?? null;
+        if (is_string($v) && trim($v) !== '') {
+            $key = $v;
         }
+        unset($params['idempotency_key']);
 
-        return $params;
+        return [$params, $key];
     }
 }
