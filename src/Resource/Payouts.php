@@ -12,30 +12,58 @@ final class Payouts extends AbstractResource
     /**
      * Создать выплату. POST /v1/payout
      *
-     * @param array<string,mixed> $params amount, currency, order_id, address, network, ...
+     * order_id обязателен (задаётся вами). Уходит с заголовком Idempotency-Key
+     * (стабилен между повторами); свой ключ — параметром 'idempotency_key'.
+     *
+     * @param array<string,mixed> $params amount, currency, order_id, address, network, idempotency_key, ...
      *
      * @return array<string,mixed>
      */
     public function create(array $params): array
     {
-        return $this->client->request('/v1/payout', $params);
+        [$params, $key] = $this->splitIdempotencyKey($params);
+
+        return $this->client->requestIdempotent('/v1/payout', $params, $key);
     }
 
     /**
      * Массовая выплата. POST /v1/payout/mass
      *
+     * Уходит с заголовком Idempotency-Key (стабилен между повторами).
+     *
      * @param array<int,array<string,mixed>> $payouts
      *
      * @return array<string,mixed>
      */
-    public function createMass(array $payouts, ?string $source = null): array
+    public function createMass(array $payouts, ?string $source = null, ?string $idempotencyKey = null): array
     {
         $p = ['payouts' => $payouts];
         if ($source !== null) {
             $p['source'] = $source;
         }
 
-        return $this->client->request('/v1/payout/mass', $p);
+        return $this->client->requestIdempotent('/v1/payout/mass', $p, $idempotencyKey);
+    }
+
+    /**
+     * Пачка выплат (до 5000 одним запросом, обработка в фоне). POST /v1/payout/batch
+     *
+     * order_id обязателен на каждом элементе (дедуп внутри пачки). Возвращает batch_id —
+     * прогресс и результаты через $client->batches()->info(). Уходит с заголовком
+     * Idempotency-Key (стабилен между повторами).
+     *
+     * @param array<int,array<string,mixed>> $payouts элементы — тела обычного create()
+     * @param string                         $onError 'continue' (по умолчанию) или 'stop'
+     *
+     * @return array<string,mixed> {batch_id, kind, count, status}
+     */
+    public function createBatch(array $payouts, string $onError = 'continue', ?string $idempotencyKey = null): array
+    {
+        return $this->client->requestIdempotent(
+            '/v1/payout/batch',
+            ['payouts' => $payouts, 'on_error' => $onError],
+            $idempotencyKey,
+        );
     }
 
     /** @return array<string,mixed> */
@@ -87,13 +115,17 @@ final class Payouts extends AbstractResource
     /**
      * Возврат платежа. POST /v1/payment/refund (тот же метод, что и Payments::refund).
      *
+     * Уходит с заголовком Idempotency-Key; свой ключ — параметром 'idempotency_key'.
+     *
      * @param array<string,mixed> $params
      *
      * @return array<string,mixed>
      */
     public function refund(array $params): array
     {
-        return $this->client->request('/v1/payment/refund', $params);
+        [$params, $key] = $this->splitIdempotencyKey($params);
+
+        return $this->client->requestIdempotent('/v1/payment/refund', $params, $key);
     }
 
     /** @return array<string,mixed> */

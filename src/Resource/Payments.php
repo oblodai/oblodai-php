@@ -12,14 +12,100 @@ final class Payments extends AbstractResource
     /**
      * Создать счёт. POST /v1/payment
      *
+     * Идемпотентность: SDK шлёт заголовок Idempotency-Key (один и тот же во всех внутренних
+     * повторах). order_id уходит как есть и НЕ подставляется автоматически (ломающее изменение
+     * v1.1.0). Свой ключ — параметром 'idempotency_key' (уйдёт в заголовок, не в тело).
+     *
      * @param array<string,mixed> $params amount, currency, order_id, network, to_currency, lifetime,
-     *                                     subtract, url_callback, url_return, url_success, is_payment_multiple, ...
+     *                                     subtract, url_callback, url_return, url_success, is_payment_multiple,
+     *                                     idempotency_key, ...
      *
      * @return array<string,mixed>
      */
     public function create(array $params): array
     {
-        return $this->client->request('/v1/payment', $this->withIdempotencyKey($params));
+        [$params, $key] = $this->splitIdempotencyKey($params);
+
+        return $this->client->requestIdempotent('/v1/payment', $params, $key);
+    }
+
+    /**
+     * Пачка платежей (до 5000 одним запросом, обработка в фоне). POST /v1/payment/batch
+     *
+     * order_id обязателен на каждом элементе (дедуп внутри пачки). Возвращает batch_id —
+     * прогресс и результаты забираются через $client->batches()->info(). Запрос уходит
+     * с заголовком Idempotency-Key (стабилен между повторами).
+     *
+     * @param array<int,array<string,mixed>> $payments элементы — тела обычного create()
+     * @param string                         $onError  'continue' (по умолчанию) или 'stop'
+     *
+     * @return array<string,mixed> {batch_id, kind, count, status}
+     */
+    public function createBatch(array $payments, string $onError = 'continue', ?string $idempotencyKey = null): array
+    {
+        return $this->client->requestIdempotent(
+            '/v1/payment/batch',
+            ['payments' => $payments, 'on_error' => $onError],
+            $idempotencyKey,
+        );
+    }
+
+    /**
+     * Пачка возвратов (до 5000). POST /v1/refund/batch (требует ключ выплат).
+     *
+     * На каждом элементе обязательны 'reference' И 'uuid'/'order_id' инвойса
+     * (дедуп-скоуп — пара инвойс+reference). Уходит с заголовком Idempotency-Key.
+     *
+     * @param array<int,array<string,mixed>> $refunds элементы — тела обычного refund()
+     * @param string                         $onError 'continue' (по умолчанию) или 'stop'
+     *
+     * @return array<string,mixed> {batch_id, kind, count, status}
+     */
+    public function refundBatch(array $refunds, string $onError = 'continue', ?string $idempotencyKey = null): array
+    {
+        return $this->client->requestIdempotent(
+            '/v1/refund/batch',
+            ['refunds' => $refunds, 'on_error' => $onError],
+            $idempotencyKey,
+        );
+    }
+
+    /**
+     * Отправить счёт на e-mail (письмо с кнопкой «Оплатить»). POST /v1/payment/send-email
+     *
+     * Получатель — $email либо payer_email платежа. Лимит: 10 писем/час на адрес получателя.
+     *
+     * @return array<string,mixed> {sent, email, uuid}
+     */
+    public function sendEmail(?string $uuid = null, ?string $orderId = null, ?string $email = null): array
+    {
+        $p = $this->lookup($uuid, $orderId);
+        if ($email !== null && $email !== '') {
+            $p['email'] = $email;
+        }
+
+        return $this->client->request('/v1/payment/send-email', $p);
+    }
+
+    /**
+     * Решение судьбы недоплаченного платежа (статус wrong_amount). POST /v1/payment/resolve
+     * (требует ключ выплат).
+     *
+     * action=accept — оставить частичную оплату себе (глушит авто-возврат);
+     * action=refund — вернуть плательщику (address/network по умолчанию — плательщика;
+     * для UTXO-сетей address обязателен, опционально reference — ключ дедупа возврата).
+     * Уходит с заголовком Idempotency-Key; свой ключ — параметром 'idempotency_key'.
+     *
+     * @param array<string,mixed> $params uuid|order_id, action ('accept'|'refund'),
+     *                                     address, network, reference, idempotency_key
+     *
+     * @return array<string,mixed>
+     */
+    public function resolve(array $params): array
+    {
+        [$params, $key] = $this->splitIdempotencyKey($params);
+
+        return $this->client->requestIdempotent('/v1/payment/resolve', $params, $key);
     }
 
     /**
@@ -87,13 +173,18 @@ final class Payments extends AbstractResource
     /**
      * Возврат платежа. POST /v1/payment/refund (требует ключ выплат).
      *
+     * Уходит с заголовком Idempotency-Key (стабилен между повторами);
+     * свой ключ — параметром 'idempotency_key'.
+     *
      * @param array<string,mixed> $params
      *
      * @return array<string,mixed>
      */
     public function refund(array $params): array
     {
-        return $this->client->request('/v1/payment/refund', $params);
+        [$params, $key] = $this->splitIdempotencyKey($params);
+
+        return $this->client->requestIdempotent('/v1/payment/refund', $params, $key);
     }
 
     /** @return array<int,array<string,mixed>> */

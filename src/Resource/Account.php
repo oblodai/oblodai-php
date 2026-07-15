@@ -32,13 +32,19 @@ final class Account extends AbstractResource
     /**
      * Перевод на личный кошелёк. POST /v1/transfer/to-personal (ключ выплат).
      *
-     * @param array<string,mixed> $params amount, currency, order_id
+     * Уходит с заголовком Idempotency-Key (стабилен между повторами). order_id
+     * НЕ подставляется автоматически (ломающее изменение v1.1.0) — передаётся как есть.
+     * Свой ключ — параметром 'idempotency_key'.
+     *
+     * @param array<string,mixed> $params amount, currency, order_id, idempotency_key
      *
      * @return array<string,mixed>
      */
     public function transferToPersonal(array $params): array
     {
-        return $this->client->request('/v1/transfer/to-personal', $this->withIdempotencyKey($params));
+        [$params, $key] = $this->splitIdempotencyKey($params);
+
+        return $this->client->requestIdempotent('/v1/transfer/to-personal', $params, $key);
     }
 
     /**

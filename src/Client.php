@@ -11,10 +11,14 @@ use Oblodai\Http\CurlTransport;
 use Oblodai\Http\Response;
 use Oblodai\Http\Transport;
 use Oblodai\Resource\Account;
+use Oblodai\Resource\Batches;
+use Oblodai\Resource\PaymentLinks;
 use Oblodai\Resource\Payments;
+use Oblodai\Resource\PayoutLinks;
 use Oblodai\Resource\Payouts;
 use Oblodai\Resource\Rates;
 use Oblodai\Resource\Settings;
+use Oblodai\Resource\Splits;
 use Oblodai\Resource\Wallets;
 use Oblodai\Resource\WebhooksResource;
 
@@ -173,6 +177,36 @@ final class Client
         return new Rates($this);
     }
 
+    /** Массовые операции (батчи): прогресс и результаты. С v1.1.0. */
+    public function batches(): Batches
+    {
+        return new Batches($this);
+    }
+
+    /** Платёжные ссылки (переиспользуемые, «донатные»). С v1.1.0. */
+    public function links(): PaymentLinks
+    {
+        return new PaymentLinks($this);
+    }
+
+    /** Алиас {@see links()} — платёжные ссылки. */
+    public function paymentLinks(): PaymentLinks
+    {
+        return $this->links();
+    }
+
+    /** Payout-ссылки («крипто-чеки»: выплата без знания кошелька получателя). С v1.1.0. */
+    public function payoutLinks(): PayoutLinks
+    {
+        return new PayoutLinks($this);
+    }
+
+    /** Сплит-платежи: правила и настройки. С v1.1.0. */
+    public function splits(): Splits
+    {
+        return new Splits($this);
+    }
+
     // ── Внутреннее (используется ресурсами) ──
 
     /**
@@ -188,6 +222,25 @@ final class Client
     }
 
     /**
+     * Подписанный POST-запрос с заголовком Idempotency-Key.
+     *
+     * Ключ генерируется ОДИН раз до цикла повторов (или берётся переданный), поэтому все
+     * внутренние ретраи уходят с одним и тем же значением и бэкенд дедуплицирует их.
+     * Заголовок НЕ входит в подпись (подписываются только timestamp/метод/путь/тело).
+     *
+     * @param array<string,mixed> $payload
+     * @param string|null         $idempotencyKey свой ключ (до 255 символов); null — сгенерировать UUID v4
+     *
+     * @return mixed
+     */
+    public function requestIdempotent(string $path, array $payload = [], ?string $idempotencyKey = null)
+    {
+        $key = ($idempotencyKey !== null && $idempotencyKey !== '') ? $idempotencyKey : self::newIdempotencyKey();
+
+        return $this->execute('POST', $path, $payload, true, ['Idempotency-Key' => $key]);
+    }
+
+    /**
      * Публичный (неподписанный) запрос.
      *
      * @param array<string,mixed> $payload
@@ -199,12 +252,23 @@ final class Client
         return $this->execute($method, $path, $payload, false);
     }
 
+    /** Генерирует ключ идемпотентности (UUID v4). */
+    public static function newIdempotencyKey(): string
+    {
+        $b = random_bytes(16);
+        $b[6] = chr((ord($b[6]) & 0x0f) | 0x40); // версия 4
+        $b[8] = chr((ord($b[8]) & 0x3f) | 0x80); // вариант RFC 4122
+
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($b), 4));
+    }
+
     /**
-     * @param array<string,mixed> $payload
+     * @param array<string,mixed>  $payload
+     * @param array<string,string> $extraHeaders стабильны между повторами (Idempotency-Key)
      *
      * @return mixed
      */
-    private function execute(string $method, string $path, array $payload, bool $signed)
+    private function execute(string $method, string $path, array $payload, bool $signed, array $extraHeaders = [])
     {
         $attempts = $this->retry ? $this->retry['max_attempts'] : 1;
         $lastError = null;
@@ -212,7 +276,7 @@ final class Client
         for ($attempt = 1; $attempt <= $attempts; $attempt++) {
             $this->log('debug', sprintf('oblodai: -> %s %s (attempt %d/%d)', $method, $path, $attempt, $attempts));
             try {
-                return $this->once($method, $path, $payload, $signed);
+                return $this->once($method, $path, $payload, $signed, $extraHeaders);
             } catch (ApiException $e) {
                 $lastError = $e;
                 if (!$e->isRetriable() || $attempt === $attempts || $this->retry === null) {
@@ -240,17 +304,18 @@ final class Client
     }
 
     /**
-     * @param array<string,mixed> $payload
+     * @param array<string,mixed>  $payload
+     * @param array<string,string> $extraHeaders
      *
      * @return mixed
      */
-    private function once(string $method, string $path, array $payload, bool $signed)
+    private function once(string $method, string $path, array $payload, bool $signed, array $extraHeaders = [])
     {
         $url = $this->baseUrl . $path;
         $headers = [
             'Accept' => 'application/json',
             'Content-Type' => 'application/json;charset=UTF-8',
-        ];
+        ] + $extraHeaders;
 
         $body = null;
         if ($method !== 'GET') {
