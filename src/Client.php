@@ -46,6 +46,9 @@ final class Client
 
     private const DEFAULT_BASE_URL = 'https://api.oblodai.com';
 
+    /** Абсолютный потолок паузы по серверному `Retry-After` — 5 минут (как в остальных SDK). */
+    private const MAX_RETRY_AFTER_MS = 300000;
+
     /** @var array<string,int> Порядок уровней логирования. */
     private const LOG_LEVELS = ['debug' => 10, 'info' => 20, 'warning' => 30, 'error' => 40];
 
@@ -83,7 +86,7 @@ final class Client
 
         $this->publicId = $publicId;
         $this->secret = $secret;
-        $this->baseUrl = rtrim($options['base_url'] ?? self::DEFAULT_BASE_URL, '/');
+        $this->baseUrl = self::normalizeBaseUrl($options['base_url'] ?? self::DEFAULT_BASE_URL);
 
         $this->transport = $options['transport'] ?? new CurlTransport($options['timeout_ms'] ?? 30000);
 
@@ -107,12 +110,64 @@ final class Client
             $this->retry = null;
         } else {
             $r = $options['retry'] ?? [];
+            // max_attempts — это ЧИСЛО ПОПЫТОК, а не число повторов: минимум 1, иначе цикл в
+            // execute() не выполнится ни разу и на выходе окажется `throw null` — фатальная
+            // ошибка вместо исключения (0 и отрицательные значения приходили из конфигов,
+            // где «повторы отключены» пробовали выразить нулём; для этого есть 'retry' => false).
             $this->retry = [
-                'max_attempts' => $r['max_attempts'] ?? 4,
-                'initial_delay_ms' => $r['initial_delay_ms'] ?? 500,
-                'max_delay_ms' => $r['max_delay_ms'] ?? 30000,
+                'max_attempts' => max(1, (int) ($r['max_attempts'] ?? 4)),
+                'initial_delay_ms' => max(0, (int) ($r['initial_delay_ms'] ?? 500)),
+                'max_delay_ms' => max(0, (int) ($r['max_delay_ms'] ?? 30000)),
             ];
         }
+    }
+
+    /**
+     * Нормализует и проверяет базовый URL.
+     *
+     * Схема обязана быть `https`: подпись запроса уходит в заголовке `X-Signature`, и по
+     * открытому http её видит (и может переиграть) любой посредник на пути. Раньше SDK молча
+     * принимал http:// и подписывал запросы в открытый канал.
+     *
+     * Единственное исключение — loopback (`localhost`, `127.0.0.0/8`, `::1`, домены `*.localhost`):
+     * по нему работают локальные стенды вроде `http://localhost:8095`, где трафик не покидает
+     * машину.
+     *
+     * @throws ConfigException если URL не абсолютный либо схема небезопасна
+     */
+    private static function normalizeBaseUrl(string $raw): string
+    {
+        $url = rtrim(trim($raw), '/');
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        if ($scheme === '' || $host === '') {
+            throw new ConfigException(
+                'base_url должен быть абсолютным URL со схемой и хостом, например '
+                . 'https://api.oblodai.com (получено: "' . $raw . '")'
+            );
+        }
+
+        if ($scheme === 'https' || ($scheme === 'http' && self::isLoopbackHost($host))) {
+            return $url;
+        }
+
+        throw new ConfigException(
+            'base_url должен использовать https:// — по http подпись запроса (X-Signature) уходит '
+            . 'в открытый канал (получено: "' . $raw . '"). Исключение только для локальных '
+            . 'стендов на loopback: http://localhost:8095, http://127.0.0.1:8095, http://[::1]:8095'
+        );
+    }
+
+    /** Loopback-хост, по которому допустим незашифрованный http (локальные стенды). */
+    private static function isLoopbackHost(string $host): bool
+    {
+        $h = trim($host, '[]'); // IPv6 в URL приходит в скобках: http://[::1]:8095
+
+        return $h === 'localhost'
+            || $h === '::1'
+            || str_ends_with($h, '.localhost')
+            || (bool) preg_match('/^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/', $h);
     }
 
     /**
@@ -184,16 +239,22 @@ final class Client
         return new Batches($this);
     }
 
-    /** Платёжные ссылки (переиспользуемые, «донатные»). С v1.1.0. */
-    public function links(): PaymentLinks
+    /**
+     * Платёжные ссылки (переиспользуемые, «донатные»). С v1.1.0.
+     *
+     * Каноническое имя ресурса во всех SDK — payment_links (в идиоматике языка: paymentLinks
+     * в PHP/JS, payment_links в Python/Rust, PaymentLinks в Go), чтобы код переносился между
+     * языками без переименований. Короткое {@see links()} остаётся документированным алиасом.
+     */
+    public function paymentLinks(): PaymentLinks
     {
         return new PaymentLinks($this);
     }
 
-    /** Алиас {@see links()} — платёжные ссылки. */
-    public function paymentLinks(): PaymentLinks
+    /** Алиас {@see paymentLinks()} — платёжные ссылки. Оба имени поддерживаются и равнозначны. */
+    public function links(): PaymentLinks
     {
-        return $this->links();
+        return $this->paymentLinks();
     }
 
     /** Payout-ссылки («крипто-чеки»: выплата без знания кошелька получателя). С v1.1.0. */
@@ -223,11 +284,17 @@ final class Client
     /**
      * Подписанный POST-запрос. Возвращает поле result из конверта (или тело без конверта).
      *
+     * Всегда массив. Конверт шлюза (`{"state":0,"result":<result>}`, см. apiutil.WriteResult
+     * в ядре) не запрещает `result: null` — он получается из любого nil-значения на стороне
+     * сервера; телом ответа может прийти и голый `null`. Раньше метод был объявлен `mixed`,
+     * а каждый метод ресурса — `: array`, и такой ответ ронял TypeError, который НЕ наследует
+     * OblodaiException и потому пролетал мимо catch из README. Теперь `null` — это `[]`.
+     *
      * @param array<string,mixed> $payload
      *
-     * @return mixed
+     * @return array<mixed>
      */
-    public function request(string $path, array $payload = [])
+    public function request(string $path, array $payload = []): array
     {
         return $this->execute('POST', $path, $payload, true);
     }
@@ -242,9 +309,9 @@ final class Client
      * @param array<string,mixed> $payload
      * @param string|null         $idempotencyKey свой ключ (до 255 символов); null — сгенерировать UUID v4
      *
-     * @return mixed
+     * @return array<mixed>
      */
-    public function requestIdempotent(string $path, array $payload = [], ?string $idempotencyKey = null)
+    public function requestIdempotent(string $path, array $payload = [], ?string $idempotencyKey = null): array
     {
         $key = ($idempotencyKey !== null && $idempotencyKey !== '') ? $idempotencyKey : self::newIdempotencyKey();
 
@@ -255,9 +322,9 @@ final class Client
      * Подписанный GET-запрос (без тела). Подпись считается над пустым телом:
      * "{ts}\nGET\n{path}\n" — та же каноническая строка, что и у POST.
      *
-     * @return mixed
+     * @return array<mixed>
      */
-    public function requestGet(string $path)
+    public function requestGet(string $path): array
     {
         return $this->execute('GET', $path, [], true);
     }
@@ -267,9 +334,9 @@ final class Client
      *
      * @param array<string,mixed> $payload
      *
-     * @return mixed
+     * @return array<mixed>
      */
-    public function requestPublic(string $path, array $payload = [], string $method = 'POST')
+    public function requestPublic(string $path, array $payload = [], string $method = 'POST'): array
     {
         return $this->execute($method, $path, $payload, false);
     }
@@ -298,9 +365,9 @@ final class Client
      * @param array<string,mixed>  $payload
      * @param array<string,string> $extraHeaders стабильны между повторами (Idempotency-Key)
      *
-     * @return mixed
+     * @return array<mixed>
      */
-    private function execute(string $method, string $path, array $payload, bool $signed, array $extraHeaders = [])
+    private function execute(string $method, string $path, array $payload, bool $signed, array $extraHeaders = []): array
     {
         $attempts = $this->retry ? $this->retry['max_attempts'] : 1;
         $lastError = null;
@@ -308,7 +375,7 @@ final class Client
         for ($attempt = 1; $attempt <= $attempts; $attempt++) {
             $this->log('debug', sprintf('oblodai: -> %s %s (attempt %d/%d)', $method, $path, $attempt, $attempts));
             try {
-                return $this->once($method, $path, $payload, $signed, $extraHeaders);
+                return self::toArray($this->once($method, $path, $payload, $signed, $extraHeaders), $method, $path);
             } catch (ApiException $e) {
                 $lastError = $e;
                 if (!$e->isRetriable() || $attempt === $attempts || $this->retry === null) {
@@ -331,8 +398,40 @@ final class Client
             }
         }
 
-        // недостижимо
-        throw $lastError;
+        // Недостижимо: max_attempts клампится к >= 1, значит тело цикла выполнилось хотя бы раз и
+        // либо вернуло результат, либо бросило. Страховка на случай будущих правок: бросаем
+        // НАСТОЯЩЕЕ исключение SDK, а не `throw null` (фатальная ошибка мимо catch).
+        throw $lastError ?? new ConnectionException(
+            sprintf('%s %s: повторы исчерпаны, ответа от шлюза нет', $method, $path)
+        );
+    }
+
+    /**
+     * Приводит поле `result` к массиву — контракт всех методов ресурсов (`: array`).
+     *
+     * `null` (в т.ч. из nil-среза на стороне шлюза) — это «пусто», а не ошибка: отдаём `[]`.
+     * Скаляр в `result` шлюз сегодня не отдаёт ни на одном эндпоинте; если он там окажется,
+     * бросаем ApiException (наследник OblodaiException — ловится штатным catch), а НЕ TypeError.
+     *
+     * @param mixed $result
+     *
+     * @return array<mixed>
+     */
+    private static function toArray($result, string $method, string $path): array
+    {
+        if ($result === null) {
+            return [];
+        }
+        if (is_array($result)) {
+            return $result;
+        }
+
+        throw new ApiException(
+            'response.unexpected_shape',
+            sprintf('%s %s: в поле result ожидался объект или список, получено %s', $method, $path, get_debug_type($result)),
+            200,
+            $result
+        );
     }
 
     /**
@@ -434,17 +533,26 @@ final class Client
         return $parsed;
     }
 
+    /**
+     * Пауза по серверной подсказке `Retry-After`, в миллисекундах.
+     *
+     * Явное указание сервера уважаем сверх max_delay, но зажимаем в [0; 300000]:
+     * абсолютный потолок 5 минут (как в остальных SDK) — чтобы сервер, попросивший подождать
+     * сутки, не подвесил процесс; нижняя граница 0 — чтобы отрицательное значение не дало
+     * отрицательный usleep (ValueError).
+     *
+     * @internal вынесено из delayMicros(), чтобы потолок проверялся тестом без реального ожидания
+     */
+    public static function retryAfterDelayMs(float $retryAfterSeconds): int
+    {
+        return max(0, min((int) ($retryAfterSeconds * 1000), self::MAX_RETRY_AFTER_MS));
+    }
+
     private function delayMicros(int $attempt, ?float $retryAfterSeconds): int
     {
         $maxDelayMs = $this->retry['max_delay_ms'];
         if ($retryAfterSeconds !== null) {
-            // Явное указание сервера (Retry-After) уважаем сверх max_delay:
-            // клампим абсолютным потолком 300000 мс (чтобы Retry-After: 60 ждал ~60с)
-            // и нижней границей 0 (отрицательный Retry-After не должен давать
-            // отрицательный usleep → ValueError).
-            $ms = max(0, min((int) ($retryAfterSeconds * 1000), 300000));
-
-            return $ms * 1000;
+            return self::retryAfterDelayMs($retryAfterSeconds) * 1000;
         }
 
         $initial = $this->retry['initial_delay_ms'];

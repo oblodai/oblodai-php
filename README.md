@@ -11,15 +11,33 @@ composer require oblodai/sdk
 
 Требования: PHP 8.0+, расширения `json` и `curl`.
 
-## Учётные данные
+## Где взять ключи
 
-Храните ключи в переменных окружения (см. `.env.example`) — секрет **только на сервере**, никогда в браузере:
+Ключи выдаются **в личном кабинете Oblodai** — <https://oblodai.com> — в разделе API-ключей.
+Пара из двух значений:
+
+- **public id** — идентификатор проекта, уходит в заголовке `X-Public-Id`;
+- **секрет** — им подписывается каждый запрос (`X-Signature`). Секрет **показывается один раз,
+  в момент создания ключа**: сохраните его сразу, потом посмотреть будет негде — только выпустить
+  новый.
+
+Для песочницы в том же разделе выпускается **тестовый** ключ: его public id начинается с `test_…`,
+секрет — с `oblodai_test_…`. Тестовый и боевой ключи взаимозаменяемы для кода: см.
+[Песочница](#песочница--тестирование-v120) ниже — начинайте с неё.
+
+Храните ключи в переменных окружения (см. `.env.example`) — секрет **только на сервере**, никогда
+в браузере:
 
 ```bash
-export OBLODAI_PUBLIC_ID=oblodai_...
-export OBLODAI_SECRET=oblodai_live_...
+export OBLODAI_PUBLIC_ID=test_...          # боевой: oblodai_...
+export OBLODAI_SECRET=oblodai_test_...     # боевой: oblodai_live_...
 # необязательно: export OBLODAI_BASE_URL=https://api.oblodai.com
 ```
+
+> `base_url` обязан быть **https**: подпись уходит заголовком, и по открытому http её видит любой
+> посредник. Клиент отвергает не-https адрес ошибкой `ConfigException` ещё при создании.
+> Единственное исключение — локальные стенды на loopback (`http://localhost:8095`,
+> `http://127.0.0.1:…`, `http://[::1]:…`).
 
 ```php
 use Oblodai\Client;
@@ -48,114 +66,9 @@ echo $payment['address']; // адрес для оплаты
 echo $payment['url'];     // hosted-страница оплаты
 ```
 
-## Проверка вебхуков
-
-Oblodai подписывает каждую доставку секретом, который вернул `POST /v1/webhooks` (зарегистрируйте
-endpoint один раз и сохраните секрет). Проверяйте входящие вебхуки этим секретом:
-
-```php
-use Oblodai\Webhooks;
-use Oblodai\Exception\SignatureException;
-
-$raw = file_get_contents('php://input');
-
-// Пробные вебхуки (is_test) не подписаны — просто подтверждаем.
-if (Webhooks::isTest($raw)) { http_response_code(200); exit; }
-
-try {
-    $event = Webhooks::constructEvent(
-        $webhookSecret,                          // из $client->webhooks()->register($url)['secret']
-        $raw,
-        $_SERVER['HTTP_X_WEBHOOK_TIMESTAMP'] ?? '',
-        $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ?? ''
-    );
-    // $event['uuid'], $event['status'], ...
-    // Перепроверьте статус авторитетно:
-    $info = $client->payments()->info($event['uuid']);
-    // $info['payment_status']: check|confirm_check|paid|paid_over|wrong_amount|wrong_amount_waiting|cancel|select
-} catch (SignatureException $e) {
-    http_response_code(403);
-}
-```
-
-## Ресурсы
-
-- `payments()` — create, info, history, services, qr, refund, accepted, accuracy, autorefund, discount · **с v1.1.0:** createBatch, refundBatch, sendEmail, resolve · **с v1.2.0:** публичные publicGet/publicSelect (без подписи, для своих checkout-страниц)
-- `payouts()` — create, createMass, info, history, services, calculate, approve, fee-config, refund · **с v1.1.0:** createBatch
-- `batches()` **(v1.1.0)** — info (прогресс и результаты пачки)
-- `links()` **(v1.1.0)** — платёжные ссылки: create, list, info, toggle, publicGet, checkout (алиас `paymentLinks()`)
-- `payoutLinks()` **(v1.1.0)** — «крипто-чеки»: create, createBatch (до 500), list, info, cancel + публичные claimInfo/claim (без подписи)
-- `splits()` **(v1.1.0)** — splitToAddress, splitToMerchant, createRule, listRules, deleteRule, getConfig, setConfig
-- `wallets()` — create, block, blockedAddressRefund, qr
-- `account()` — balance, referral, transferToPersonal, vrcs · **с v1.2.0:** transferToUser, transferBatch (переводы пользователям платформы)
-- `webhooks()` — register, deliveries, testPayment/Wallet/Payout
-- `settings()` — auto-withdraw, IP-allowlist
-- `rates()` — list (курсы), currencies (каталог, публичный)
-- `sandbox()` **(v1.2.0)** — только для тестовых ключей: simulateDeposit, faucet, reset, listWebhooks, replayWebhook
-
-## Новое в v1.1.0 (коротко)
-
-```php
-// Пачки: до 5000 платежей/возвратов/выплат одним подписанным запросом.
-$sub  = $client->payments()->createBatch([
-    ['amount' => '10', 'currency' => 'USD', 'order_id' => 'a-1'],
-    ['amount' => '20', 'currency' => 'EUR', 'order_id' => 'a-2'],
-]); // 'continue' (по умолчанию) или 'stop' вторым аргументом
-$info = $client->batches()->info($sub['batch_id'], 100, 0);
-
-// Платёжная ссылка: платят многие, каждый платёж — свой инвойс.
-$link = $client->links()->create(['amount_mode' => 'open', 'currency' => 'USD']);
-
-// Сплит: доля каждого платежа автоматически уходит партнёру.
-$client->splits()->splitToAddress('T...', 'tron', 10.0, 'партнёр А');
-
-// Счёт на e-mail (письмо с кнопкой «Оплатить»).
-$client->payments()->sendEmail($payment['uuid'], null, 'buyer@example.com');
-
-// Судьба недоплаты: оставить себе или вернуть плательщику.
-$client->payments()->resolve(['uuid' => $payment['uuid'], 'action' => 'accept']);
-
-// Payout-ссылка («крипто-чек»): выплата без знания кошелька получателя.
-// expires_in_hours задавайте ЯВНО: без него бэкенд клампит срок к 1 часу.
-$check = $client->payoutLinks()->create([
-    'currency' => 'USDT', 'network' => 'tron', 'amount' => '25',
-    'reference' => 'bonus-42', 'expires_in_hours' => 168,
-]);
-// $check['claim_url'] отдаёте получателю; claim_token виден ТОЛЬКО в ответе create.
-
-// Получатель (публично, без API-ключа):
-$client->payoutLinks()->claimInfo($check['claim_token']);          // детали чека
-$client->payoutLinks()->claim($check['claim_token'], 'T-адрес');   // забрать на свой кошелёк
-```
-
-## Новое в v1.2.0 (коротко)
-
-```php
-// Перевод пользователю платформы: внутренний, БЕЗ комиссии, с баланса мерчанта
-// на личный кошелёк пользователя Oblodai. to_user_id — UUID пользователя (НЕ юзернейм).
-// Ключ выплат; уходит с заголовком Idempotency-Key.
-$res = $client->account()->transferToUser([
-    'to_user_id' => 'a0b1c2d3-...-000000000001',
-    'amount'     => '10',
-    'currency'   => 'USDT',
-    'order_id'   => 'tr-1', // необязателен
-]);
-// $res: {currency, amount, to_user_id, recipient_balance}
-
-// Пачка переводов пользователям (фон): элементы — тела transferToUser().
-$batch = $client->account()->transferBatch([
-    ['to_user_id' => 'u1', 'amount' => '5', 'currency' => 'USDT', 'order_id' => 't-1'],
-    ['to_user_id' => 'u2', 'amount' => '7', 'currency' => 'USDT', 'order_id' => 't-2'],
-]); // 'continue' (по умолчанию) или 'stop' вторым аргументом
-$info = $client->batches()->info($batch['batch_id']);
-
-// Публичные эндпоинты счёта — для СОБСТВЕННЫХ checkout-страниц, без API-ключа
-// на фронте (тот же механизм, что publicGet/claimInfo у ссылок).
-$state = $client->payments()->publicGet($payment['uuid']);        // GET /v1/pay/{id}
-$final = $client->payments()->publicSelect($payment['uuid'], 'USDT', 'tron'); // POST /v1/pay/{id}/select
-// publicSelect финализирует отложенный (валюто-агностичный) счёт: покупатель
-// выбирает валюту/сеть, ответ — обычный результат платежа (address, payment_status, ...).
-```
+Тот же код работает с боевым ключом — меняется **только ключ**, ни `base_url`, ни методы SDK
+трогать не нужно. Поэтому начинайте с песочницы (следующий раздел), а боевые ключи подключайте,
+когда сценарий уже проверен.
 
 ## Песочница / тестирование (v1.2.0)
 
@@ -193,7 +106,7 @@ $client->payouts()->create(['amount' => '5', 'currency' => 'USDT', 'address' => 
 $deliveries = $client->sandbox()->listWebhooks();
 $client->sandbox()->replayWebhook($deliveries[0]['id']);
 
-// Чистый лист: отменить открытые счета, обнулить балансы.
+// Сброс: отменить ещё не оплачиваемые счета и обнулить балансы (см. оговорку ниже).
 $client->sandbox()->reset();
 ```
 
@@ -219,6 +132,188 @@ $client->sandbox()->reset();
 - в UTXO-сетях (Bitcoin и т.п.) нет авто-возврата переплаты и нет адреса плательщика —
   как и в проде (для возврата адрес задаётся явно).
 
+### `reset()` — это не «чистый лист»
+
+`sandbox()->reset()` отменяет счета **только** в статусах `created` (в API — `check`) и `select`,
+то есть те, по которым депозита ещё не видели, и обнуляет балансы. Счёт, по которому депозит уже
+виден (`confirm_check`, `wrong_amount_waiting`), **остаётся жив намеренно**: отмена дала бы этому
+депозиту подтвердиться в отменённый счёт и зачислить деньги без события. Песочница не обходит это
+правило — симулированный депозит для пайплайна ничем не отличается от настоящего.
+
+Ничего при этом не удаляется: леджер append-only, обнуление баланса — компенсирующая проводка,
+поэтому история ваших экспериментов остаётся читаемой («почему у меня баланс 3?» — ответимо).
+Если нужен действительно чистый счёт — создайте новый, а не ждите, что `reset()` уберёт
+зависший в `confirm_check`.
+
+## Проверка вебхуков
+
+Oblodai подписывает каждую доставку **отдельным секретом эндпоинта**, который вернул
+`POST /v1/webhooks` — `$client->webhooks()->register($url)['secret']`. Это **не** секрет
+API-ключа: подставив в проверку подписи ключ API, вы отвергнете 100% вебхуков. Зарегистрируйте
+endpoint один раз и сохраните секрет.
+
+> ⚠ **Регистрация — это upsert единственного эндпоинта на проект, а не «добавить ещё один».**
+> В ядре: `INSERT ... ON CONFLICT (project_id) DO UPDATE SET url = EXCLUDED.url`. Повторный
+> `register()` с **другим** URL не создаёт второй endpoint — он **перенаправляет** доставки:
+> вернётся тот же `endpoint_id`, а старый URL молча замолчит. Классическая авария — запустить
+> из локального скрипта регистрацию staging-URL и потерять прод-вебхуки.
+> Секрет при перерегистрации **сохраняется** (уже поставленные в очередь доставки подписаны им),
+> так что ответ вернёт тот же `secret`. Сменить секрет — это отдельное, осознанное действие.
+
+Проверяйте входящие вебхуки этим секретом:
+
+```php
+use Oblodai\Webhooks;
+use Oblodai\Exception\SignatureException;
+
+$raw = file_get_contents('php://input');
+
+// Пробные вебхуки (is_test) не подписаны — просто подтверждаем.
+if (Webhooks::isTest($raw)) { http_response_code(200); exit; }
+
+try {
+    $event = Webhooks::constructEvent(
+        $webhookSecret,                          // из $client->webhooks()->register($url)['secret']
+        $raw,
+        $_SERVER['HTTP_X_WEBHOOK_TIMESTAMP'] ?? '',
+        $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ?? ''
+    );
+    // $event['uuid'], $event['status'], ...
+    // Перепроверьте статус авторитетно:
+    $info = $client->payments()->info($event['uuid']);
+    // $info['payment_status'] — см. таблицу статусов ниже; $info['is_final'] — терминальность.
+} catch (SignatureException $e) {
+    http_response_code(403);
+}
+```
+
+## Статусы платежа
+
+`payment_status` в ответах `payments()->info()`, `publicGet()` и в вебхуках:
+
+| Статус | Что значит | Терминальный |
+| --- | --- | --- |
+| `check` | счёт создан, оплаты ещё не видели | нет |
+| `confirm_check` | оплата увидена, ждём подтверждений сети | нет |
+| `wrong_amount_waiting` | видна **частичная** оплата, ждём доплату | **нет** |
+| `wrong_amount` | счёт закрылся недоплаченным | да |
+| `paid` | оплачен полностью | да |
+| `paid_over` | переплачен (излишек уходит в авто-возврат, если он включён и сеть его поддерживает) | да |
+| `cancel` | истёк или отменён | да |
+| `select` | валюто-агностичный счёт, покупатель ещё не выбрал валюту | нет |
+
+Не перечисляйте терминальные статусы у себя руками — в ответе есть флаг **`is_final`**.
+
+**`wrong_amount_waiting` ≠ `wrong_amount`.** Первый — «денег пришло меньше, но счёт ещё жив,
+покупатель может доплатить». Второй — «счёт закрылся недоплаченным, решайте его судьбу». Отсюда
+правило для `payments()->resolve()`: он принимает **только** `wrong_amount`, а на
+`wrong_amount_waiting` отвечает `409 resolution.not_underpaid`. Этот `409` — не временный сбой
+(SDK его и не ретраит): дождитесь `wrong_amount` и зовите resolve тогда.
+
+Статусы выплаты (`payouts()->info()`): `check` (ждёт одобрения) → `process` (одобрена, уходит или
+ушла) → `paid` (подтверждена); плюс `fail` и `cancel`.
+
+## Ресурсы
+
+- `payments()` — create, info, history, services, qr, refund, accepted, accuracy, autorefund, discount · **с v1.1.0:** createBatch, refundBatch, sendEmail, resolve · **с v1.2.0:** публичные publicGet/publicSelect (без подписи, для своих checkout-страниц)
+- `payouts()` — create, createMass, info, history, services, calculate, approve, fee-config, refund · **с v1.1.0:** createBatch
+- `batches()` **(v1.1.0)** — info (прогресс и результаты пачки)
+- `paymentLinks()` **(v1.1.0)** — платёжные ссылки: create, list, info, toggle, publicGet, checkout.
+  Канон во всех SDK — `payment_links` (в идиоматике языка: `paymentLinks()` в PHP/JS,
+  `payment_links` в Python/Rust, `PaymentLinks()` в Go), чтобы код переносился между языками без
+  переименований. Короткое `links()` — документированный алиас; оба имени равнозначны и
+  поддерживаются
+- `payoutLinks()` **(v1.1.0)** — «крипто-чеки»: create, createBatch (до 500), list, info, cancel + публичные claimInfo/claim (без подписи)
+- `splits()` **(v1.1.0)** — splitToAddress, splitToMerchant, createRule, listRules, deleteRule, getConfig, setConfig
+- `wallets()` — create, block, blockedAddressRefund, qr
+- `account()` — balance, referral, transferToPersonal, vrcs · **с v1.2.0:** transferToUser, transferBatch (переводы пользователям платформы)
+- `webhooks()` — register (⚠ upsert единственного эндпоинта проекта), deliveries (**с v1.2.0** отдаёт список, а не конверт), testPayment/Wallet/Payout
+- `settings()` — auto-withdraw, IP-allowlist
+- `rates()` — list (курсы), currencies (каталог, публичный)
+- `sandbox()` **(v1.2.0)** — только для тестовых ключей: simulateDeposit, faucet, reset, listWebhooks, replayWebhook
+
+## Новое в v1.1.0 (коротко)
+
+```php
+// Пачки: до 5000 платежей/возвратов/выплат одним подписанным запросом.
+$sub  = $client->payments()->createBatch([
+    ['amount' => '10', 'currency' => 'USD', 'order_id' => 'a-1'],
+    ['amount' => '20', 'currency' => 'EUR', 'order_id' => 'a-2'],
+]); // 'continue' (по умолчанию) или 'stop' вторым аргументом
+$info = $client->batches()->info($sub['batch_id'], 100, 0);
+
+// Платёжная ссылка: платят многие, каждый платёж — свой инвойс.
+$link = $client->paymentLinks()->create(['amount_mode' => 'open', 'currency' => 'USD']);
+// $client->links() — тот же ресурс под коротким именем-алиасом.
+
+// Сплит: доля каждого платежа автоматически уходит партнёру.
+$client->splits()->splitToAddress('T...', 'tron', 10.0, 'партнёр А');
+
+// Счёт на e-mail (письмо с кнопкой «Оплатить»).
+$client->payments()->sendEmail($payment['uuid'], null, 'buyer@example.com');
+
+// Судьба недоплаты: оставить себе или вернуть плательщику.
+$client->payments()->resolve(['uuid' => $payment['uuid'], 'action' => 'accept']);
+
+// Payout-ссылка («крипто-чек»): выплата без знания кошелька получателя.
+// expires_in_hours задавайте ЯВНО: без него бэкенд клампит срок к 1 часу.
+$check = $client->payoutLinks()->create([
+    'currency' => 'USDT', 'network' => 'tron', 'amount' => '25',
+    'reference' => 'bonus-42', 'expires_in_hours' => 168,
+]);
+// $check['claim_url'] отдаёте получателю; claim_token виден ТОЛЬКО в ответе create.
+// Локально claim_url может прийти ПУСТЫМ — см. «Ссылки собирает шлюз» ниже.
+
+// Получатель (публично, без API-ключа):
+$client->payoutLinks()->claimInfo($check['claim_token']);          // детали чека
+$client->payoutLinks()->claim($check['claim_token'], 'T-адрес');   // забрать на свой кошелёк
+```
+
+### Ссылки собирает шлюз (и локально они бывают пустыми)
+
+`payment['url']`, `link['url']` и `check['claim_url']` — это не данные из БД, а строки, которые
+шлюз склеивает из своего **публичного базового URL** (`GATEWAY_PUBLIC_BASE_URL`). Если он не
+задан, поле приходит **пустой строкой**. В проде это невозможно — шлюз без этой настройки просто
+не стартует, — но на локальном стенде встречается постоянно, и это **не баг SDK и не баг ядра**.
+
+Идентификаторы при этом на месте всегда: `uuid` у платежа, `link_id` у платёжной ссылки,
+`claim_token` у payout-ссылки. Тестируя локально, собирайте ссылку сами:
+
+```php
+$base = 'http://localhost:3000';
+$payUrl   = $payment['url']      ?: $base . '/pay/'   . $payment['uuid'];
+$claimUrl = $check['claim_url']  ?: $base . '/claim/' . $check['claim_token'];
+```
+
+## Новое в v1.2.0 (коротко)
+
+```php
+// Перевод пользователю платформы: внутренний, БЕЗ комиссии, с баланса мерчанта
+// на личный кошелёк пользователя Oblodai. to_user_id — UUID пользователя (НЕ юзернейм).
+// Ключ выплат; уходит с заголовком Idempotency-Key.
+$res = $client->account()->transferToUser([
+    'to_user_id' => 'a0b1c2d3-...-000000000001',
+    'amount'     => '10',
+    'currency'   => 'USDT',
+    'order_id'   => 'tr-1', // необязателен
+]);
+// $res: {currency, amount, to_user_id, recipient_balance}
+
+// Пачка переводов пользователям (фон): элементы — тела transferToUser().
+$batch = $client->account()->transferBatch([
+    ['to_user_id' => 'u1', 'amount' => '5', 'currency' => 'USDT', 'order_id' => 't-1'],
+    ['to_user_id' => 'u2', 'amount' => '7', 'currency' => 'USDT', 'order_id' => 't-2'],
+]); // 'continue' (по умолчанию) или 'stop' вторым аргументом
+$info = $client->batches()->info($batch['batch_id']);
+
+// Публичные эндпоинты счёта — для СОБСТВЕННЫХ checkout-страниц, без API-ключа
+// на фронте (тот же механизм, что publicGet/claimInfo у ссылок).
+$state = $client->payments()->publicGet($payment['uuid']);        // GET /v1/pay/{id}
+$final = $client->payments()->publicSelect($payment['uuid'], 'USDT', 'tron'); // POST /v1/pay/{id}/select
+// publicSelect финализирует отложенный (валюто-агностичный) счёт: покупатель
+// выбирает валюту/сеть, ответ — обычный результат платежа (address, payment_status, ...).
+```
+
 ## Обработка ошибок
 
 ```php
@@ -233,8 +328,24 @@ try {
 }
 ```
 
+Все ошибки SDK наследуют `Oblodai\Exception\OblodaiException`: `ApiException` (ответ шлюза),
+`ConnectionException` (сеть), `ConfigException` (конфигурация — например, не-https `base_url`),
+`SignatureException` (проверка вебхука). Ловите базовый класс, если нужно «поймать всё».
+
+Из этого `catch` больше ничего не «пролетает мимо»: методы ресурсов объявлены `: array` и
+возвращают массив **при любом** ответе шлюза. Пустой результат конверта (`{"state":0,"result":null}`)
+и пустое тело — это `[]`, а не `TypeError` (тот наследует `Error`, а не `Exception`, и штатным
+`catch` не ловился бы). Исправлено в v1.2.0.
+
 Клиент автоматически повторяет 5xx/429/сетевые сбои с экспоненциальным backoff (со случайным
 джиттером) и учётом заголовка `Retry-After`. Отключить: `new Client($id, $secret, ['retry' => false])`.
+
+Понимаются **обе** формы `Retry-After` из RFC 7231 — и `60` (так отдаёт сам шлюз), и HTTP-date
+`Wed, 21 Oct 2026 07:28:00 GMT` (так может отдать прокси или балансировщик перед ним; до v1.2.0
+эта форма молча игнорировалась, и SDK повторял раньше, чем просили). Подсказка сервера уважается
+сверх собственного `max_delay`, но зажата абсолютным потолком в **300 секунд**; дата в прошлом
+означает «можно сразу». Кроме общего таймаута транспорт задаёт таймаут установления соединения —
+треть общего, — чтобы мёртвый хост не съедал весь бюджет запроса на TCP-хендшейке.
 
 ## Идемпотентность (изменилось в v1.1.0)
 

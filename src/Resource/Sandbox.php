@@ -57,7 +57,18 @@ final class Sandbox extends AbstractResource
     }
 
     /**
-     * Сбросить песочницу: отменить открытые счета, обнулить балансы. POST /v1/sandbox/reset
+     * Сбросить песочницу: отменить НЕОПЛАЧИВАЕМЫЕ счета, обнулить балансы. POST /v1/sandbox/reset
+     *
+     * Это НЕ «чистый лист». Отменяются только счета в статусах `created` (API: `check`) и
+     * `select` — те, по которым депозита ещё не видели. Счёт, по которому депозит уже виден
+     * (`confirm_check`, `wrong_amount_waiting`), СОЗНАТЕЛЬНО не трогается: отмена дала бы
+     * депозиту подтвердиться в отменённый счёт и зачислить деньги без события. Песочница
+     * не обходит это правило — симулированный депозит для пайплайна ничем не отличается от
+     * настоящего (см. комментарий в ядре, internal/app/sandboxapi/reset.go).
+     *
+     * Ничего не удаляется: леджер append-only, обнуление баланса — компенсирующая проводка,
+     * поэтому история экспериментов остаётся читаемой. Если нужен действительно чистый счёт —
+     * создайте новый, а не рассчитывайте, что reset уберёт «зависший» в confirm_check.
      *
      * @return array<string,mixed> {invoices_cancelled, balances_zeroed}
      */
@@ -78,7 +89,9 @@ final class Sandbox extends AbstractResource
     {
         $res = $this->client->requestGet('/v1/sandbox/webhooks');
 
-        return is_array($res) && isset($res['deliveries']) ? $res['deliveries'] : [];
+        return is_array($res) && isset($res['deliveries']) && is_array($res['deliveries'])
+            ? $res['deliveries']
+            : [];
     }
 
     /**
