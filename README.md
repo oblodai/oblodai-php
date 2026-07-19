@@ -91,6 +91,7 @@ try {
 - `webhooks()` — register, deliveries, testPayment/Wallet/Payout
 - `settings()` — auto-withdraw, IP-allowlist
 - `rates()` — list (курсы), currencies (каталог, публичный)
+- `sandbox()` **(v1.2.0)** — только для тестовых ключей: simulateDeposit, faucet, reset, listWebhooks, replayWebhook
 
 ## Новое в v1.1.0 (коротко)
 
@@ -126,6 +127,59 @@ $check = $client->payoutLinks()->create([
 $client->payoutLinks()->claimInfo($check['claim_token']);          // детали чека
 $client->payoutLinks()->claim($check['claim_token'], 'T-адрес');   // забрать на свой кошелёк
 ```
+
+## Песочница / тестирование (v1.2.0)
+
+У Oblodai есть developer sandbox. **Бизнес-эндпоинты и код интеграции одинаковы для test и
+live** — меняется только ключ: тестовый public id начинается с `test_…`, тестовый секрет —
+с `oblodai_test_…`. Ничего перенастраивать не нужно: тот же `base_url`, те же методы SDK.
+
+Новое — пять sandbox-хелперов `$client->sandbox()`, которые заменяют «покупатель заплатил
+on-chain». Они существуют **только в песочнице**: вызов с live-ключом вернёт
+403 `sandbox.live_key`. Это **ТОЛЬКО тестовый код** — не зовите их из продакшена
+(удобный гард: `Client::isTestKey($publicId)`).
+
+```php
+use Oblodai\Client;
+
+$client = Client::fromEnv(); // OBLODAI_PUBLIC_ID=test_..., OBLODAI_SECRET=oblodai_test_...
+
+// 1. Обычный бизнес-вызов — тот же код, что и в проде.
+$payment = $client->payments()->create([
+    'amount' => '10', 'currency' => 'USD', 'order_id' => 'order-1',
+    'to_currency' => 'USDT', 'network' => 'tron',
+]);
+
+// 2. «Оплатить» счёт: без amount платится ровно сумма счёта.
+$client->sandbox()->simulateDeposit($payment['uuid']);
+
+// 3. Дождаться статуса, как в проде (или принять вебхук).
+$info = $client->payments()->info($payment['uuid']); // payment_status: paid
+
+// 4. Баланс «из воздуха» — и любой платный вызов, например выплата.
+$client->sandbox()->faucet('USDT', '100'); // не более 1000000 за вызов
+$client->payouts()->create(['amount' => '5', 'currency' => 'USDT', 'address' => 'T...', 'order_id' => 'w-1']);
+
+// Ещё: журнал доставок вебхуков (до 50, новые первыми) и повторная доставка.
+$deliveries = $client->sandbox()->listWebhooks();
+$client->sandbox()->replayWebhook($deliveries[0]['id']);
+
+// Чистый лист: отменить открытые счета, обнулить балансы.
+$client->sandbox()->reset();
+```
+
+Сценарии `simulateDeposit`:
+
+- `['amount' => '5']` — недоплата, `['amount' => '15']` — переплата (без amount — ровно сумма счёта);
+- `['confirmations' => 1, 'txid' => 't1']` — «зависший» депозит с малым числом подтверждений;
+  повтор с **тем же** `txid` и бОльшим `confirmations` углубляет его (тот же `txid` = идемпотентность).
+
+Нюансы:
+
+- депозит с малым числом подтверждений «дозревает» сам примерно за 10 минут — либо ускорьте,
+  повторив `simulateDeposit` с тем же `txid` и бОльшим `confirmations`;
+- в UTXO-сетях (Bitcoin и т.п.) нет авто-возврата переплаты и нет адреса плательщика —
+  как и в проде (для возврата адрес задаётся явно).
 
 ## Обработка ошибок
 
