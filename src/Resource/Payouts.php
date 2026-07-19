@@ -106,7 +106,16 @@ final class Payouts extends AbstractResource
         return $this->client->request('/v1/payout/calculate', $params);
     }
 
-    /** @return array<string,mixed> */
+    /**
+     * Одобрить выплату, ждущую подтверждения. POST /v1/payout/approve
+     *
+     * Ключ идемпотентности здесь НЕ нужен и намеренно не шлётся: это переход состояния, сервер
+     * принимает только выплату в статусе pending и иначе отвечает 409 payout.not_pending.
+     * Повторный approve физически не может одобрить или сдвинуть деньги дважды — читайте этот
+     * 409 как «уже одобрено» и уточняйте фактический статус через info().
+     *
+     * @return array<string,mixed>
+     */
     public function approve(string $uuid): array
     {
         return $this->client->request('/v1/payout/approve', ['uuid' => $uuid]);

@@ -9,8 +9,8 @@ use Oblodai\Http\Response;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Payout-ссылки («крипто-чеки») v1.1.0: management (ключ выплат, подписано, БЕЗ Idempotency-Key)
- * и публичный claim (без подписи вовсе).
+ * Payout-ссылки («крипто-чеки»): management (ключ выплат, подписано; резервирующие баланс
+ * create/createBatch — с Idempotency-Key) и публичный claim (без подписи вовсе).
  */
 final class PayoutLinksTest extends TestCase
 {
@@ -33,7 +33,7 @@ final class PayoutLinksTest extends TestCase
         return $decoded;
     }
 
-    public function testCreateIsSignedButWithoutIdempotencyKey(): void
+    public function testCreateIsSignedAndIdempotent(): void
     {
         $client = $this->client(['link_id' => 'l1', 'status' => 'funded', 'claim_token' => 'tok', 'claim_url' => 'https://pay.test/claim/tok']);
 
@@ -49,8 +49,8 @@ final class PayoutLinksTest extends TestCase
         self::assertSame('https://api.test/v1/payout/link', $this->t->calls[0]['url']);
         $h = $this->t->calls[0]['headers'];
         self::assertArrayHasKey('X-Signature', $h);
-        // Дедуп у payout-ссылок — reference, заголовок не поддерживается.
-        self::assertArrayNotHasKey('Idempotency-Key', $h);
+        // create резервирует баланс — ретрай не должен профинансировать вторую ссылку.
+        self::assertArrayHasKey('Idempotency-Key', $h);
         self::assertSame(720, $this->body()['expires_in_hours']);
     }
 
@@ -65,7 +65,7 @@ final class PayoutLinksTest extends TestCase
         self::assertSame(1, $res['created']);
         self::assertSame('https://api.test/v1/payout/link/batch', $this->t->calls[0]['url']);
         self::assertCount(1, $this->body()['links']);
-        self::assertArrayNotHasKey('Idempotency-Key', $this->t->calls[0]['headers']);
+        self::assertArrayHasKey('Idempotency-Key', $this->t->calls[0]['headers']);
     }
 
     public function testListInfoCancel(): void
