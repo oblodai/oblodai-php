@@ -80,14 +80,14 @@ try {
 
 ## Ресурсы
 
-- `payments()` — create, info, history, services, qr, refund, accepted, accuracy, autorefund, discount · **с v1.1.0:** createBatch, refundBatch, sendEmail, resolve
+- `payments()` — create, info, history, services, qr, refund, accepted, accuracy, autorefund, discount · **с v1.1.0:** createBatch, refundBatch, sendEmail, resolve · **с v1.2.0:** публичные publicGet/publicSelect (без подписи, для своих checkout-страниц)
 - `payouts()` — create, createMass, info, history, services, calculate, approve, fee-config, refund · **с v1.1.0:** createBatch
 - `batches()` **(v1.1.0)** — info (прогресс и результаты пачки)
 - `links()` **(v1.1.0)** — платёжные ссылки: create, list, info, toggle, publicGet, checkout (алиас `paymentLinks()`)
 - `payoutLinks()` **(v1.1.0)** — «крипто-чеки»: create, createBatch (до 500), list, info, cancel + публичные claimInfo/claim (без подписи)
 - `splits()` **(v1.1.0)** — splitToAddress, splitToMerchant, createRule, listRules, deleteRule, getConfig, setConfig
 - `wallets()` — create, block, blockedAddressRefund, qr
-- `account()` — balance, referral, transferToPersonal, vrcs
+- `account()` — balance, referral, transferToPersonal, vrcs · **с v1.2.0:** transferToUser, transferBatch (переводы пользователям платформы)
 - `webhooks()` — register, deliveries, testPayment/Wallet/Payout
 - `settings()` — auto-withdraw, IP-allowlist
 - `rates()` — list (курсы), currencies (каталог, публичный)
@@ -126,6 +126,35 @@ $check = $client->payoutLinks()->create([
 // Получатель (публично, без API-ключа):
 $client->payoutLinks()->claimInfo($check['claim_token']);          // детали чека
 $client->payoutLinks()->claim($check['claim_token'], 'T-адрес');   // забрать на свой кошелёк
+```
+
+## Новое в v1.2.0 (коротко)
+
+```php
+// Перевод пользователю платформы: внутренний, БЕЗ комиссии, с баланса мерчанта
+// на личный кошелёк пользователя Oblodai. to_user_id — UUID пользователя (НЕ юзернейм).
+// Ключ выплат; уходит с заголовком Idempotency-Key.
+$res = $client->account()->transferToUser([
+    'to_user_id' => 'a0b1c2d3-...-000000000001',
+    'amount'     => '10',
+    'currency'   => 'USDT',
+    'order_id'   => 'tr-1', // необязателен
+]);
+// $res: {currency, amount, to_user_id, recipient_balance}
+
+// Пачка переводов пользователям (фон): элементы — тела transferToUser().
+$batch = $client->account()->transferBatch([
+    ['to_user_id' => 'u1', 'amount' => '5', 'currency' => 'USDT', 'order_id' => 't-1'],
+    ['to_user_id' => 'u2', 'amount' => '7', 'currency' => 'USDT', 'order_id' => 't-2'],
+]); // 'continue' (по умолчанию) или 'stop' вторым аргументом
+$info = $client->batches()->info($batch['batch_id']);
+
+// Публичные эндпоинты счёта — для СОБСТВЕННЫХ checkout-страниц, без API-ключа
+// на фронте (тот же механизм, что publicGet/claimInfo у ссылок).
+$state = $client->payments()->publicGet($payment['uuid']);        // GET /v1/pay/{id}
+$final = $client->payments()->publicSelect($payment['uuid'], 'USDT', 'tron'); // POST /v1/pay/{id}/select
+// publicSelect финализирует отложенный (валюто-агностичный) счёт: покупатель
+// выбирает валюту/сеть, ответ — обычный результат платежа (address, payment_status, ...).
 ```
 
 ## Песочница / тестирование (v1.2.0)
@@ -201,7 +230,7 @@ try {
 ## Идемпотентность (изменилось в v1.1.0)
 
 Создающие вызовы (`payments()->create/refund/resolve`, все `createBatch`/`refundBatch`,
-`payouts()->create/createMass`, `account()->transferToPersonal`) уходят с HTTP-заголовком
+`payouts()->create/createMass`, `account()->transferToPersonal/transferToUser/transferBatch`) уходят с HTTP-заголовком
 **`Idempotency-Key`** (UUID v4). Ключ генерируется **один раз до цикла повторов** и одинаков во
 всех внутренних ретраях, поэтому таймаут/обрыв сети не создаёт дубль. Заголовок не входит в
 подпись и в тело запроса.

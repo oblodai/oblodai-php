@@ -249,6 +249,35 @@ final class Payments extends AbstractResource
     }
 
     /**
+     * Публичное состояние счёта (без подписи). GET /v1/pay/{id}
+     *
+     * Для собственных checkout-страниц: адрес, сумма, статус, оставшееся время —
+     * без API-ключа на фронте (тот же механизм, что publicGet/claimInfo у ссылок).
+     *
+     * @return array<string,mixed>
+     */
+    public function publicGet(string $uuid): array
+    {
+        return $this->client->requestPublic('/v1/pay/' . rawurlencode($uuid), [], 'GET');
+    }
+
+    /**
+     * Публичный выбор валюты/сети для счёта (без подписи). POST /v1/pay/{id}/select
+     *
+     * Финализирует отложенный (валюто-агностичный) счёт: покупатель выбирает, чем
+     * платить; ответ — обычный результат платежа (address, payment_status, ...).
+     *
+     * @return array<string,mixed>
+     */
+    public function publicSelect(string $uuid, string $currency, string $network): array
+    {
+        return $this->client->requestPublic(
+            '/v1/pay/' . rawurlencode($uuid) . '/select',
+            ['currency' => $currency, 'network' => $network],
+        );
+    }
+
+    /**
      * @return array<string,string>
      */
     private function lookup(?string $uuid, ?string $orderId): array
