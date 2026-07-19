@@ -17,6 +17,7 @@ use Oblodai\Resource\Payments;
 use Oblodai\Resource\PayoutLinks;
 use Oblodai\Resource\Payouts;
 use Oblodai\Resource\Rates;
+use Oblodai\Resource\Sandbox;
 use Oblodai\Resource\Settings;
 use Oblodai\Resource\Splits;
 use Oblodai\Resource\Wallets;
@@ -207,6 +208,16 @@ final class Client
         return new Splits($this);
     }
 
+    /**
+     * Sandbox-хелперы для тестовых ключей (симуляция депозита, faucet, reset,
+     * журнал/replay вебхуков). С v1.2.0. ТОЛЬКО тестовый код: live-ключ получает
+     * 403 sandbox.live_key.
+     */
+    public function sandbox(): Sandbox
+    {
+        return new Sandbox($this);
+    }
+
     // ── Внутреннее (используется ресурсами) ──
 
     /**
@@ -241,6 +252,17 @@ final class Client
     }
 
     /**
+     * Подписанный GET-запрос (без тела). Подпись считается над пустым телом:
+     * "{ts}\nGET\n{path}\n" — та же каноническая строка, что и у POST.
+     *
+     * @return mixed
+     */
+    public function requestGet(string $path)
+    {
+        return $this->execute('GET', $path, [], true);
+    }
+
+    /**
      * Публичный (неподписанный) запрос.
      *
      * @param array<string,mixed> $payload
@@ -250,6 +272,16 @@ final class Client
     public function requestPublic(string $path, array $payload = [], string $method = 'POST')
     {
         return $this->execute($method, $path, $payload, false);
+    }
+
+    /**
+     * Тестовый ли это ключ песочницы: public id с префиксом "test_" либо секрет
+     * с префиксом "oblodai_test_". Интеграционный код между test и live не меняется —
+     * меняется только ключ; хелпер удобен для гардов вида «sandbox-методы только на тесте».
+     */
+    public static function isTestKey(string $key): bool
+    {
+        return str_starts_with($key, 'test_') || str_starts_with($key, 'oblodai_test_');
     }
 
     /** Генерирует ключ идемпотентности (UUID v4). */
@@ -320,12 +352,13 @@ final class Client
         $body = null;
         if ($method !== 'GET') {
             $body = json_encode($payload === [] ? new \stdClass() : $payload, JSON_UNESCAPED_UNICODE);
-            if ($signed) {
-                [$ts, $sig] = Signing::signRequest($this->secret, $method, $path, $body);
-                $headers['X-Public-Id'] = $this->publicId;
-                $headers['X-Timestamp'] = $ts;
-                $headers['X-Signature'] = $sig;
-            }
+        }
+        if ($signed) {
+            // GET подписывается с ПУСТЫМ телом: "{ts}\n{METHOD}\n{path}\n".
+            [$ts, $sig] = Signing::signRequest($this->secret, $method, $path, $body ?? '');
+            $headers['X-Public-Id'] = $this->publicId;
+            $headers['X-Timestamp'] = $ts;
+            $headers['X-Signature'] = $sig;
         }
 
         $start = microtime(true);
