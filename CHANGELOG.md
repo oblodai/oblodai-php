@@ -19,6 +19,22 @@
 - Хелпер `Client::isTestKey($key)` — тестовый ли ключ (`test_…` / `oblodai_test_…`); удобен как
   гард «sandbox-методы только на тесте». Бизнес-эндпоинты с тестовыми ключами работают без
   изменений — интеграционный код между test и live не меняется, меняется только ключ.
+- **Переводы пользователям платформы** (ключ выплат):
+  - `account()->transferToUser(['to_user_id' => …, 'amount' => …, 'currency' => …, 'order_id' => …])` —
+    `POST /v1/transfer/to-user`, внутренний перевод **без комиссии** с баланса мерчанта на личный
+    кошелёк пользователя Oblodai; `to_user_id` — UUID пользователя платформы (НЕ юзернейм),
+    `order_id` необязателен. Ответ: `{currency, amount, to_user_id, recipient_balance}`;
+  - `account()->transferBatch($transfers, $onError, $idempotencyKey)` — `POST /v1/transfer/batch`,
+    пачка переводов в фоне (элементы — тела `transferToUser()`, `on_error`: `continue`|`stop`);
+    возвращает `batch_id`, прогресс и результаты — через `batches()->info()`.
+  - Оба уходят с заголовком `Idempotency-Key` (та же лестница дедупа, что у остальных денежных
+    вызовов: заголовок → `order_id` → подпись); свой ключ — параметром `idempotency_key`.
+- **Публичные эндпоинты счёта** для собственных checkout-страниц (без подписи, без API-ключа
+  на фронте — тот же механизм, что `links()->publicGet` / `payoutLinks()->claimInfo`):
+  - `payments()->publicGet($uuid)` — `GET /v1/pay/{id}`, публичное состояние счёта;
+  - `payments()->publicSelect($uuid, $currency, $network)` — `POST /v1/pay/{id}/select`,
+    финализация отложенного (валюто-агностичного) счёта: покупатель выбирает валюту/сеть,
+    ответ — обычный результат платежа (`address`, `payment_status`, …).
 
 ## [1.1.0] — 2026-07-15
 
