@@ -23,6 +23,13 @@ final class Sandbox extends AbstractResource
      *                    депозит; повтор с ТЕМ ЖЕ txid и бОльшим значением «углубляет» его;
      *  - txid          — строка; не задан = новый; переиспользуйте для идемпотентности/углубления.
      *
+     * Счёт с недобором подтверждений сам НЕ дозревает: симулированный депозит никто не переэмитит
+     * и курсор для него не двигается — счёт висит в confirm_check, пока вы не повторите вызов с
+     * ТЕМ ЖЕ txid и бОльшим confirmations. Не путайте с maturity-холдом на ВЫПЛАТЕ (ошибка
+     * payout.funds_maturing): вот он в песочнице снимается по возрасту (по умолчанию ~10 минут,
+     * GATEWAY_SANDBOX_MATURITY_MINUTES) — но это про баланс, а не про подтверждения счёта.
+     * Достаточно глубокий повтор снимает и его сразу.
+     *
      * @param array{amount?:string,confirmations?:int,txid?:string} $opts
      *
      * @return array<string,mixed> {invoice_id, txid, amount, confirmations}
