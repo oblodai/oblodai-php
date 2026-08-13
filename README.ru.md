@@ -1,6 +1,26 @@
-# Oblodai PHP SDK
+<div align="center">
 
-> [Read in English →](README.md)
+<a href="https://oblodai.com">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/oblodai/.github/main/brand/logo-white.svg">
+    <img src="https://raw.githubusercontent.com/oblodai/.github/main/brand/logo-black.svg" alt="oblodai" height="52">
+  </picture>
+</a>
+
+<h3>Официальный PHP SDK платёжного шлюза <a href="https://oblodai.com">oblodai</a></h3>
+
+Приём платежей, выплаты, платёжные ссылки, сплиты, статические кошельки, вебхуки — один API-ключ.
+
+<a href="https://packagist.org/packages/oblodai/sdk"><img src="https://img.shields.io/packagist/v/oblodai/sdk?style=flat-square&label=Packagist" alt="Packagist"></a>
+<a href="https://github.com/oblodai/oblodai-php/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/oblodai/oblodai-php/ci.yml?branch=main&style=flat-square&label=CI" alt="CI"></a>
+<a href="https://packagist.org/packages/oblodai/sdk"><img src="https://img.shields.io/packagist/php-v/oblodai/sdk?style=flat-square" alt="PHP version"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-000000?style=flat-square" alt="License: MIT"></a>
+
+[Документация](https://docs.oblodai.com) · [Кабинет](https://my.oblodai.com) · [Read in English →](README.md)
+
+</div>
+
+---
 
 Официальный PHP SDK для платёжного шлюза **Oblodai**: приём платежей, выплаты, статические кошельки,
 вебхуки. Один API-ключ — весь функционал. Без внешних зависимостей (cURL), с инъектируемым транспортом.
