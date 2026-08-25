@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.3.0 — 2026-08-25
+
+Rewrite generated from the gateway's contract snapshot (`contract/`). See MIGRATION-1.3.md.
+
+- Fixed: requests are signed with the five-field recipe (`ts\nMETHOD\nrequestURI\nidempotencyKey\nbody`)
+  over path + raw query, with an EMPTY idempotency slot when no key is sent. 1.2 signed four fields
+  and got 401 on every call against the current gateway.
+- Fixed: models, statuses, pagination and parameter names match the current API vocabulary; amounts
+  are decimal strings everywhere.
+- Added: every merchant route (107) — cancel/validate, batches, documents, fee configs, split opt-in,
+  secret rotation, the payer-facing checkout endpoints and the recipient-facing claim endpoints.
+- Added: `Oblodai\Core\Page` (first page via `items()`, every page by iterating; nothing requested
+  until consumed), retries driven by the API's own `retryable` flag, automatic idempotency keys,
+  clock-skew correction, dual key pairs, per-attempt timeout and per-call deadline.
+- Added: `Oblodai\Webhook\Verifier` — rotation-aware verification over the raw bytes, with
+  `parse()` and `isStale()`; no client and no API key needed.
+- Added: generated request DTOs (`Oblodai\Contract\Request\*`) carrying the gateway's English field
+  documentation, generated enums (`Oblodai\Contract\Enum\*`) and the route registry
+  (`Oblodai\Contract\Routes`); `composer check-drift` fails when they drift from `contract/`.
+- Added: contract tests against the golden response bodies and real signed webhook deliveries, and a
+  live journey against a running gateway (`composer test-live`).
+- Changed: PHP ≥ 8.1; readonly value objects for every response body, each keeping the raw wire body
+  in `->raw` and its wire keys in `::KEYS`; errors are an `OblodaiException` hierarchy carrying
+  `errorCode`, `httpStatus`, `retryable`, `retryAfter`, `requestId`, `field` and `synthetic`.
+- Changed: HTTP is a small `HttpClient` port — cURL by default, any PSR-18 client through
+  `Oblodai\Http\Psr18HttpClient`.
+- Changed: closed vocabularies decode into PHP enums; a value outside the shipped snapshot raises
+  `ContractException` rather than being silently accepted, while open vocabularies (`network`,
+  `kind`, `fee_type`, `source`) stay plain strings.
+
 Значимые изменения этого пакета. Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/),
 версии — [SemVer](https://semver.org/lang/ru/).
 

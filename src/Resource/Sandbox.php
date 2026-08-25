@@ -4,103 +4,67 @@ declare(strict_types=1);
 
 namespace Oblodai\Resource;
 
-/**
- * Developer sandbox: тестовые хелперы, заменяющие «покупатель заплатил on-chain».
- *
- * Все бизнес-эндпоинты работают с тестовыми ключами БЕЗ изменений — интеграционный код
- * между test и live не меняется, меняется только ключ (public id `test_…`, секрет
- * `oblodai_test_…`). Эти пять методов существуют ТОЛЬКО в песочнице: live-ключ получает
- * HTTP 403 `sandbox.live_key`. Не зовите их из продакшен-кода.
- */
-final class Sandbox extends AbstractResource
+use Oblodai\Contract\Model\FaucetResult;
+use Oblodai\Contract\Model\SandboxDeposit;
+use Oblodai\Contract\Model\SandboxReplay;
+use Oblodai\Contract\Model\SandboxReset;
+use Oblodai\Contract\Model\WebhookDelivery;
+use Oblodai\Contract\Request\SandboxDepositRequest;
+use Oblodai\Contract\Request\SandboxFaucetRequest;
+use Oblodai\Core\Page;
+use Oblodai\Core\RequestOptions;
+
+/** Developer sandbox (`test_` keys only): fake money, simulated deposits, webhook inspector. */
+final class Sandbox extends Resource
 {
     /**
-     * Симулировать on-chain депозит в счёт. POST /v1/sandbox/deposit
+     * `POST /v1/sandbox/faucet` — credit test funds. Payout key.
      *
-     * Опции:
-     *  - amount        — строка; без неё платится ровно сумма счёта, иначе недо-/переплата;
-     *  - confirmations — int; 0/не задано = сразу подтверждён, малое значение = «зависший»
-     *                    депозит; повтор с ТЕМ ЖЕ txid и бОльшим значением «углубляет» его;
-     *  - txid          — строка; не задан = новый; переиспользуйте для идемпотентности/углубления.
-     *
-     * Счёт с недобором подтверждений сам НЕ дозревает: симулированный депозит никто не переэмитит
-     * и курсор для него не двигается — счёт висит в confirm_check, пока вы не повторите вызов с
-     * ТЕМ ЖЕ txid и бОльшим confirmations. Не путайте с maturity-холдом на ВЫПЛАТЕ (ошибка
-     * payout.funds_maturing): вот он в песочнице снимается по возрасту (по умолчанию ~10 минут,
-     * GATEWAY_SANDBOX_MATURITY_MINUTES) — но это про баланс, а не про подтверждения счёта.
-     * Достаточно глубокий повтор снимает и его сразу.
-     *
-     * @param array{amount?:string,confirmations?:int,txid?:string} $opts
-     *
-     * @return array<string,mixed> {invoice_id, txid, amount, confirmations}
+     * @param array<string, mixed>|SandboxFaucetRequest $params
      */
-    public function simulateDeposit(string $invoiceId, array $opts = []): array
+    public function faucet(array|SandboxFaucetRequest $params, ?RequestOptions $options = null): FaucetResult
     {
-        return $this->client->request('/v1/sandbox/deposit', ['invoice_id' => $invoiceId] + $opts);
+        return $this->call('POST /v1/sandbox/faucet', $params, $options, FaucetResult::fromArray(...));
     }
 
     /**
-     * Начислить тестовый баланс «из воздуха». POST /v1/sandbox/faucet
+     * `POST /v1/sandbox/deposit` — simulate an on-chain deposit to an invoice (repeat the txid to
+     * add confirmations).
      *
-     * Лимит: не более 1000000 за вызов. idempotency_key (в теле) защищает от дублей.
-     *
-     * @return array<string,mixed> {asset, amount, journal_id}
+     * @param array<string, mixed>|SandboxDepositRequest $params
      */
-    public function faucet(string $asset, string $amount, ?string $idempotencyKey = null): array
-    {
-        $p = ['asset' => $asset, 'amount' => $amount];
-        if ($idempotencyKey !== null && $idempotencyKey !== '') {
-            $p['idempotency_key'] = $idempotencyKey;
-        }
-
-        return $this->client->request('/v1/sandbox/faucet', $p);
+    public function deposit(
+        array|SandboxDepositRequest $params,
+        ?RequestOptions $options = null,
+    ): SandboxDeposit {
+        return $this->call('POST /v1/sandbox/deposit', $params, $options, SandboxDeposit::fromArray(...));
     }
 
     /**
-     * Сбросить песочницу: отменить НЕОПЛАЧИВАЕМЫЕ счета, обнулить балансы. POST /v1/sandbox/reset
+     * `GET /v1/sandbox/webhooks` — deliveries with their payloads.
      *
-     * Это НЕ «чистый лист». Отменяются только счета в статусах `created` (API: `check`) и
-     * `select` — те, по которым депозита ещё не видели. Счёт, по которому депозит уже виден
-     * (`confirm_check`, `wrong_amount_waiting`), СОЗНАТЕЛЬНО не трогается: отмена дала бы
-     * депозиту подтвердиться в отменённый счёт и зачислить деньги без события. Песочница
-     * не обходит это правило — симулированный депозит для пайплайна ничем не отличается от
-     * настоящего (см. комментарий в ядре, internal/app/sandboxapi/reset.go).
-     *
-     * Ничего не удаляется: леджер append-only, обнуление баланса — компенсирующая проводка,
-     * поэтому история экспериментов остаётся читаемой. Если нужен действительно чистый счёт —
-     * создайте новый, а не рассчитывайте, что reset уберёт «зависший» в confirm_check.
-     *
-     * @return array<string,mixed> {invoices_cancelled, balances_zeroed}
+     * @param  array<string, mixed> $params limit/offset
+     * @return Page<WebhookDelivery>
      */
-    public function reset(): array
+    public function webhooks(array $params = [], ?RequestOptions $options = null): Page
     {
-        return $this->client->request('/v1/sandbox/reset', []);
+        return $this->page('GET /v1/sandbox/webhooks', $params, WebhookDelivery::fromArray(...), $options);
     }
 
-    /**
-     * Недавние доставки вебхуков (до 50, новые первыми). GET /v1/sandbox/webhooks
-     *
-     * Подписанный GET с пустым телом (подпись над "{ts}\nGET\n/v1/sandbox/webhooks\n").
-     *
-     * @return array<int,array<string,mixed>> элементы: {id, event_type, url, status, attempts,
-     *                                        last_error, payload (сырой JSON), created_at, updated_at}
-     */
-    public function listWebhooks(): array
+    /** `POST /v1/sandbox/webhooks/replay` — re-send a terminal (delivered/dead) delivery. */
+    public function replay(string $deliveryId, ?RequestOptions $options = null): SandboxReplay
     {
-        $res = $this->client->requestGet('/v1/sandbox/webhooks');
-
-        return is_array($res) && isset($res['deliveries']) && is_array($res['deliveries'])
-            ? $res['deliveries']
-            : [];
+        return $this->call(
+            'POST /v1/sandbox/webhooks/replay',
+            ['delivery_id' => $deliveryId],
+            $options,
+            SandboxReplay::fromArray(...)
+        );
     }
 
-    /**
-     * Поставить доставку вебхука в очередь заново. POST /v1/sandbox/webhooks/replay
-     *
-     * @return array<string,mixed> {delivery_id, requeued}
-     */
-    public function replayWebhook(string $deliveryId): array
+    /** `POST /v1/sandbox/reset` — cancel open invoices and zero balances. Payout key. */
+    public function reset(?RequestOptions $options = null): SandboxReset
     {
-        return $this->client->request('/v1/sandbox/webhooks/replay', ['delivery_id' => $deliveryId]);
+        return $this->call('POST /v1/sandbox/reset', null, $options, SandboxReset::fromArray(...));
     }
 }

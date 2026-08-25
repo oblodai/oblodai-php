@@ -4,170 +4,151 @@ declare(strict_types=1);
 
 namespace Oblodai\Resource;
 
+use Oblodai\Contract\Model\BatchElement;
+use Oblodai\Contract\Model\ClaimPreview;
+use Oblodai\Contract\Model\ClaimResult;
+use Oblodai\Contract\Model\PayoutLink;
+use Oblodai\Contract\Request\ClaimRequest;
+use Oblodai\Contract\Request\PayoutLinkBatchRequest;
+use Oblodai\Contract\Request\PayoutLinkChequeRequest;
+use Oblodai\Contract\Request\PayoutLinkListRequest;
+use Oblodai\Contract\Request\PayoutLinkRequest;
+use Oblodai\Core\Envelope;
+use Oblodai\Core\FileResult;
+use Oblodai\Core\Page;
+use Oblodai\Core\RequestOptions;
+
 /**
- * Payout-ссылки («крипто-чеки»): выплата получателю, кошелёк которого вы не знаете.
+ * Payout links (cheques): funds reserved now, claimed later by whoever holds the token. Payout key.
  *
- * Мерчант резервирует сумму в claimable-ссылку (available -> payout_held) и передаёт
- * получателю claim_url; тот вводит свой адрес — из резерва порождается обычная выплата.
- * Непорученная ссылка возвращает резерв при истечении срока или отмене.
- *
- * Management-методы требуют ключ выплат. claimInfo()/claim() — публичные (без подписи):
- * доступ управляется самим claim-токеном из ответа create().
- *
- * Идемпотентность: create()/createBatch() РЕЗЕРВИРУЮТ баланс, поэтому уходят с заголовком
- * Idempotency-Key (генерируется один раз до цикла ретраев). Оба маршрута обёрнуты в серверную
- * идемпотентность: повтор с тем же ключом реплеит ПЕРВЫЙ ответ целиком — ту же ссылку и тот же
- * claim_token — и помечается заголовком ответа Idempotent-Replayed: true; баланс дебетуется
- * ровно один раз. БЕЗ заголовка поведение прежнее: два одинаковых вызова создадут ДВЕ ссылки.
- * Свой ключ — параметром 'idempotency_key' у create() и аргументом $idempotencyKey у createBatch().
- *
- * Второй, независимый рубеж — опциональный per-link 'reference' (уникален в рамках мерчанта):
- * он дедуплицирует и там, где заголовка нет, и там, где реплей недоступен. Дубль reference —
- * 409 payoutlink.duplicate_reference (раньше был 500, который SDK ретраил; теперь терминален).
- * Частично упавшая пачка реплеится КАК ЕСТЬ — упавшие элементы под тем же ключом повторно
- * не обработаются; допинывайте их новым вызовом с новым ключом.
- *
- * Возможные ошибки идемпотентности: 400 idempotency.bad_key (кривой ключ), 400
- * idempotency.key_reused (тот же ключ с другим телом), 409 idempotency.in_progress
- * (первый запрос ещё выполняется), 503 idempotency.unavailable (стор недоступен, fail-closed).
- * SDK ретраит из них только 503; 400/409 терминальны.
+ * A link argument is either the `link_id` as a string or an array carrying `link_id`.
  */
-final class PayoutLinks extends AbstractResource
+final class PayoutLinks extends Resource
 {
     /**
-     * Создать payout-ссылку. POST /v1/payout/link
+     * `POST /v1/payout/link` — reserve funds and mint a claim token (`claim_token`/`claim_url` are
+     * returned once). Idempotent by `reference`.
      *
-     * ВАЖНО про срок жизни: задавайте 'expires_in_hours' ЯВНО (1..720). Если поле не задано
-     * или равно 0, бэкенд клампит его к МИНИМУМУ — ссылка проживёт всего 1 час.
-     *
-     * claim_token/claim_url возвращаются ТОЛЬКО в ответе create — сохраните их сразу
-     * (в list/info их больше не будет).
-     *
-     * Оговорка про claim_url: ссылку собирает ШЛЮЗ из своего публичного базового URL. Если он не
-     * задан (GATEWAY_PUBLIC_BASE_URL), claim_url приходит ПУСТОЙ СТРОКОЙ — ровно то, что видно на
-     * локальном стенде; в проде шлюз без этой настройки не стартует. Это не ошибка SDK и не ошибка
-     * ядра: единственная не выводимая величина — claim_token, он в ответе есть всегда. Локально
-     * собирайте ссылку сами: {ваш_публичный_базовый_URL}/claim/{claim_token}. То же самое
-     * касается 'url' у платежей и платёжных ссылок.
-     *
-     * Уходит с заголовком Idempotency-Key (стабилен между повторами: ретрай по потерянному
-     * ответу реплеит первую ссылку с тем же claim_token, а не резервирует баланс второй раз);
-     * свой ключ — параметром 'idempotency_key'. Без ключа два одинаковых вызова создадут ДВЕ
-     * ссылки — задавайте 'reference' как durable-рубеж (дубль -> 409
-     * payoutlink.duplicate_reference, терминальная ошибка).
-     *
-     * @param array<string,mixed> $params currency (крипто-актив), network, amount (строка),
-     *                                     reference (ключ дедупа), title, note,
-     *                                     email (получателю уйдёт claim-письмо),
-     *                                     expires_in_hours (1..720 — задавайте явно!),
-     *                                     idempotency_key (свой ключ; уйдёт заголовком)
-     *
-     * @return array<string,mixed> {link_id, status, amount, currency, network, expires_at,
-     *                              created_at, claim_token, claim_url, ...}
+     * @param array<string, mixed>|PayoutLinkRequest $params
      */
-    public function create(array $params): array
+    public function create(array|PayoutLinkRequest $params, ?RequestOptions $options = null): PayoutLink
     {
-        [$params, $key] = $this->splitIdempotencyKey($params);
-
-        return $this->client->requestIdempotent('/v1/payout/link', $params, $key);
+        return $this->call('POST /v1/payout/link', $params, $options, PayoutLink::fromArray(...));
     }
 
     /**
-     * Пачка payout-ссылок (до 500 за вызов). POST /v1/payout/link/batch
+     * `POST /v1/payout/link/info`.
      *
-     * Каждый элемент резервируется в своей транзакции: плохой элемент фейлит только себя.
-     * Все ссылки вызова получают общий batch_id. Ответ index-aligned:
-     * {created, total, results: [{ok, link?|error?, message?}]}.
-     *
-     * Уходит с заголовком Idempotency-Key (стабилен между повторами). ВАЖНО: реплей отдаёт
-     * ответ ПЕРВОЙ попытки как есть — упавшие элементы под тем же ключом не переобрабатываются;
-     * допинывайте их отдельным вызовом с НОВЫМ ключом, а per-link 'reference' защитит от дублей.
-     *
-     * ВТОРАЯ ОГОВОРКА, важная именно для пачек: ответ больше 256 КБ бэкенд НЕ кэширует, и тогда
-     * повтор с тем же ключом выполнится ЗАНОВО. Поэтому на батчах проставляйте per-item
-     * 'reference' — в этом случае он остаётся единственным рубежом против дублей.
-     *
-     * @param array<int,array<string,mixed>> $links          элементы — тела обычного create()
-     * @param string|null                    $idempotencyKey свой ключ; null — сгенерировать
-     *
-     * @return array<string,mixed> {created, total, results}
+     * @param string|array<string, mixed> $link
      */
-    public function createBatch(array $links, ?string $idempotencyKey = null): array
+    public function info(string|array $link, ?RequestOptions $options = null): PayoutLink
     {
-        return $this->client->requestIdempotent('/v1/payout/link/batch', ['links' => $links], $idempotencyKey);
+        return $this->call(
+            'POST /v1/payout/link/info',
+            ['link_id' => self::idOf($link, 'link_id')],
+            $options,
+            PayoutLink::fromArray(...)
+        );
     }
 
     /**
-     * Список ссылок (created_at DESC, без claim_token). POST /v1/payout/link/list
+     * Alias of `info()`.
      *
-     * @return array<string,mixed> {links: [...]}
+     * @param string|array<string, mixed> $link
      */
-    public function list(?int $limit = null, ?int $offset = null): array
+    public function get(string|array $link, ?RequestOptions $options = null): PayoutLink
     {
-        $p = [];
-        if ($limit !== null) {
-            $p['limit'] = $limit;
-        }
-        if ($offset !== null) {
-            $p['offset'] = $offset;
-        }
-
-        return $this->client->request('/v1/payout/link/list', $p);
+        return $this->info($link, $options);
     }
 
     /**
-     * Детали ссылки (после claim — с payout_id и claim_address). POST /v1/payout/link/info
+     * `POST /v1/payout/link/list`.
      *
-     * @return array<string,mixed>
+     * @param  array<string, mixed>|PayoutLinkListRequest $params
+     * @return Page<PayoutLink>
      */
-    public function info(string $linkId): array
+    public function list(array|PayoutLinkListRequest $params = [], ?RequestOptions $options = null): Page
     {
-        return $this->client->request('/v1/payout/link/info', ['link_id' => $linkId]);
+        return $this->page('POST /v1/payout/link/list', $params, PayoutLink::fromArray(...), $options);
     }
 
     /**
-     * Отменить непорученную (funded) ссылку — резерв вернётся на available.
-     * POST /v1/payout/link/cancel
+     * `POST /v1/payout/link/cancel` — release the reserved funds of an unclaimed link.
      *
-     * @return array<string,mixed> ссылка с новым статусом
+     * @param string|array<string, mixed> $link
      */
-    public function cancel(string $linkId): array
+    public function cancel(string|array $link, ?RequestOptions $options = null): PayoutLink
     {
-        return $this->client->request('/v1/payout/link/cancel', ['link_id' => $linkId]);
+        return $this->call(
+            'POST /v1/payout/link/cancel',
+            ['link_id' => self::idOf($link, 'link_id')],
+            $options,
+            PayoutLink::fromArray(...)
+        );
     }
 
     /**
-     * Публичные детали для страницы claim (БЕЗ подписи). GET /v1/claim/{token}
+     * `POST /v1/payout/link/batch` — SYNCHRONOUS: many links in one signed call, per-element
+     * outcomes. `reference` is required on every item.
      *
-     * @param string $token claim-токен из ответа create()
-     *
-     * @return array<string,mixed> {status, amount, currency, network, title, note,
-     *                              expires_at, claimable}
+     * @param  array<string, mixed>|PayoutLinkBatchRequest $params
+     * @return list<BatchElement>
      */
-    public function claimInfo(string $token): array
+    public function batch(array|PayoutLinkBatchRequest $params, ?RequestOptions $options = null): array
     {
-        return $this->client->requestPublic('/v1/claim/' . rawurlencode($token), [], 'GET');
-    }
-
-    /**
-     * Публичный claim (БЕЗ подписи): получатель фиксирует адрес, порождается выплата.
-     * POST /v1/claim/{token}
-     *
-     * Повторный claim с тем же адресом идемпотентен (вернёт уже порождённую выплату);
-     * с другим адресом — ошибка payoutlink.claim_in_progress.
-     *
-     * @param string      $address адрес получателя в сети ссылки
-     * @param string|null $memo    dest tag / comment (TON и т.п.)
-     *
-     * @return array<string,mixed> {status, payout_id, amount, currency, network, address}
-     */
-    public function claim(string $token, string $address, ?string $memo = null): array
-    {
-        $p = ['address' => $address];
-        if ($memo !== null && $memo !== '') {
-            $p['memo'] = $memo;
+        $result = $this->call('POST /v1/payout/link/batch', $params, $options);
+        $items = [];
+        foreach (Envelope::asPlainList($result) as $item) {
+            $items[] = BatchElement::fromArray(
+                self::asObject($item, 'POST /v1/payout/link/batch'),
+                static fn (array $row): PayoutLink => PayoutLink::fromArray($row)
+            );
         }
 
-        return $this->client->requestPublic('/v1/claim/' . rawurlencode($token), $p);
+        return $items;
+    }
+
+    /**
+     * `POST /v1/payout/link/cheque` — printable PDF cheque for a claim token.
+     *
+     * @param array<string, mixed>|PayoutLinkChequeRequest $params
+     */
+    public function cheque(array|PayoutLinkChequeRequest $params, ?RequestOptions $options = null): FileResult
+    {
+        return $this->file('POST /v1/payout/link/cheque', [], [], $params, $options);
+    }
+
+    // --- recipient side (public, unsigned) ---
+
+    /** `GET /v1/claim/{token}` — what the recipient sees before claiming. No credentials needed. */
+    public function claimPreview(string $token, ?RequestOptions $options = null): ClaimPreview
+    {
+        return $this->call(
+            'GET /v1/claim/{token}',
+            null,
+            $options,
+            ClaimPreview::fromArray(...),
+            ['token' => $token]
+        );
+    }
+
+    /**
+     * `POST /v1/claim/{token}` — claim to an address (and passcode when the link has one).
+     * No credentials needed.
+     *
+     * @param array<string, mixed>|ClaimRequest $params
+     */
+    public function claim(
+        string $token,
+        array|ClaimRequest $params,
+        ?RequestOptions $options = null,
+    ): ClaimResult {
+        return $this->call(
+            'POST /v1/claim/{token}',
+            $params,
+            $options,
+            ClaimResult::fromArray(...),
+            ['token' => $token]
+        );
     }
 }

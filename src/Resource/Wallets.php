@@ -4,73 +4,54 @@ declare(strict_types=1);
 
 namespace Oblodai\Resource;
 
-/**
- * Статические кошельки.
- */
-final class Wallets extends AbstractResource
+use Oblodai\Contract\Model\Payout;
+use Oblodai\Contract\Model\Wallet;
+use Oblodai\Contract\Model\WalletBlocked;
+use Oblodai\Contract\Model\WalletQr;
+use Oblodai\Contract\Request\WalletBlockedAddressRefundRequest;
+use Oblodai\Contract\Request\WalletBlockRequest;
+use Oblodai\Contract\Request\WalletRequest;
+use Oblodai\Core\RequestOptions;
+
+/** Static deposit wallets: one permanent address per customer, deposits reported as `wallet.paid`. */
+final class Wallets extends Resource
 {
     /**
-     * Создать статический кошелёк. POST /v1/wallet
+     * `POST /v1/wallet` — idempotent by `order_id`.
      *
-     * @param array<string,mixed> $params currency, network, order_id
-     *
-     * @return array<string,mixed>
+     * @param array<string, mixed>|WalletRequest $params
      */
-    public function create(array $params): array
+    public function create(array|WalletRequest $params, ?RequestOptions $options = null): Wallet
     {
-        return $this->client->request('/v1/wallet', $params);
+        return $this->call('POST /v1/wallet', $params, $options, Wallet::fromArray(...));
+    }
+
+    /** `POST /v1/wallet/qr`. */
+    public function qr(string $address, ?RequestOptions $options = null): WalletQr
+    {
+        return $this->call('POST /v1/wallet/qr', ['address' => $address], $options, WalletQr::fromArray(...));
     }
 
     /**
-     * Блокировка кошелька. POST /v1/wallet/block
+     * `POST /v1/wallet/block` — stop crediting an address; later deposits wait for a refund decision.
      *
-     * @return array<string,mixed>
+     * @param array<string, mixed>|WalletBlockRequest $params
      */
-    public function block(string $address, ?bool $isForceBlock = null): array
+    public function block(array|WalletBlockRequest $params, ?RequestOptions $options = null): WalletBlocked
     {
-        $p = ['address' => $address];
-        if ($isForceBlock !== null) {
-            $p['is_force_block'] = $isForceBlock;
-        }
-
-        return $this->client->request('/v1/wallet/block', $p);
+        return $this->call('POST /v1/wallet/block', $params, $options, WalletBlocked::fromArray(...));
     }
 
     /**
-     * Возврат с заблокированного кошелька. POST /v1/wallet/blocked-address-refund (ключ выплат).
+     * `POST /v1/wallet/blocked-address-refund` — send funds that landed on a blocked address back.
+     * Payout key.
      *
-     * Создаёт выплату, поэтому уходит с заголовком Idempotency-Key (стабилен между внутренними
-     * повторами). При этом маршрут НАМЕРЕННО не обёрнут в серверную идемпотентность — и это не
-     * пробел: защита здесь безусловная и от заголовка не зависит. Эндпоинт once-only ПО КОШЕЛЬКУ —
-     * бэкенд выводит стабильный reference ("refund-wallet:<walletID>") из id кошелька, берёт
-     * per-wallet advisory lock и внутри лока сначала ищет уже существующую выплату, так что
-     * повтор (в том числе конкурентный, в том числе без заголовка) возвращает ПЕРВУЮ выплату,
-     * а не создаёт вторую. Обёртка middleware была бы здесь регрессом: конкурентный повтор
-     * получал бы 409 idempotency.in_progress вместо ожидания и успеха.
-     *
-     * Оговорка: адрес в reference не участвует, поэтому повтор с ДРУГИМ адресом вернёт первую
-     * выплату на ПЕРВЫЙ адрес.
-     *
-     * @param string|null $idempotencyKey свой ключ; null — сгенерировать
-     *
-     * @return array<string,mixed>
+     * @param array<string, mixed>|WalletBlockedAddressRefundRequest $params
      */
-    public function blockedAddressRefund(string $uuid, string $address, ?string $idempotencyKey = null): array
-    {
-        return $this->client->requestIdempotent(
-            '/v1/wallet/blocked-address-refund',
-            ['uuid' => $uuid, 'address' => $address],
-            $idempotencyKey,
-        );
-    }
-
-    /**
-     * QR произвольного адреса. POST /v1/wallet/qr
-     *
-     * @return array<string,mixed>
-     */
-    public function qr(string $address): array
-    {
-        return $this->client->request('/v1/wallet/qr', ['address' => $address]);
+    public function refundBlockedDeposit(
+        array|WalletBlockedAddressRefundRequest $params,
+        ?RequestOptions $options = null,
+    ): Payout {
+        return $this->call('POST /v1/wallet/blocked-address-refund', $params, $options, Payout::fromArray(...));
     }
 }

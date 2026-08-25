@@ -4,160 +4,226 @@ declare(strict_types=1);
 
 namespace Oblodai\Resource;
 
+use Oblodai\Contract\Model\BatchElement;
+use Oblodai\Contract\Model\BatchSubmitted;
+use Oblodai\Contract\Model\Payout;
+use Oblodai\Contract\Model\PayoutCalculation;
+use Oblodai\Contract\Model\PayoutFeeConfig;
+use Oblodai\Contract\Model\PayoutValidation;
+use Oblodai\Contract\Model\RefundFeeConfig;
+use Oblodai\Contract\Model\ServiceMethod;
+use Oblodai\Contract\Request\PayoutBatchRequest;
+use Oblodai\Contract\Request\PayoutCalculateRequest;
+use Oblodai\Contract\Request\PayoutFeeConfigSetRequest;
+use Oblodai\Contract\Request\PayoutHistoryRequest;
+use Oblodai\Contract\Request\PayoutMassRequest;
+use Oblodai\Contract\Request\PayoutRefundFeeConfigSetRequest;
+use Oblodai\Contract\Request\PayoutRequest;
+use Oblodai\Contract\Request\PayoutServicesRequest;
+use Oblodai\Contract\Request\PayoutValidateRequest;
+use Oblodai\Core\Envelope;
+use Oblodai\Core\Page;
+use Oblodai\Core\RequestOptions;
+
 /**
- * Выплаты и возвраты.
+ * Outgoing transfers to external addresses. Every route here needs the payout key.
+ *
+ * A lookup argument is either the payout `uuid` as a string or an array with `uuid` or `order_id`.
  */
-final class Payouts extends AbstractResource
+final class Payouts extends Resource
 {
     /**
-     * Создать выплату. POST /v1/payout
+     * `POST /v1/payout` — create and (for API keys) auto-approve a payout. Idempotent by `order_id`
+     * and Idempotency-Key. Errors to handle: `payout.insufficient_funds` (retryable),
+     * `payout.funds_maturing`, `payout.bad_address`, `payout.memo_required`.
      *
-     * order_id обязателен (задаётся вами). Уходит с заголовком Idempotency-Key
-     * (стабилен между повторами); свой ключ — параметром 'idempotency_key'.
-     *
-     * @param array<string,mixed> $params amount, currency, order_id, address, network, idempotency_key, ...
-     *
-     * @return array<string,mixed>
+     * @param array<string, mixed>|PayoutRequest $params
      */
-    public function create(array $params): array
+    public function create(array|PayoutRequest $params, ?RequestOptions $options = null): Payout
     {
-        [$params, $key] = $this->splitIdempotencyKey($params);
-
-        return $this->client->requestIdempotent('/v1/payout', $params, $key);
+        return $this->call('POST /v1/payout', $params, $options, Payout::fromArray(...));
     }
 
     /**
-     * Массовая выплата. POST /v1/payout/mass
+     * `POST /v1/payout/validate` — dry run: every check of `create`, nothing reserved or sent.
      *
-     * Уходит с заголовком Idempotency-Key (стабилен между повторами).
-     *
-     * @param array<int,array<string,mixed>> $payouts
-     *
-     * @return array<string,mixed>
+     * @param array<string, mixed>|PayoutValidateRequest $params
      */
-    public function createMass(array $payouts, ?string $source = null, ?string $idempotencyKey = null): array
+    public function validate(array|PayoutValidateRequest $params, ?RequestOptions $options = null): PayoutValidation
     {
-        $p = ['payouts' => $payouts];
-        if ($source !== null) {
-            $p['source'] = $source;
-        }
-
-        return $this->client->requestIdempotent('/v1/payout/mass', $p, $idempotencyKey);
+        return $this->call('POST /v1/payout/validate', $params, $options, PayoutValidation::fromArray(...));
     }
 
     /**
-     * Пачка выплат (до 5000 одним запросом, обработка в фоне). POST /v1/payout/batch
+     * `POST /v1/payout/calculate` — commission and net amount without creating anything.
      *
-     * order_id обязателен на каждом элементе (дедуп внутри пачки). Возвращает batch_id —
-     * прогресс и результаты через $client->batches()->info(). Уходит с заголовком
-     * Idempotency-Key (стабилен между повторами).
-     *
-     * @param array<int,array<string,mixed>> $payouts элементы — тела обычного create()
-     * @param string                         $onError 'continue' (по умолчанию) или 'stop'
-     *
-     * @return array<string,mixed> {batch_id, kind, count, status}
+     * @param array<string, mixed>|PayoutCalculateRequest $params
      */
-    public function createBatch(array $payouts, string $onError = 'continue', ?string $idempotencyKey = null): array
+    public function calculate(
+        array|PayoutCalculateRequest $params,
+        ?RequestOptions $options = null,
+    ): PayoutCalculation {
+        return $this->call('POST /v1/payout/calculate', $params, $options, PayoutCalculation::fromArray(...));
+    }
+
+    /**
+     * `POST /v1/payout/info` — by `uuid` or `order_id`. Refunds are payouts too (`is_refund`).
+     *
+     * @param string|array<string, mixed> $lookup
+     */
+    public function info(string|array $lookup, ?RequestOptions $options = null): Payout
     {
-        return $this->client->requestIdempotent(
-            '/v1/payout/batch',
-            ['payouts' => $payouts, 'on_error' => $onError],
-            $idempotencyKey,
+        return $this->call('POST /v1/payout/info', self::refBy($lookup), $options, Payout::fromArray(...));
+    }
+
+    /**
+     * Alias of `info()`.
+     *
+     * @param string|array<string, mixed> $lookup
+     */
+    public function get(string|array $lookup, ?RequestOptions $options = null): Payout
+    {
+        return $this->info($lookup, $options);
+    }
+
+    /**
+     * `POST /v1/payout/cancel` — cancel while not yet broadcast (pending/approved/awaiting_cosign);
+     * 409 `payout.not_pending` after.
+     *
+     * @param string|array<string, mixed> $payout
+     */
+    public function cancel(string|array $payout, ?RequestOptions $options = null): Payout
+    {
+        return $this->call(
+            'POST /v1/payout/cancel',
+            ['uuid' => self::idOf($payout)],
+            $options,
+            Payout::fromArray(...)
         );
     }
 
-    /** @return array<string,mixed> */
-    public function info(?string $uuid = null, ?string $orderId = null): array
+    /**
+     * `POST /v1/payout/approve` — approve a payout awaiting manual approval.
+     *
+     * @param string|array<string, mixed> $payout
+     */
+    public function approve(string|array $payout, ?RequestOptions $options = null): Payout
     {
-        $p = [];
-        if ($uuid !== null) {
-            $p['uuid'] = $uuid;
+        return $this->call(
+            'POST /v1/payout/approve',
+            ['uuid' => self::idOf($payout)],
+            $options,
+            Payout::fromArray(...)
+        );
+    }
+
+    /**
+     * `POST /v1/payout/history` — newest first. `kind: "refund"` lists refunds only.
+     *
+     * @param  array<string, mixed>|PayoutHistoryRequest $params
+     * @return Page<Payout>
+     */
+    public function history(array|PayoutHistoryRequest $params = [], ?RequestOptions $options = null): Page
+    {
+        return $this->page('POST /v1/payout/history', $params, Payout::fromArray(...), $options);
+    }
+
+    /**
+     * Alias of `history()`.
+     *
+     * @param  array<string, mixed>|PayoutHistoryRequest $params
+     * @return Page<Payout>
+     */
+    public function list(array|PayoutHistoryRequest $params = [], ?RequestOptions $options = null): Page
+    {
+        return $this->history($params, $options);
+    }
+
+    /**
+     * `POST /v1/payout/mass` — SYNCHRONOUS batch (≤100): each element reports its own outcome.
+     *
+     * @param  array<string, mixed>|PayoutMassRequest $params
+     * @return list<BatchElement>
+     */
+    public function mass(array|PayoutMassRequest $params, ?RequestOptions $options = null): array
+    {
+        $result = $this->call('POST /v1/payout/mass', $params, $options);
+        $items = [];
+        foreach (Envelope::asPlainList($result) as $item) {
+            $items[] = BatchElement::fromArray(
+                self::asObject($item, 'POST /v1/payout/mass'),
+                static fn (array $row): Payout => Payout::fromArray($row)
+            );
         }
-        if ($orderId !== null) {
-            $p['order_id'] = $orderId;
-        }
 
-        return $this->client->request('/v1/payout/info', $p);
+        return $items;
     }
 
     /**
-     * @param array<string,mixed> $params
+     * `POST /v1/payout/batch` — ASYNCHRONOUS batch (≤5000): returns a ticket; poll `batches->info()`.
+     * `order_id` is required on every item.
      *
-     * @return array<string,mixed>
+     * @param array<string, mixed>|PayoutBatchRequest $params
      */
-    public function history(array $params = []): array
+    public function batch(array|PayoutBatchRequest $params, ?RequestOptions $options = null): BatchSubmitted
     {
-        return $this->client->request('/v1/payout/history', $params);
-    }
-
-    /** @return array<int,array<string,mixed>> */
-    public function services(): array
-    {
-        return $this->client->request('/v1/payout/services', []);
+        return $this->call('POST /v1/payout/batch', $params, $options, BatchSubmitted::fromArray(...));
     }
 
     /**
-     * @param array<string,mixed> $params
+     * `POST /v1/payout/services` — currencies/networks available for payouts.
      *
-     * @return array<string,mixed>
+     * @param  array<string, mixed>|PayoutServicesRequest $params
+     * @return Page<ServiceMethod>
      */
-    public function calculate(array $params): array
+    public function services(array|PayoutServicesRequest $params = [], ?RequestOptions $options = null): Page
     {
-        return $this->client->request('/v1/payout/calculate', $params);
+        return $this->page('POST /v1/payout/services', $params, ServiceMethod::fromArray(...), $options);
+    }
+
+    /** `POST /v1/payout/fee-config/get`. */
+    public function getFeeConfig(?RequestOptions $options = null): PayoutFeeConfig
+    {
+        return $this->call('POST /v1/payout/fee-config/get', null, $options, PayoutFeeConfig::fromArray(...));
     }
 
     /**
-     * Одобрить выплату, ждущую подтверждения. POST /v1/payout/approve
+     * `POST /v1/payout/fee-config/set` — who bears the network fee by default.
      *
-     * Ключ идемпотентности здесь НЕ нужен и намеренно не шлётся: это переход состояния, сервер
-     * принимает только выплату в статусе pending и иначе отвечает 409 payout.not_pending.
-     * Повторный approve физически не может одобрить или сдвинуть деньги дважды — читайте этот
-     * 409 как «уже одобрено» и уточняйте фактический статус через info().
-     *
-     * @return array<string,mixed>
+     * @param array<string, mixed>|PayoutFeeConfigSetRequest $params
      */
-    public function approve(string $uuid): array
+    public function setFeeConfig(
+        array|PayoutFeeConfigSetRequest $params,
+        ?RequestOptions $options = null,
+    ): PayoutFeeConfig {
+        return $this->call('POST /v1/payout/fee-config/set', $params, $options, PayoutFeeConfig::fromArray(...));
+    }
+
+    /** `POST /v1/payout/refund-fee-config/get`. */
+    public function getRefundFeeConfig(?RequestOptions $options = null): RefundFeeConfig
     {
-        return $this->client->request('/v1/payout/approve', ['uuid' => $uuid]);
+        return $this->call(
+            'POST /v1/payout/refund-fee-config/get',
+            null,
+            $options,
+            RefundFeeConfig::fromArray(...)
+        );
     }
 
     /**
-     * Возврат платежа. POST /v1/payment/refund (тот же метод, что и Payments::refund).
+     * `POST /v1/payout/refund-fee-config/set` — who bears the fee on refunds.
      *
-     * Уходит с заголовком Idempotency-Key; свой ключ — параметром 'idempotency_key'.
-     *
-     * @param array<string,mixed> $params
-     *
-     * @return array<string,mixed>
+     * @param array<string, mixed>|PayoutRefundFeeConfigSetRequest $params
      */
-    public function refund(array $params): array
-    {
-        [$params, $key] = $this->splitIdempotencyKey($params);
-
-        return $this->client->requestIdempotent('/v1/payment/refund', $params, $key);
-    }
-
-    /** @return array<string,mixed> */
-    public function getFeeConfig(): array
-    {
-        return $this->client->request('/v1/payout/fee-config/get', []);
-    }
-
-    /** @return array<string,mixed> */
-    public function setFeeConfig(bool $feeOnRecipient): array
-    {
-        return $this->client->request('/v1/payout/fee-config/set', ['fee_on_recipient' => $feeOnRecipient]);
-    }
-
-    /** @return array<string,mixed> */
-    public function getRefundFeeConfig(): array
-    {
-        return $this->client->request('/v1/payout/refund-fee-config/get', []);
-    }
-
-    /** @return array<string,mixed> */
-    public function setRefundFeeConfig(bool $feeOnCustomer): array
-    {
-        return $this->client->request('/v1/payout/refund-fee-config/set', ['fee_on_customer' => $feeOnCustomer]);
+    public function setRefundFeeConfig(
+        array|PayoutRefundFeeConfigSetRequest $params,
+        ?RequestOptions $options = null,
+    ): RefundFeeConfig {
+        return $this->call(
+            'POST /v1/payout/refund-fee-config/set',
+            $params,
+            $options,
+            RefundFeeConfig::fromArray(...)
+        );
     }
 }
