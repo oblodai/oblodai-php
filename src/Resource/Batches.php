@@ -4,37 +4,38 @@ declare(strict_types=1);
 
 namespace Oblodai\Resource;
 
-/**
- * Массовые операции (батчи): прогресс и результаты по элементам.
- *
- * Постановка пачек — через методы ресурсов:
- * {@see Payments::createBatch()}, {@see Payments::refundBatch()}, {@see Payouts::createBatch()}.
- */
-final class Batches extends AbstractResource
+use Oblodai\Contract\Model\BatchInfo;
+use Oblodai\Contract\Request\BatchInfoRequest;
+use Oblodai\Core\RequestOptions;
+use Oblodai\Exception\PermissionException;
+
+/** Progress of asynchronous batches (payment, refund, payout, transfer, payout-link). */
+final class Batches extends Resource
 {
     /**
-     * Прогресс и результаты пачки. POST /v1/batch/info
+     * `POST /v1/batch/info` — status, counters and per-row outcomes. Accepts either key kind; the
+     * core requires the kind that created the batch, so a payout batch is retried with the payout
+     * key when one is configured.
      *
-     * Элементы index-aligned: {idx, status, order_id?, result?, error?}; result —
-     * байт-в-байт ответ соответствующего единичного эндпоинта.
-     *
-     * @param string   $batchId batch_id из createBatch()/refundBatch()
-     * @param int|null $limit   элементов на страницу (дефолт бэкенда 100, максимум 500)
-     * @param int|null $offset  смещение
-     *
-     * @return array<string,mixed> {batch_id, kind, status, on_error, total, succeeded, failed,
-     *                              created_at, updated_at, items}
+     * @param array<string, mixed>|BatchInfoRequest $params
      */
-    public function info(string $batchId, ?int $limit = null, ?int $offset = null): array
+    public function info(array|BatchInfoRequest $params, ?RequestOptions $options = null): BatchInfo
     {
-        $p = ['batch_id' => $batchId];
-        if ($limit !== null) {
-            $p['limit'] = $limit;
-        }
-        if ($offset !== null) {
-            $p['offset'] = $offset;
-        }
+        $options ??= new RequestOptions();
 
-        return $this->client->request('/v1/batch/info', $p);
+        try {
+            return $this->call('POST /v1/batch/info', $params, $options, BatchInfo::fromArray(...));
+        } catch (PermissionException $err) {
+            if ($err->errorCode !== 'merchant.wrong_key_kind' || $options->preferPayoutKey) {
+                throw $err;
+            }
+
+            return $this->call(
+                'POST /v1/batch/info',
+                $params,
+                $options->withPreferPayoutKey(),
+                BatchInfo::fromArray(...)
+            );
+        }
     }
 }

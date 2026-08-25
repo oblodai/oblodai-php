@@ -4,97 +4,123 @@ declare(strict_types=1);
 
 namespace Oblodai\Resource;
 
+use Oblodai\Contract\Model\PaymentLink;
+use Oblodai\Contract\Model\PaymentLinkCreated;
+use Oblodai\Contract\Model\PaymentLinkToggled;
+use Oblodai\Contract\Model\PublicPayment;
+use Oblodai\Contract\Model\PublicPaymentLink;
+use Oblodai\Contract\Request\LinkCheckoutRequest;
+use Oblodai\Contract\Request\PaymentLinkListRequest;
+use Oblodai\Contract\Request\PaymentLinkRequest;
+use Oblodai\Core\Page;
+use Oblodai\Core\RequestOptions;
+
 /**
- * Платёжные ссылки: переиспользуемая ссылка, по которой платят много людей;
- * каждый платёж — отдельный инвойс со своим адресом.
+ * Reusable payment links (tip jars, price tags): each checkout spawns an invoice. Payment key.
+ *
+ * A link argument is either the `link_id` as a string or an array carrying `link_id`.
  */
-final class PaymentLinks extends AbstractResource
+final class PaymentLinks extends Resource
 {
     /**
-     * Создать платёжную ссылку. POST /v1/payment/link
+     * `POST /v1/payment/link`.
      *
-     * Заголовок Idempotency-Key на этот эндпоинт не шлётся (создание ссылки не двигает деньги).
-     *
-     * @param array<string,mixed> $params title, description, amount_mode ('fixed'|'open'|'range'),
-     *                                     currency, amount_fixed, amount_min, amount_max,
-     *                                     pinned_currency, pinned_network,
-     *                                     expires_in (секунды; 0 — бессрочно)
-     *
-     * @return array<string,mixed> {link_id, url}
+     * @param array<string, mixed>|PaymentLinkRequest $params
      */
-    public function create(array $params): array
-    {
-        return $this->client->request('/v1/payment/link', $params);
+    public function create(
+        array|PaymentLinkRequest $params,
+        ?RequestOptions $options = null,
+    ): PaymentLinkCreated {
+        return $this->call('POST /v1/payment/link', $params, $options, PaymentLinkCreated::fromArray(...));
     }
 
     /**
-     * Список ссылок (created_at DESC). POST /v1/payment/link/list
+     * `POST /v1/payment/link/info` — the link plus a page of the invoices it spawned (`payments`).
      *
-     * @return array<string,mixed> {items: [...]}
+     * @param string|array<string, mixed> $link
+     * @param array<string, mixed>        $page limit/offset over the link's invoices
      */
-    public function list(?int $limit = null, ?int $offset = null): array
+    public function info(string|array $link, array $page = [], ?RequestOptions $options = null): PaymentLink
     {
-        return $this->client->request('/v1/payment/link/list', $this->page($limit, $offset));
+        return $this->call(
+            'POST /v1/payment/link/info',
+            array_merge(['link_id' => self::idOf($link, 'link_id')], $page),
+            $options,
+            PaymentLink::fromArray(...)
+        );
     }
 
     /**
-     * Детали ссылки + платежи по ней. POST /v1/payment/link/info
+     * Alias of `info()`.
      *
-     * @return array<string,mixed>
+     * @param string|array<string, mixed> $link
+     * @param array<string, mixed>        $page
      */
-    public function info(string $linkId): array
+    public function get(string|array $link, array $page = [], ?RequestOptions $options = null): PaymentLink
     {
-        return $this->client->request('/v1/payment/link/info', ['link_id' => $linkId]);
+        return $this->info($link, $page, $options);
     }
 
     /**
-     * Включить/выключить ссылку. POST /v1/payment/link/toggle
+     * `POST /v1/payment/link/list`.
      *
-     * @return array<string,mixed> {link_id, active}
+     * @param  array<string, mixed>|PaymentLinkListRequest $params
+     * @return Page<PaymentLink>
      */
-    public function toggle(string $linkId, bool $active): array
+    public function list(array|PaymentLinkListRequest $params = [], ?RequestOptions $options = null): Page
     {
-        return $this->client->request('/v1/payment/link/toggle', ['link_id' => $linkId, 'active' => $active]);
+        return $this->page('POST /v1/payment/link/list', $params, PaymentLink::fromArray(...), $options);
     }
 
     /**
-     * Публичные детали ссылки (без подписи). GET /v1/link/{id}
+     * `POST /v1/payment/link/toggle` — enable or disable a link.
      *
-     * @return array<string,mixed>
+     * @param string|array<string, mixed> $link
      */
-    public function publicGet(string $linkId): array
+    public function toggle(
+        string|array $link,
+        bool $active,
+        ?RequestOptions $options = null,
+    ): PaymentLinkToggled {
+        return $this->call(
+            'POST /v1/payment/link/toggle',
+            ['link_id' => self::idOf($link, 'link_id'), 'active' => $active],
+            $options,
+            PaymentLinkToggled::fromArray(...)
+        );
+    }
+
+    // --- payer side (public, unsigned) ---
+
+    /** `GET /v1/link/{id}` — the link as the payer sees it. No credentials needed. */
+    public function publicView(string $linkId, ?RequestOptions $options = null): PublicPaymentLink
     {
-        return $this->client->requestPublic('/v1/link/' . rawurlencode($linkId), [], 'GET');
+        return $this->call(
+            'GET /v1/link/{id}',
+            null,
+            $options,
+            PublicPaymentLink::fromArray(...),
+            ['id' => $linkId]
+        );
     }
 
     /**
-     * Публичный checkout по ссылке (без подписи): создаёт инвойс. POST /v1/link/{id}/checkout
+     * `POST /v1/link/{id}/checkout` — spawn an invoice from the link (rate-capped per IP).
+     * No credentials needed.
      *
-     * Лимит бэкенда: 30 инвойсов/мин на ссылку (paylink.rate_limited).
-     *
-     * @param array<string,mixed> $params amount, currency, network, payer_email
-     *                                     (закреплённые в ссылке валюта/сеть побеждают)
-     *
-     * @return array<string,mixed> ответ обычного создания платежа (uuid, url, ...)
+     * @param array<string, mixed>|LinkCheckoutRequest $params
      */
-    public function checkout(string $linkId, array $params = []): array
-    {
-        return $this->client->requestPublic('/v1/link/' . rawurlencode($linkId) . '/checkout', $params);
-    }
-
-    /**
-     * @return array<string,int>
-     */
-    private function page(?int $limit, ?int $offset): array
-    {
-        $p = [];
-        if ($limit !== null) {
-            $p['limit'] = $limit;
-        }
-        if ($offset !== null) {
-            $p['offset'] = $offset;
-        }
-
-        return $p;
+    public function checkout(
+        string $linkId,
+        array|LinkCheckoutRequest $params = [],
+        ?RequestOptions $options = null,
+    ): PublicPayment {
+        return $this->call(
+            'POST /v1/link/{id}/checkout',
+            $params,
+            $options,
+            PublicPayment::fromArray(...),
+            ['id' => $linkId]
+        );
     }
 }

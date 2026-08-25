@@ -4,97 +4,82 @@ declare(strict_types=1);
 
 namespace Oblodai\Resource;
 
-/**
- * Сплит-платежи: доля каждого входящего платежа автоматически уходит партнёру —
- * на внешний адрес (необратимо) или аккаунту на платформе (обратимо).
- *
- * Все методы требуют ключ выплат.
- */
-final class Splits extends AbstractResource
+use Oblodai\Contract\Model\OkResult;
+use Oblodai\Contract\Model\SplitConfig;
+use Oblodai\Contract\Model\SplitOptIn;
+use Oblodai\Contract\Model\SplitRule;
+use Oblodai\Contract\Request\SplitConfigSetRequest;
+use Oblodai\Contract\Request\SplitRuleListRequest;
+use Oblodai\Contract\Request\SplitRuleRequest;
+use Oblodai\Core\Page;
+use Oblodai\Core\RequestOptions;
+
+/** Revenue splits: a percentage of every payment forwarded to a partner. Payout key. */
+final class Splits extends Resource
 {
     /**
-     * Правило: доля на внешний адрес (необратимо). POST /v1/split/rule
+     * `POST /v1/split/rule` — to an external address (`address`+`network`) or a platform merchant
+     * (`merchant_id`).
      *
-     * @param float $percent доля в процентах, шаг 0.01 (0 < percent <= 100;
-     *                        сумма активных правил тоже не может превышать 100)
-     *
-     * @return array<string,mixed> {rule_id, percent}
+     * @param array<string, mixed>|SplitRuleRequest $params
      */
-    public function splitToAddress(string $address, string $network, float $percent, ?string $note = null): array
+    public function createRule(array|SplitRuleRequest $params, ?RequestOptions $options = null): SplitRule
     {
-        $p = ['address' => $address, 'network' => $network, 'percent' => $percent];
-        if ($note !== null) {
-            $p['note'] = $note;
-        }
-
-        return $this->client->request('/v1/split/rule', $p);
+        return $this->call('POST /v1/split/rule', $params, $options, SplitRule::fromArray(...));
     }
 
     /**
-     * Правило: доля аккаунту на платформе (обратимо: возврат отзовёт долю). POST /v1/split/rule
+     * `POST /v1/split/rule/list`.
      *
-     * @return array<string,mixed> {rule_id, percent}
+     * @param  array<string, mixed>|SplitRuleListRequest $params
+     * @return Page<SplitRule>
      */
-    public function splitToMerchant(string $merchantId, float $percent, ?string $note = null): array
+    public function listRules(array|SplitRuleListRequest $params = [], ?RequestOptions $options = null): Page
     {
-        $p = ['merchant_id' => $merchantId, 'percent' => $percent];
-        if ($note !== null) {
-            $p['note'] = $note;
-        }
+        return $this->page('POST /v1/split/rule/list', $params, SplitRule::fromArray(...), $options);
+    }
 
-        return $this->client->request('/v1/split/rule', $p);
+    /** `POST /v1/split/rule/delete`. */
+    public function deleteRule(string $ruleId, ?RequestOptions $options = null): OkResult
+    {
+        return $this->call(
+            'POST /v1/split/rule/delete',
+            ['rule_id' => $ruleId],
+            $options,
+            OkResult::fromArray(...)
+        );
+    }
+
+    /** `POST /v1/split/config/get`. */
+    public function getConfig(?RequestOptions $options = null): SplitConfig
+    {
+        return $this->call('POST /v1/split/config/get', null, $options, SplitConfig::fromArray(...));
     }
 
     /**
-     * Создать правило «сырыми» параметрами (низкоуровневый вариант splitToAddress/splitToMerchant).
-     * POST /v1/split/rule
+     * `POST /v1/split/config/set` — how long split shares are held back for refunds.
      *
-     * @param array<string,mixed> $params {address, network} ИЛИ {merchant_id} + percent, note
-     *
-     * @return array<string,mixed> {rule_id, percent}
+     * @param array<string, mixed>|SplitConfigSetRequest $params
      */
-    public function createRule(array $params): array
+    public function setConfig(array|SplitConfigSetRequest $params, ?RequestOptions $options = null): SplitConfig
     {
-        return $this->client->request('/v1/split/rule', $params);
+        return $this->call('POST /v1/split/config/set', $params, $options, SplitConfig::fromArray(...));
     }
 
-    /**
-     * Список правил. POST /v1/split/rule/list
-     *
-     * @return array<string,mixed> {items: [{rule_id, percent, active, note, reversible, ...}]}
-     */
-    public function listRules(): array
+    /** `POST /v1/split/recipient/optin/get` — whether this merchant accepts being a split recipient. */
+    public function getOptIn(?RequestOptions $options = null): SplitOptIn
     {
-        return $this->client->request('/v1/split/rule/list', []);
+        return $this->call('POST /v1/split/recipient/optin/get', null, $options, SplitOptIn::fromArray(...));
     }
 
-    /**
-     * Удалить правило. POST /v1/split/rule/delete
-     *
-     * @return array<string,mixed> {deleted: true}
-     */
-    public function deleteRule(string $ruleId): array
+    /** `POST /v1/split/recipient/optin`. */
+    public function setOptIn(bool $enabled, ?RequestOptions $options = null): SplitOptIn
     {
-        return $this->client->request('/v1/split/rule/delete', ['rule_id' => $ruleId]);
-    }
-
-    /**
-     * Настройки сплитов. POST /v1/split/config/get
-     *
-     * @return array<string,mixed> {refund_hold_hours}
-     */
-    public function getConfig(): array
-    {
-        return $this->client->request('/v1/split/config/get', []);
-    }
-
-    /**
-     * Задать окно удержания перед отправкой долей (часы). POST /v1/split/config/set
-     *
-     * @return array<string,mixed>
-     */
-    public function setConfig(int $refundHoldHours): array
-    {
-        return $this->client->request('/v1/split/config/set', ['refund_hold_hours' => $refundHoldHours]);
+        return $this->call(
+            'POST /v1/split/recipient/optin',
+            ['enabled' => $enabled],
+            $options,
+            SplitOptIn::fromArray(...)
+        );
     }
 }

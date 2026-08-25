@@ -1,0 +1,8 @@
+parameters:
+    level: max
+    paths:
+        - src
+        - tests
+    # scripts/ is JSON-shaped codegen: its inputs are validated by check-drift and the contract
+    # tests, and describing every intermediate shape would obscure more than it proves.
+    treatPhpDocTypesAsCertain: false

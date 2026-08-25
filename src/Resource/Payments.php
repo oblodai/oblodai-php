@@ -4,316 +4,181 @@ declare(strict_types=1);
 
 namespace Oblodai\Resource;
 
+use Oblodai\Contract\Model\BatchSubmitted;
+use Oblodai\Contract\Model\EmailSent;
+use Oblodai\Contract\Model\OkResult;
+use Oblodai\Contract\Model\Payment;
+use Oblodai\Contract\Model\PublicPayment;
+use Oblodai\Contract\Model\QrCode;
+use Oblodai\Contract\Model\ServiceMethod;
+use Oblodai\Contract\Request\PaymentBatchRequest;
+use Oblodai\Contract\Request\PaymentHistoryRequest;
+use Oblodai\Contract\Request\PaymentRequest;
+use Oblodai\Contract\Request\PaymentSendEmailRequest;
+use Oblodai\Contract\Request\PaymentServicesRequest;
+use Oblodai\Contract\Request\PaySelectRequest;
+use Oblodai\Core\Page;
+use Oblodai\Core\RequestOptions;
+
 /**
- * Приём платежей и настройки приёма.
+ * Invoices: create, look up, cancel, list, and the payer-facing checkout endpoints. Payment key.
+ *
+ * A lookup argument is either the invoice `uuid` as a string or an array with `uuid` or `order_id`.
  */
-final class Payments extends AbstractResource
+final class Payments extends Resource
 {
     /**
-     * Создать счёт. POST /v1/payment
+     * `POST /v1/payment` — create an invoice. Idempotent by `order_id` and by Idempotency-Key.
      *
-     * Идемпотентность: SDK шлёт заголовок Idempotency-Key (один и тот же во всех внутренних
-     * повторах). order_id уходит как есть и НЕ подставляется автоматически (ломающее изменение
-     * v1.1.0). Свой ключ — параметром 'idempotency_key' (уйдёт в заголовок, не в тело).
-     *
-     * @param array<string,mixed> $params amount, currency, order_id, network, to_currency, lifetime,
-     *                                     subtract, url_callback, url_return, url_success, is_payment_multiple,
-     *                                     idempotency_key, ...
-     *
-     * @return array<string,mixed>
+     * @param array<string, mixed>|PaymentRequest $params
      */
-    public function create(array $params): array
+    public function create(array|PaymentRequest $params, ?RequestOptions $options = null): Payment
     {
-        [$params, $key] = $this->splitIdempotencyKey($params);
-
-        return $this->client->requestIdempotent('/v1/payment', $params, $key);
+        return $this->call('POST /v1/payment', $params, $options, Payment::fromArray(...));
     }
 
     /**
-     * Пачка платежей (до 5000 одним запросом, обработка в фоне). POST /v1/payment/batch
+     * `POST /v1/payment/info` — by `uuid` or `order_id`; includes `refunds` and `refund_status`.
      *
-     * order_id обязателен на каждом элементе (дедуп внутри пачки). Возвращает batch_id —
-     * прогресс и результаты забираются через $client->batches()->info(). Запрос уходит
-     * с заголовком Idempotency-Key (стабилен между повторами).
-     *
-     * @param array<int,array<string,mixed>> $payments элементы — тела обычного create()
-     * @param string                         $onError  'continue' (по умолчанию) или 'stop'
-     *
-     * @return array<string,mixed> {batch_id, kind, count, status}
+     * @param string|array<string, mixed> $lookup
      */
-    public function createBatch(array $payments, string $onError = 'continue', ?string $idempotencyKey = null): array
+    public function info(string|array $lookup, ?RequestOptions $options = null): Payment
     {
-        return $this->client->requestIdempotent(
-            '/v1/payment/batch',
-            ['payments' => $payments, 'on_error' => $onError],
-            $idempotencyKey,
+        return $this->call('POST /v1/payment/info', self::refBy($lookup), $options, Payment::fromArray(...));
+    }
+
+    /**
+     * Alias of `info()`.
+     *
+     * @param string|array<string, mixed> $lookup
+     */
+    public function get(string|array $lookup, ?RequestOptions $options = null): Payment
+    {
+        return $this->info($lookup, $options);
+    }
+
+    /**
+     * `POST /v1/payment/cancel` — cancel an unpaid invoice (409 `invoice.not_payable` once a
+     * deposit was seen).
+     *
+     * @param string|array<string, mixed> $lookup
+     */
+    public function cancel(string|array $lookup, ?RequestOptions $options = null): Payment
+    {
+        return $this->call('POST /v1/payment/cancel', self::refBy($lookup), $options, Payment::fromArray(...));
+    }
+
+    /**
+     * `POST /v1/payment/history` — newest first; the page walks every invoice when iterated.
+     *
+     * @param  array<string, mixed>|PaymentHistoryRequest $params
+     * @return Page<Payment>
+     */
+    public function history(array|PaymentHistoryRequest $params = [], ?RequestOptions $options = null): Page
+    {
+        return $this->page('POST /v1/payment/history', $params, Payment::fromArray(...), $options);
+    }
+
+    /**
+     * Alias of `history()`.
+     *
+     * @param  array<string, mixed>|PaymentHistoryRequest $params
+     * @return Page<Payment>
+     */
+    public function list(array|PaymentHistoryRequest $params = [], ?RequestOptions $options = null): Page
+    {
+        return $this->history($params, $options);
+    }
+
+    /**
+     * `POST /v1/payment/batch` — create up to 5000 invoices asynchronously; track with
+     * `batches->info()`.
+     *
+     * @param array<string, mixed>|PaymentBatchRequest $params
+     */
+    public function batch(array|PaymentBatchRequest $params, ?RequestOptions $options = null): BatchSubmitted
+    {
+        return $this->call('POST /v1/payment/batch', $params, $options, BatchSubmitted::fromArray(...));
+    }
+
+    /**
+     * `POST /v1/payment/qr` — QR image of the invoice's payment URI.
+     *
+     * @param string|array<string, mixed> $lookup
+     */
+    public function qr(string|array $lookup, ?RequestOptions $options = null): QrCode
+    {
+        return $this->call('POST /v1/payment/qr', self::refBy($lookup), $options, QrCode::fromArray(...));
+    }
+
+    /**
+     * `POST /v1/payment/services` — currencies/networks accepted for deposits, with limits and fees.
+     *
+     * @param  array<string, mixed>|PaymentServicesRequest $params
+     * @return Page<ServiceMethod>
+     */
+    public function services(array|PaymentServicesRequest $params = [], ?RequestOptions $options = null): Page
+    {
+        return $this->page('POST /v1/payment/services', $params, ServiceMethod::fromArray(...), $options);
+    }
+
+    /**
+     * `POST /v1/payment/send-email` — email the receipt (defaults to the invoice's `payer_email`).
+     *
+     * @param array<string, mixed>|PaymentSendEmailRequest $params
+     */
+    public function sendEmail(array|PaymentSendEmailRequest $params, ?RequestOptions $options = null): EmailSent
+    {
+        return $this->call('POST /v1/payment/send-email', $params, $options, EmailSent::fromArray(...));
+    }
+
+    /**
+     * `POST /v1/payment/resend` — re-deliver the invoice's last webhook.
+     *
+     * @param string|array<string, mixed> $lookup
+     */
+    public function resend(string|array $lookup, ?RequestOptions $options = null): OkResult
+    {
+        return $this->call('POST /v1/payment/resend', self::refBy($lookup), $options, OkResult::fromArray(...));
+    }
+
+    // --- payer-facing (public, unsigned) — for custom checkout pages ---
+
+    /** `GET /v1/pay/{id}` — the invoice as the payer sees it. No credentials needed. */
+    public function publicView(string $uuid, ?RequestOptions $options = null): PublicPayment
+    {
+        return $this->call(
+            'GET /v1/pay/{id}',
+            null,
+            $options,
+            PublicPayment::fromArray(...),
+            ['id' => $uuid]
         );
     }
 
     /**
-     * Пачка возвратов (до 5000). POST /v1/refund/batch (требует ключ выплат).
+     * `POST /v1/pay/{id}/select` — pick the asset/network on a multi-currency invoice.
+     * No credentials needed.
      *
-     * На каждом элементе обязательны 'reference' И 'uuid'/'order_id' инвойса
-     * (дедуп-скоуп — пара инвойс+reference). Уходит с заголовком Idempotency-Key.
-     *
-     * @param array<int,array<string,mixed>> $refunds элементы — тела обычного refund()
-     * @param string                         $onError 'continue' (по умолчанию) или 'stop'
-     *
-     * @return array<string,mixed> {batch_id, kind, count, status}
+     * @param array<string, mixed>|PaySelectRequest $params
      */
-    public function refundBatch(array $refunds, string $onError = 'continue', ?string $idempotencyKey = null): array
-    {
-        return $this->client->requestIdempotent(
-            '/v1/refund/batch',
-            ['refunds' => $refunds, 'on_error' => $onError],
-            $idempotencyKey,
+    public function select(
+        string $uuid,
+        array|PaySelectRequest $params,
+        ?RequestOptions $options = null,
+    ): PublicPayment {
+        return $this->call(
+            'POST /v1/pay/{id}/select',
+            $params,
+            $options,
+            PublicPayment::fromArray(...),
+            ['id' => $uuid]
         );
     }
 
-    /**
-     * Отправить счёт на e-mail (письмо с кнопкой «Оплатить»). POST /v1/payment/send-email
-     *
-     * Получатель — $email либо payer_email платежа. Лимит: 10 писем/час на адрес получателя.
-     *
-     * @return array<string,mixed> {sent, email, uuid}
-     */
-    public function sendEmail(?string $uuid = null, ?string $orderId = null, ?string $email = null): array
+    /** `GET /v1/pay/{id}/qr` — QR for the payer page. No credentials needed. */
+    public function publicQr(string $uuid, ?RequestOptions $options = null): QrCode
     {
-        $p = $this->lookup($uuid, $orderId);
-        if ($email !== null && $email !== '') {
-            $p['email'] = $email;
-        }
-
-        return $this->client->request('/v1/payment/send-email', $p);
-    }
-
-    /**
-     * Решение судьбы недоплаченного платежа (статус wrong_amount). POST /v1/payment/resolve
-     * (требует ключ выплат).
-     *
-     * Резолвится ТОЛЬКО закрывшийся недоплаченным счёт — `wrong_amount`. Пока идёт частичная
-     * оплата, статус — `wrong_amount_waiting` (счёт ещё жив, покупатель может доплатить), и
-     * здесь придёт `409 resolution.not_underpaid`. Не ретрайте его как временный: дождитесь
-     * `wrong_amount` (или события вебхука) и зовите resolve тогда.
-     *
-     * action=accept — оставить частичную оплату себе (глушит авто-возврат);
-     * action=refund — вернуть плательщику (address/network по умолчанию — плательщика;
-     * для UTXO-сетей address обязателен, опционально reference — ключ дедупа возврата).
-     * Уходит с заголовком Idempotency-Key; свой ключ — параметром 'idempotency_key'.
-     *
-     * @param array<string,mixed> $params uuid|order_id, action ('accept'|'refund'),
-     *                                     address, network, reference, idempotency_key
-     *
-     * @return array<string,mixed>
-     */
-    public function resolve(array $params): array
-    {
-        [$params, $key] = $this->splitIdempotencyKey($params);
-
-        return $this->client->requestIdempotent('/v1/payment/resolve', $params, $key);
-    }
-
-    /**
-     * Информация о счёте (по uuid или order_id). POST /v1/payment/info
-     *
-     * `payment_status` в ответе:
-     *  - `check`                — счёт создан, оплаты ещё не видели;
-     *  - `confirm_check`        — оплата увидена, ждём подтверждений сети;
-     *  - `wrong_amount_waiting` — видна ЧАСТИЧНАЯ оплата, ждём доплату (НЕ терминальный);
-     *  - `wrong_amount`         — счёт закрылся недоплаченным (вот теперь возможен resolve());
-     *  - `paid`                 — оплачен полностью;
-     *  - `paid_over`            — переплачен (излишек уходит в авто-возврат, если он включён
-     *                             и сеть его поддерживает);
-     *  - `cancel`               — истёк или отменён;
-     *  - `select`               — валюто-агностичный счёт, покупатель ещё не выбрал валюту.
-     *
-     * Терминальные: `paid`, `paid_over`, `cancel` и `wrong_amount`. Не перечисляйте их у себя
-     * руками — в ответе есть флаг `is_final`.
-     *
-     * Поле `url` (hosted-страница оплаты) шлюз собирает из своего публичного базового URL. Если
-     * он не задан (`GATEWAY_PUBLIC_BASE_URL`), поле приходит ПУСТОЙ СТРОКОЙ — типичная ситуация
-     * на локальном стенде; в проде шлюз без этой настройки не стартует. Собирайте ссылку сами
-     * из `uuid`, если работаете против локального ядра.
-     *
-     * @return array<string,mixed>
-     */
-    public function info(?string $uuid = null, ?string $orderId = null): array
-    {
-        return $this->client->request('/v1/payment/info', $this->lookup($uuid, $orderId));
-    }
-
-    /**
-     * История платежей. POST /v1/payment/history
-     *
-     * @param array<string,mixed> $params limit, offset, status
-     *
-     * @return array<string,mixed>
-     */
-    public function history(array $params = []): array
-    {
-        return $this->client->request('/v1/payment/history', $params);
-    }
-
-    /**
-     * Доступные методы приёма. POST /v1/payment/services
-     *
-     * @return array<int,array<string,mixed>>
-     */
-    public function services(): array
-    {
-        return $this->client->request('/v1/payment/services', []);
-    }
-
-    /**
-     * QR депозит-адреса счёта. POST /v1/payment/qr
-     *
-     * @return array<string,mixed>
-     */
-    public function qr(?string $uuid = null, ?string $orderId = null): array
-    {
-        return $this->client->request('/v1/payment/qr', $this->lookup($uuid, $orderId));
-    }
-
-    /**
-     * QR произвольного адреса. POST /v1/wallet/qr
-     *
-     * @return array<string,mixed>
-     */
-    public function walletQr(string $address): array
-    {
-        return $this->client->request('/v1/wallet/qr', ['address' => $address]);
-    }
-
-    /**
-     * Переотправить вебхук платежа. POST /v1/payment/resend
-     *
-     * @return array<string,mixed>
-     */
-    public function resend(?string $uuid = null, ?string $orderId = null): array
-    {
-        return $this->client->request('/v1/payment/resend', $this->lookup($uuid, $orderId));
-    }
-
-    /**
-     * Возврат платежа. POST /v1/payment/refund (требует ключ выплат).
-     *
-     * Уходит с заголовком Idempotency-Key (стабилен между повторами);
-     * свой ключ — параметром 'idempotency_key'.
-     *
-     * @param array<string,mixed> $params
-     *
-     * @return array<string,mixed>
-     */
-    public function refund(array $params): array
-    {
-        [$params, $key] = $this->splitIdempotencyKey($params);
-
-        return $this->client->requestIdempotent('/v1/payment/refund', $params, $key);
-    }
-
-    /** @return array<int,array<string,mixed>> */
-    public function listAccepted(): array
-    {
-        return $this->client->request('/v1/payment/accepted/list', []);
-    }
-
-    /**
-     * @param array<int,array{currency:string,network:string}> $accepted
-     *
-     * @return array<string,mixed>
-     */
-    public function setAccepted(array $accepted): array
-    {
-        return $this->client->request('/v1/payment/accepted/set', ['accepted' => $accepted]);
-    }
-
-    /** @return array<string,mixed> */
-    public function getAccuracy(): array
-    {
-        return $this->client->request('/v1/payment/accuracy/get', []);
-    }
-
-    /** @return array<string,mixed> */
-    public function setAccuracy(bool $enabled, ?float $accuracyPercent = null): array
-    {
-        $p = ['enabled' => $enabled];
-        if ($accuracyPercent !== null) {
-            $p['accuracy_percent'] = $accuracyPercent;
-        }
-
-        return $this->client->request('/v1/payment/accuracy/set', $p);
-    }
-
-    /** @return array<string,mixed> */
-    public function getAutorefund(): array
-    {
-        return $this->client->request('/v1/payment/autorefund/get', []);
-    }
-
-    /** @return array<string,mixed> */
-    public function setAutorefund(bool $overpay, bool $underpay): array
-    {
-        return $this->client->request('/v1/payment/autorefund/set', ['overpay' => $overpay, 'underpay' => $underpay]);
-    }
-
-    /** @return array<int,array<string,mixed>> */
-    public function listDiscounts(): array
-    {
-        return $this->client->request('/v1/payment/discount/list', []);
-    }
-
-    /** @return array<string,mixed> */
-    public function setDiscount(string $currency, string $network, int $discountPercent): array
-    {
-        return $this->client->request('/v1/payment/discount/set', [
-            'currency' => $currency,
-            'network' => $network,
-            'discount_percent' => $discountPercent,
-        ]);
-    }
-
-    /**
-     * Публичное состояние счёта (без подписи). GET /v1/pay/{id}
-     *
-     * Для собственных checkout-страниц: адрес, сумма, статус, оставшееся время —
-     * без API-ключа на фронте (тот же механизм, что publicGet/claimInfo у ссылок).
-     *
-     * @return array<string,mixed>
-     */
-    public function publicGet(string $uuid): array
-    {
-        return $this->client->requestPublic('/v1/pay/' . rawurlencode($uuid), [], 'GET');
-    }
-
-    /**
-     * Публичный выбор валюты/сети для счёта (без подписи). POST /v1/pay/{id}/select
-     *
-     * Финализирует отложенный (валюто-агностичный) счёт: покупатель выбирает, чем
-     * платить; ответ — обычный результат платежа (address, payment_status, ...).
-     *
-     * @return array<string,mixed>
-     */
-    public function publicSelect(string $uuid, string $currency, string $network): array
-    {
-        return $this->client->requestPublic(
-            '/v1/pay/' . rawurlencode($uuid) . '/select',
-            ['currency' => $currency, 'network' => $network],
-        );
-    }
-
-    /**
-     * @return array<string,string>
-     */
-    private function lookup(?string $uuid, ?string $orderId): array
-    {
-        $out = [];
-        if ($uuid !== null) {
-            $out['uuid'] = $uuid;
-        }
-        if ($orderId !== null) {
-            $out['order_id'] = $orderId;
-        }
-
-        return $out;
+        return $this->call('GET /v1/pay/{id}/qr', null, $options, QrCode::fromArray(...), ['id' => $uuid]);
     }
 }
