@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Oblodai\Contract\Model;
 
+use JsonSerializable;
+
 /** `POST /v1/merchants` — a freshly provisioned merchant and its keys. */
-final class MerchantOnboarded
+final class MerchantOnboarded implements JsonSerializable
 {
+    use RedactsSecrets;
+
     /** @var list<string> */
     public const KEYS = ['merchant_id', 'project_id', 'api_key', 'payment_key', 'payout_key'];
 

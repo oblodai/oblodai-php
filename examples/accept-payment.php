@@ -10,19 +10,16 @@ declare(strict_types=1);
  * Run: OBLODAI_PUBLIC_ID=… OBLODAI_SECRET=… php examples/accept-payment.php
  */
 
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/_bootstrap.php';
 
 use Oblodai\Contract\Enum\Network;
 use Oblodai\Contract\Request\PaymentRequest;
 use Oblodai\Exception\OblodaiException;
 use Oblodai\Helper\Status;
-use Oblodai\Oblodai;
 
-$oblodai = new Oblodai(
-    // publicId/secret fall back to OBLODAI_PUBLIC_ID / OBLODAI_SECRET
-    baseUrl: getenv('OBLODAI_BASE_URL') ?: null,
-    allowInsecureBaseUrl: true, // only needed against a local gateway
-);
+// Credentials come from OBLODAI_PUBLIC_ID / OBLODAI_SECRET; the example stops with one line if
+// they are missing. Against a local gateway over http, set OBLODAI_ALLOW_INSECURE=1 yourself.
+$oblodai = example_client();
 
 try {
     $invoice = $oblodai->payments->create(new PaymentRequest(
@@ -34,14 +31,9 @@ try {
         url_callback: 'https://shop.example/oblodai/webhook',
     ));
 } catch (OblodaiException $err) {
-    fwrite(STDERR, sprintf(
-        "could not create the invoice: %s (%s, request %s)\n",
-        $err->getMessage(),
-        $err->errorCode,
-        $err->requestId ?? '-'
-    ));
-
-    exit(1);
+    // Codes worth branching on: payment.bad_amount, payment.below_minimum,
+    // payment.minimum_unavailable (retryable), payment.unsupported_network, request.unknown_currency.
+    example_fail('could not create the invoice', $err);
 }
 
 printf("invoice   %s\n", $invoice->uuid);
@@ -55,7 +47,11 @@ if ($invoice->destination_tag !== '' || $invoice->memo !== '') {
 printf("expires   %s\n", $invoice->expired_at);
 
 // Later, or from a fallback poller:
-$current = $oblodai->payments->info(['order_id' => $invoice->order_id]);
+try {
+    $current = $oblodai->payments->info(['order_id' => $invoice->order_id]);
+} catch (OblodaiException $err) {
+    example_fail('could not read the invoice back', $err);
+}
 printf(
     "\nnow: %s (paid: %s, %s of %s received)\n",
     $current->status->value,

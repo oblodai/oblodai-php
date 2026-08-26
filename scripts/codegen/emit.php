@@ -4,15 +4,23 @@ declare(strict_types=1);
 
 /** Emitters for the route registry, the enum vocabularies and the contract stamp. */
 
-/** Read-only routes: a transport failure may be retried without risking a duplicate side effect. */
+/**
+ * Read-only routes: a transport failure may be retried without risking a duplicate side effect.
+ * The core hand-classifies every route and exports the verdict as `safe`; the SDK never guesses it
+ * from the path, so a new write route can never be mistaken for a reader.
+ */
 function routeIsSafe(array $route): bool
 {
-    if ($route['method'] . ' ' . $route['path'] === 'POST /v1/vrcs') {
-        return false; // looks read-only, but a body flips the setting
+    if (!array_key_exists('safe', $route) || !is_bool($route['safe'])) {
+        throw new RuntimeException(sprintf(
+            'route %s %s has no boolean `safe` field — re-export contract/contract.json from a core '
+                . 'that classifies route safety',
+            (string) ($route['method'] ?? '?'),
+            (string) ($route['path'] ?? '?')
+        ));
     }
 
-    return $route['method'] === 'GET'
-        || preg_match('#/(info|history|list|calculate|validate|services|get|balance|qr|deliveries)$#', $route['path']) === 1;
+    return $route['safe'];
 }
 
 function phpString(string $value): string
@@ -39,6 +47,20 @@ function writeGenerated(string $path, string $contents): string
 
 function emitRoutes(string $outDir, string $header, array $routes): string
 {
+    // Field names the contract itself declares as JSON numbers. Everything else that looks numeric
+    // on the wire (every amount) is a decimal string, and the request serializer refuses a float
+    // for it — 0.1 + 0.2 must never become an amount.
+    $numberFields = [];
+    foreach ($routes as $r) {
+        foreach ((array) ($r['request_schema']['properties'] ?? []) as $field => $property) {
+            if (($property['type'] ?? '') === 'number') {
+                $numberFields[(string) $field] = true;
+            }
+        }
+    }
+    $numberFields = array_keys($numberFields);
+    sort($numberFields);
+
     $lines = [];
     foreach ($routes as $r) {
         $lines[] = sprintf(
@@ -77,6 +99,14 @@ function emitRoutes(string $outDir, string $header, array $routes): string
         %SPECS%
             ];
 
+            /**
+             * Request fields the contract declares as JSON numbers. Every other numeric-looking field
+             * is a decimal string; `RequestBuilder::serializeBody()` rejects a float for it.
+             *
+             * @var list<string>
+             */
+            public const NUMBER_FIELDS = [%NUMBERS%];
+
             /** @var array<string, RouteSpec> */
             private static array $cache = [];
 
@@ -114,6 +144,7 @@ function emitRoutes(string $outDir, string $header, array $routes): string
     return writeGenerated($outDir . '/Routes.php', strtr($template, [
         '%HEADER%' => $header,
         '%SPECS%' => implode("\n", $lines),
+        '%NUMBERS%' => implode(', ', array_map('phpString', $numberFields)),
     ]));
 }
 

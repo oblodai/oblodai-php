@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Oblodai\Core;
 
+use Oblodai\Exception\ConfigException;
+
 /** A binary response body (PDF/CSV documents) with the metadata needed to save or serve it. */
 final class FileResult
 {
@@ -17,12 +19,28 @@ final class FileResult
     ) {
     }
 
-    /** Bytes written to a path; returns the number of bytes written. */
+    /**
+     * Write the document to a path and return how many bytes landed there.
+     *
+     * A failed write throws: returning 0 would look exactly like an empty document and let a
+     * caller record "statement saved" for a file that does not exist.
+     */
     public function saveTo(string $path): int
     {
-        $written = file_put_contents($path, $this->bytes);
+        // The warning PHP would emit says the same thing as the exception and lands in a different
+        // channel; the exception is the one a caller can act on.
+        $written = @file_put_contents($path, $this->bytes);
+        if ($written === false || $written !== strlen($this->bytes)) {
+            $reason = error_get_last()['message'] ?? 'write failed';
 
-        return $written === false ? 0 : $written;
+            throw new ConfigException(
+                ConfigException::BAD_CONFIG,
+                sprintf('could not write %d bytes to %s: %s', strlen($this->bytes), $path, $reason),
+                'path'
+            );
+        }
+
+        return $written;
     }
 
     public function size(): int

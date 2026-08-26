@@ -17,8 +17,11 @@ interface WebhookEvent
     /** The subject id (invoice, payout or wallet-event uuid). */
     public function uuid(): string;
 
-    /** Global, increasing sequence (gaps are normal); a lower sequence arriving later is stale. */
-    public function sequence(): int;
+    /**
+     * Global, increasing sequence (gaps are normal); a lower sequence arriving later is stale.
+     * Null when the body carries none — an event without a sequence is never treated as stale.
+     */
+    public function sequence(): ?int;
 
     /** True — the status is final and will not change again. */
     public function isFinal(): bool;

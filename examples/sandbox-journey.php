@@ -10,54 +10,62 @@ declare(strict_types=1);
  * Run: OBLODAI_PUBLIC_ID=test_… OBLODAI_SECRET=… php examples/sandbox-journey.php
  */
 
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/_bootstrap.php';
 
+use Oblodai\Exception\OblodaiException;
 use Oblodai\Helper\Status;
-use Oblodai\Oblodai;
 
-$oblodai = new Oblodai(
-    baseUrl: getenv('OBLODAI_BASE_URL') ?: null,
-    allowInsecureBaseUrl: true,
-);
+$oblodai = example_client();
 
 $orderId = 'sandbox-' . time();
-$invoice = $oblodai->payments->create([
-    'amount' => '25', 'currency' => 'USDT', 'network' => 'tron', 'order_id' => $orderId,
-]);
+
+try {
+    $invoice = $oblodai->payments->create([
+        'amount' => '25', 'currency' => 'USDT', 'network' => 'tron', 'order_id' => $orderId,
+    ]);
+} catch (OblodaiException $err) {
+    // A live key gets 403 sandbox.live_key on the helpers below — use a test_… key here.
+    example_fail('could not create the sandbox invoice', $err);
+}
 printf("invoice %s — %s %s to %s\n", $invoice->uuid, $invoice->payer_amount, $invoice->payer_currency, $invoice->address);
 
-// The buyer pays. `confirmations` deep enough to credit; repeat the same txid to add confirmations.
-$oblodai->sandbox->deposit([
-    'invoice_id' => $invoice->uuid,
-    'amount' => '25',
-    'confirmations' => 20,
-    'txid' => 'sandbox-tx-' . time(),
-]);
+try {
+    // The buyer pays. `confirmations` deep enough to credit; repeat the same txid to add more.
+    $oblodai->sandbox->deposit([
+        'invoice_id' => $invoice->uuid,
+        'amount' => '25',
+        'confirmations' => 20,
+        'txid' => 'sandbox-tx-' . time(),
+    ]);
 
-$paid = $oblodai->payments->info($invoice->uuid);
-printf("status  %s (paid: %s)\n", $paid->status->value, Status::isPaymentPaid($paid->status) ? 'yes' : 'no');
-printf("credited %s %s after %s commission\n", $paid->merchant_amount, $paid->payer_currency, $paid->commission);
+    $paid = $oblodai->payments->info($invoice->uuid);
+    printf("status  %s (paid: %s)\n", $paid->status->value, Status::isPaymentPaid($paid->status) ? 'yes' : 'no');
+    printf("credited %s %s after %s commission\n", $paid->merchant_amount, $paid->payer_currency, $paid->commission);
 
-// Test funds, then money back out.
-$oblodai->sandbox->faucet(['asset' => 'USDT', 'amount' => '100']);
-foreach ($oblodai->account->balance()->merchant as $entry) {
-    printf("balance %s %s\n", $entry->balance, $entry->currency);
+    // Test funds, then money back out. The faucet and the payout need the PAYOUT key; a sandbox
+    // key is both kinds at once, so the same pair works for all of it.
+    $oblodai->sandbox->faucet(['asset' => 'USDT', 'amount' => '100']);
+    foreach ($oblodai->account->balance()->merchant as $entry) {
+        printf("balance %s %s\n", $entry->balance, $entry->currency);
+    }
+
+    $payout = $oblodai->payouts->create([
+        'amount' => '10',
+        'currency' => 'USDT',
+        'network' => 'tron',
+        'address' => 'TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx',
+        'order_id' => 'sandbox-payout-' . time(),
+    ]);
+    printf("payout  %s → %s\n", $payout->uuid, $payout->status->value);
+
+    // Every delivery the sandbox attempted, with its payload — the webhook inspector.
+    foreach ($oblodai->sandbox->webhooks(['limit' => 10])->items() as $delivery) {
+        printf("webhook %s %s (%d attempts)\n", $delivery->event_type, $delivery->status->value, $delivery->attempts);
+    }
+
+    // Start over: cancels open invoices and zeroes the balances.
+    $reset = $oblodai->sandbox->reset();
+    printf("reset: %d invoices cancelled, %d balances zeroed\n", $reset->invoices_cancelled, $reset->balances_zeroed);
+} catch (OblodaiException $err) {
+    example_fail('the sandbox journey stopped', $err);
 }
-
-$payout = $oblodai->payouts->create([
-    'amount' => '10',
-    'currency' => 'USDT',
-    'network' => 'tron',
-    'address' => 'TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx',
-    'order_id' => 'sandbox-payout-' . time(),
-]);
-printf("payout  %s → %s\n", $payout->uuid, $payout->status->value);
-
-// Every delivery the sandbox attempted, with its payload — the webhook inspector.
-foreach ($oblodai->sandbox->webhooks(['limit' => 10])->items() as $delivery) {
-    printf("webhook %s %s (%d attempts)\n", $delivery->event_type, $delivery->status->value, $delivery->attempts);
-}
-
-// Start over: cancels open invoices and zeroes the balances.
-$reset = $oblodai->sandbox->reset();
-printf("reset: %d invoices cancelled, %d balances zeroed\n", $reset->invoices_cancelled, $reset->balances_zeroed);

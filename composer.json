@@ -3,10 +3,21 @@
     "description": "Official PHP SDK for the Oblodai payment gateway: accepting payments, payouts, static wallets, webhooks.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["oblodai", "crypto", "payments", "payout", "cryptocurrency", "usdt", "webhook", "payment-gateway"],
+    "keywords": [
+        "oblodai",
+        "crypto",
+        "payments",
+        "payout",
+        "cryptocurrency",
+        "usdt",
+        "webhook",
+        "payment-gateway"
+    ],
     "homepage": "https://github.com/oblodai/oblodai-php",
     "authors": [
-        { "name": "Oblodai" }
+        {
+            "name": "Oblodai"
+        }
     ],
     "require": {
         "php": ">=8.1",
@@ -20,13 +31,22 @@
         "friendsofphp/php-cs-fixer": "^3.51",
         "nyholm/psr7": "^1.8",
         "phpstan/phpstan": "^2.2",
-        "phpunit/phpunit": "^10.5"
+        "phpunit/phpunit": "^10.5",
+        "psr/log": "^1.1 || ^2.0 || ^3.0"
+    },
+    "suggest": {
+        "psr/log": "To route the SDK log through Monolog or any PSR-3 logger via Oblodai\\Log\\Psr3Logger",
+        "psr/http-client-implementation": "To use Oblodai\\Http\\Psr18HttpClient instead of the bundled cURL client"
     },
     "autoload": {
-        "psr-4": { "Oblodai\\": "src/" }
+        "psr-4": {
+            "Oblodai\\": "src/"
+        }
     },
     "autoload-dev": {
-        "psr-4": { "Oblodai\\Tests\\": "tests/" }
+        "psr-4": {
+            "Oblodai\\Tests\\": "tests/"
+        }
     },
     "scripts": {
         "codegen": "php scripts/codegen.php",
@@ -36,7 +56,12 @@
         "stan": "phpstan analyse --memory-limit=1G",
         "test": "phpunit --testsuite unit,contract",
         "test-live": "phpunit --testsuite live",
-        "ci": ["@check-drift", "@lint", "@stan", "@test"]
+        "ci": [
+            "@check-drift",
+            "@lint",
+            "@stan",
+            "@test"
+        ]
     },
     "support": {
         "issues": "https://github.com/oblodai/oblodai-php/issues",

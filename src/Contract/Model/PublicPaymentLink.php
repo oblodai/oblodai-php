@@ -14,7 +14,10 @@ final class PublicPaymentLink
         'link_id', 'title', 'description', 'amount_mode', 'currency', 'amount_fixed', 'pinned_network',
     ];
 
-    /** @param array<string, mixed> $raw */
+    /**
+     * @param array<string, mixed> $raw
+     * @param OpenEnum<AmountMode> $amount_mode
+     */
     public function __construct(
         /** Payment link id. */
         public readonly string $link_id,
@@ -23,7 +26,7 @@ final class PublicPaymentLink
         /** Description shown to the payer. */
         public readonly string $description,
         /** How the link prices its invoices. */
-        public readonly AmountMode $amount_mode,
+        public readonly OpenEnum $amount_mode,
         /** Link currency code. */
         public readonly string $currency,
         /** `fixed` links: the amount every invoice is created for. */

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Oblodai\Core;
 
+use JsonException;
+use Oblodai\Contract\Routes;
 use Oblodai\Contract\RouteSpec;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Http\HttpRequest;
@@ -15,16 +17,28 @@ use Oblodai\Http\HttpRequest;
  */
 final class RequestBuilder
 {
-    /** Headers the SDK owns; a caller-supplied header with one of these names is dropped. */
+    /**
+     * Headers the SDK owns. A caller-supplied header with one of these names is dropped, compared
+     * case-insensitively — HTTP header names are case-insensitive, so letting `x-admin-token` sit
+     * next to the SDK's `X-Admin-Token` would leave which one the server reads up to the transport.
+     */
     private const RESERVED_HEADERS = [
-        'x-public-id',
-        'x-signature',
-        'x-timestamp',
-        'idempotency-key',
+        'accept',
         'content-type',
         'content-length',
         'host',
+        'idempotency-key',
+        'user-agent',
+        'x-admin-token',
+        'x-public-id',
+        'x-signature',
+        'x-timestamp',
     ];
+
+    public const HEADER_ADMIN_TOKEN = 'X-Admin-Token';
+
+    /** JSON flags used for every request body: exact bytes, and a hard failure instead of `false`. */
+    private const JSON_FLAGS = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR;
 
     /**
      * @param array<string, string|int>   $pathParams
@@ -42,18 +56,15 @@ final class RequestBuilder
         int $ts = 0,
         string $userAgent = '',
         array $extraHeaders = [],
+        ?string $adminToken = null,
+        int $maxResponseBytes = HttpRequest::MAX_JSON_BYTES,
     ): HttpRequest {
         $path = self::joinPath($baseUrl, self::fillPath($route->path, $pathParams));
         $queryString = self::buildQuery($query);
         $requestUri = $path . ($queryString === '' ? '' : '?' . $queryString);
         $url = self::origin($baseUrl) . $requestUri;
 
-        $headers = [];
-        foreach ($extraHeaders as $name => $value) {
-            if (!in_array(strtolower((string) $name), self::RESERVED_HEADERS, true)) {
-                $headers[(string) $name] = $value;
-            }
-        }
+        $headers = self::callerHeaders($extraHeaders);
         $headers['Accept'] = 'application/json';
         $headers['User-Agent'] = $userAgent;
         $hasBody = $route->method !== 'GET';
@@ -62,6 +73,11 @@ final class RequestBuilder
         }
         if ($idempotencyKey !== null && $idempotencyKey !== '') {
             $headers[Signer::HEADER_IDEMPOTENCY_KEY] = $idempotencyKey;
+        }
+        // The admin token provisions merchants on a self-hosted gateway; it is meaningless — and a
+        // secret needlessly exposed — anywhere else, so it rides only on `onboard` routes.
+        if ($adminToken !== null && $adminToken !== '' && $route->auth === 'onboard') {
+            $headers[self::HEADER_ADMIN_TOKEN] = $adminToken;
         }
 
         if ($route->auth !== 'public' && $route->auth !== 'onboard') {
@@ -80,7 +96,7 @@ final class RequestBuilder
             $headers[Signer::HEADER_PUBLIC_ID] = $credentials->publicId;
             $headers[Signer::HEADER_TIMESTAMP] = (string) $ts;
             $headers[Signer::HEADER_SIGNATURE] = Signer::sign(
-                $credentials->secret,
+                $credentials->secret(),
                 $ts,
                 $route->method,
                 $requestUri,
@@ -89,7 +105,7 @@ final class RequestBuilder
             );
         }
 
-        return new HttpRequest($route->method, $url, $headers, $hasBody ? $body : null);
+        return new HttpRequest($route->method, $url, $headers, $hasBody ? $body : null, $maxResponseBytes);
     }
 
     /** Scheme and authority of the base URL (`https://host:port`). */
@@ -170,7 +186,57 @@ final class RequestBuilder
     }
 
     /**
+     * Caller-supplied headers, minus anything the SDK owns and minus anything unsendable.
+     *
+     * A header value carrying CR or LF is a request-splitting attempt (or a stray newline from a
+     * config file); a non-ASCII value is not representable in an HTTP/1.1 field. Both are refused
+     * here rather than mangled by the transport.
+     *
+     * @param  array<string, string> $extraHeaders
+     * @return array<string, string>
+     */
+    private static function callerHeaders(array $extraHeaders): array
+    {
+        $headers = [];
+        foreach ($extraHeaders as $name => $value) {
+            $name = (string) $name;
+            if (in_array(strtolower($name), self::RESERVED_HEADERS, true)) {
+                continue;
+            }
+            if (preg_match('/^[\x21-\x7e]+$/', $name) !== 1) {
+                throw new ConfigException(
+                    ConfigException::BAD_HEADER,
+                    sprintf('header name %s is not a valid HTTP field name', json_encode($name)),
+                    $name
+                );
+            }
+            if (preg_match('/^[\x20-\x7e\t]*$/', $value) !== 1) {
+                throw new ConfigException(
+                    ConfigException::BAD_HEADER,
+                    sprintf(
+                        'header "%s" has a value with a line break or a non-ASCII character; HTTP '
+                            . 'field values must be printable ASCII',
+                        $name
+                    ),
+                    $name
+                );
+            }
+            $headers[$name] = $value;
+        }
+
+        return $headers;
+    }
+
+    /**
      * Serialize a request body once; unset fields vanish, a missing POST body becomes `{}`.
+     *
+     * A body that cannot be encoded (invalid UTF-8, NAN/INF, nesting past PHP's limit) is a
+     * `ConfigException`, never an empty string: an empty body would be signed and sent as `{}`'s
+     * evil twin and the core would answer about a request the caller never made.
+     *
+     * Floats are refused for every field the contract does not declare as a number. Amounts are
+     * decimal strings precisely because `0.1 + 0.2` is not `0.3`, and PHP will happily serialize
+     * the difference into a payout.
      *
      * @param array<string, mixed>|null $body
      */
@@ -182,7 +248,42 @@ final class RequestBuilder
         if ($body === null || $body === []) {
             return '{}';
         }
+        self::assertNoStrayFloats($body, '');
 
-        return (string) json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        try {
+            return json_encode($body, self::JSON_FLAGS);
+        } catch (JsonException $e) {
+            throw new ConfigException(
+                ConfigException::BAD_CONFIG,
+                'request body cannot be encoded as JSON: ' . $e->getMessage(),
+                'body'
+            );
+        }
+    }
+
+    /** @param array<mixed> $body */
+    private static function assertNoStrayFloats(array $body, string $prefix): void
+    {
+        foreach ($body as $key => $value) {
+            $path = $prefix === '' ? (string) $key : $prefix . '.' . (string) $key;
+            if (is_array($value)) {
+                self::assertNoStrayFloats($value, $path);
+
+                continue;
+            }
+            if (is_float($value) && !in_array((string) $key, Routes::NUMBER_FIELDS, true)) {
+                throw new ConfigException(
+                    ConfigException::BAD_CONFIG,
+                    sprintf(
+                        '"%s" was given as a float (%s); amounts and rates travel as decimal strings '
+                            . "— pass '%s' instead",
+                        $path,
+                        var_export($value, true),
+                        rtrim(rtrim(sprintf('%.18F', $value), '0'), '.')
+                    ),
+                    $path
+                );
+            }
+        }
     }
 }

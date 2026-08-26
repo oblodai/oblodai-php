@@ -24,6 +24,7 @@ final class Payment
     ];
 
     /**
+     * @param OpenEnum<PaymentStatus> $status
      * @param list<PaymentTx>          $tx_list
      * @param list<PaymentRefund>|null $refunds
      * @param array<string, mixed>     $raw
@@ -34,7 +35,7 @@ final class Payment
         /** Your order number, passed at creation. */
         public readonly string $order_id,
         /** Where the invoice stands; `wrong_amount` needs `refunds->resolve()`. */
-        public readonly PaymentStatus $status,
+        public readonly OpenEnum $status,
         /** True — the status is final and will not change again. */
         public readonly bool $is_final,
         /** Amount due in the price currency (for example, in USD). Decimal string. */

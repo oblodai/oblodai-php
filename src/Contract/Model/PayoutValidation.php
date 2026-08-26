@@ -14,7 +14,10 @@ final class PayoutValidation
         'valid', 'amount', 'currency', 'network', 'commission', 'payer_amount', 'fee_bearer', 'maturity_note',
     ];
 
-    /** @param array<string, mixed> $raw */
+    /**
+     * @param array<string, mixed> $raw
+     * @param OpenEnum<FeeBearerResult> $fee_bearer
+     */
     public function __construct(
         /** True — the payout would go through as requested. */
         public readonly bool $valid,
@@ -29,7 +32,7 @@ final class PayoutValidation
         /** How much would actually reach the recipient's address. */
         public readonly string $payer_amount,
         /** Who would pay the network fee: gateway, merchant, or recipient. */
-        public readonly FeeBearerResult $fee_bearer,
+        public readonly OpenEnum $fee_bearer,
         /** Non-empty when part of the balance is still maturing (reorg window). */
         public readonly string $maturity_note,
         /** Which balance would fund it (`business`/`personal`), when reported. */

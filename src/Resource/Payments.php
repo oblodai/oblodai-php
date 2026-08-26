@@ -30,6 +30,11 @@ final class Payments extends Resource
     /**
      * `POST /v1/payment` — create an invoice. Idempotent by `order_id` and by Idempotency-Key.
      *
+     * Codes worth branching on: `payment.bad_amount`, `payment.below_minimum`,
+     * `payment.minimum_unavailable` (rate feed down — retryable), `payment.unsupported_network`,
+     * `payment.network_required` (multi-network asset, no `network` given),
+     * `request.unknown_currency`, `idempotency.key_reused` (same key, different body).
+     *
      * @param array<string, mixed>|PaymentRequest $params
      */
     public function create(array|PaymentRequest $params, ?RequestOptions $options = null): Payment
@@ -93,6 +98,10 @@ final class Payments extends Resource
     /**
      * `POST /v1/payment/batch` — create up to 5000 invoices asynchronously; track with
      * `batches->info()`.
+     *
+     * Codes worth branching on: `payment.bad_amount`, `payment.below_minimum`,
+     * `request.unknown_currency`, `request.missing_field` (an item without `order_id`),
+     * `payout.batch_too_large`, `idempotency.key_reused`.
      *
      * @param array<string, mixed>|PaymentBatchRequest $params
      */

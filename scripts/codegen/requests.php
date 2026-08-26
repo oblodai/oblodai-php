@@ -23,6 +23,16 @@ const ROUTE_FIELD_ENUMS = [
     'POST /v1/test-webhook/payout#status' => 'PayoutStatus',
     'POST /v1/payment/testing-webhook#status' => 'PaymentStatus',
 ];
+/**
+ * Fields the docs table marks required although the handler accepts the body without them.
+ * Each entry is proved by a recorded fixture in contract/fixtures whose request omits the field and
+ * still answered 2xx; tests/Contract/RequestShapeTest.php re-checks that for every route.
+ */
+const OPTIONAL_OVERRIDES = [
+    // The docs table copies `create`'s required list onto the dry run, but a validation needs no
+    // order number — contract/fixtures/POST_v1_payout_validate.json omits it and answers 200.
+    'POST /v1/payout/validate' => ['order_id'],
+];
 /** Fields the handler requires although the shared DTO marks them optional. */
 const REQUIRED_OVERRIDES = [
     'POST /v1/transfer/to-user' => ['amount', 'currency'],
@@ -97,6 +107,29 @@ function docTypeOf(array $property): ?string
     };
 }
 
+/**
+ * The example to print for a field, or null.
+ *
+ * The core's docs table is written in Russian and its examples come with it. Generated code is
+ * English-only, so a non-ASCII example is never copied: either contract/descriptions.en.json (which
+ * is repo-local, like the field docs) supplies an English one, or the field simply has no example.
+ */
+function exampleFor(string $route, string $field, array $property, array $descriptions): ?string
+{
+    $override = $descriptions['example'][$route][$field] ?? null;
+    if (is_string($override)) {
+        return json_encode($override, JSON_UNESCAPED_SLASHES);
+    }
+    if (!isset($property['example'])) {
+        return null;
+    }
+    $encoded = json_encode($property['example'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    return $encoded !== false && preg_match('//u', $encoded) === 1 && strlen($encoded) === mb_strlen($encoded, 'UTF-8')
+        ? $encoded
+        : null;
+}
+
 /** Doc lines for one field: its English description, its example and the shape of nested items. */
 function fieldDoc(string $route, string $field, array $property, array $descriptions, array &$missing): array
 {
@@ -108,8 +141,9 @@ function fieldDoc(string $route, string $field, array $property, array $descript
     if ($text !== null) {
         $lines[] = $text;
     }
-    if (isset($property['example'])) {
-        $lines[] = 'Example: ' . json_encode($property['example'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '.';
+    $example = exampleFor($route, $field, $property, $descriptions);
+    if ($example !== null) {
+        $lines[] = 'Example: ' . $example . '.';
     }
     $items = $property['items'] ?? null;
     if (is_array($items) && ($items['type'] ?? '') === 'object' && isset($items['properties'])) {
@@ -173,7 +207,10 @@ function emitRequests(string $outDir, string $header, array $routes, array $desc
         if (!is_array($schema) || !isset($schema['properties']) || $schema['properties'] === []) {
             continue;
         }
-        $required = array_merge($schema['required'] ?? [], REQUIRED_OVERRIDES[$key] ?? []);
+        $required = array_values(array_diff(
+            array_merge($schema['required'] ?? [], REQUIRED_OVERRIDES[$key] ?? []),
+            OPTIONAL_OVERRIDES[$key] ?? []
+        ));
         $names = array_keys($schema['properties']);
         sort($names);
         usort($names, static fn (string $a, string $b): int => (int) !in_array($a, $required, true)

@@ -20,6 +20,7 @@ final class PaymentLink
     ];
 
     /**
+     * @param OpenEnum<AmountMode> $amount_mode
      * @param list<PaymentLinkPayment>|null $payments
      * @param array<string, mixed>          $raw
      */
@@ -35,7 +36,7 @@ final class PaymentLink
         /** Description shown to the payer. */
         public readonly string $description,
         /** How the link prices its invoices. */
-        public readonly AmountMode $amount_mode,
+        public readonly OpenEnum $amount_mode,
         /** Link currency code. */
         public readonly string $currency,
         /** Signed link to the PDF poster with the payment QR; empty when documents are disabled. */

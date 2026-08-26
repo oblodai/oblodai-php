@@ -11,6 +11,9 @@ class ConfigException extends OblodaiException
     public const BAD_CONFIG = 'sdk.bad_config';
     public const IDEMPOTENCY_UNSUPPORTED = 'sdk.idempotency_unsupported';
     public const BAD_PATH_PARAM = 'sdk.bad_path_param';
+    public const BAD_IDEMPOTENCY_KEY = 'sdk.bad_idempotency_key';
+    public const BAD_AMOUNT = 'sdk.bad_amount';
+    public const BAD_HEADER = 'sdk.bad_header';
 
     public function __construct(string $errorCode, string $message, ?string $field = null)
     {

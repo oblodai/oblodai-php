@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// GENERATED FILE — do not edit. Source: contract/contract.json (core bfca971cce71).
+// GENERATED FILE — do not edit. Source: contract/contract.json (core 7ec04293c426).
 // Regenerate with: composer codegen
 
 namespace Oblodai\Contract\Request;
@@ -30,11 +30,6 @@ final class PayoutValidateRequest implements RequestBody
          */
         public readonly string $currency,
         /**
-         * Your payout number; idempotency key.
-         * Example: "payout-1".
-         */
-        public readonly string $order_id,
-        /**
          * Fund the payout by converting the balance. USDT → currency only.
          * Example: "USDT".
          */
@@ -48,6 +43,11 @@ final class PayoutValidateRequest implements RequestBody
          * Example: "tron".
          */
         public readonly string|Network|null $network = null,
+        /**
+         * Your payout number; idempotency key.
+         * Example: "payout-1".
+         */
+        public readonly ?string $order_id = null,
         /** Origin label: api (default) or manual. */
         public readonly ?string $source = null,
         /** Custom webhook URL for this payout (passes the SSRF check). Requires a registered endpoint (POST /v1/webhooks): delivery is signed with its secret. */
@@ -62,11 +62,11 @@ final class PayoutValidateRequest implements RequestBody
             'address' => $this->address,
             'amount' => $this->amount,
             'currency' => $this->currency,
-            'order_id' => $this->order_id,
             'from_currency' => $this->from_currency,
             'is_subtract' => $this->is_subtract,
             'memo' => $this->memo,
             'network' => $this->network,
+            'order_id' => $this->order_id,
             'source' => $this->source,
             'url_callback' => $this->url_callback,
         ]);

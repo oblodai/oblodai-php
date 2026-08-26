@@ -18,14 +18,17 @@ final class PublicPayment
         'txid', 'created_at', 'updated_at',
     ];
 
-    /** @param array<string, mixed> $raw */
+    /**
+     * @param array<string, mixed> $raw
+     * @param OpenEnum<PaymentStatus> $status
+     */
     public function __construct(
         /** Our payment id (use it in info/refund). */
         public readonly string $uuid,
         /** Your order number, passed at creation. */
         public readonly string $order_id,
         /** Status: select (choosing a currency) | created | confirm_check | paid | paid_over | wrong_amount | expired | cancelled. */
-        public readonly PaymentStatus $status,
+        public readonly OpenEnum $status,
         /** True — the status is final and will not change again. */
         public readonly bool $is_final,
         /** Amount due in the price currency (for example, in USD). */

@@ -22,7 +22,7 @@ final class ConfigTest extends TestCase
 
         self::assertNotNull($config->credentials);
         self::assertSame('pk', $config->credentials->publicId);
-        self::assertSame('s', $config->credentials->secret);
+        self::assertSame('s', $config->credentials->secret());
         self::assertSame('https://x.test', $config->baseUrl);
     }
 

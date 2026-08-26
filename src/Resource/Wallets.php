@@ -17,7 +17,12 @@ use Oblodai\Core\RequestOptions;
 final class Wallets extends Resource
 {
     /**
-     * `POST /v1/wallet` — idempotent by `order_id`.
+     * `POST /v1/wallet` — a permanent deposit address, idempotent by `order_id`.
+     *
+     * Codes worth branching on: `wallet.static_disabled`, `wallet.unsupported_network`,
+     * `wallet.no_network` (multi-network asset, no `network` given), `wallet.no_address`
+     * (derivation is temporarily unavailable — retryable), `wallet.sandbox_unsupported`,
+     * `request.unknown_currency`, `idempotency.key_reused`.
      *
      * @param array<string, mixed>|WalletRequest $params
      */
@@ -46,7 +51,9 @@ final class Wallets extends Resource
      * `POST /v1/wallet/blocked-address-refund` — send funds that landed on a blocked address back.
      * Payout key.
      *
-     * @param array<string, mixed>|WalletBlockedAddressRefundRequest $params
+     * Codes worth branching on: `wallet.bad_uuid` (unknown wallet), `refund.no_address` (the address
+     * is not blocked), `refund.nothing_to_refund` (already refunded or empty), `refund.dust` (below the
+     * network minimum), `refund.destination_internal`, `merchant.wrong_key_kind`.
      */
     public function refundBlockedDeposit(
         array|WalletBlockedAddressRefundRequest $params,

@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace Oblodai\Exception;
 
-/** The core (or something in front of it) answered with an error status. */
+/**
+ * The core (or something in front of it) answered with an error status.
+ *
+ * The envelope is read field by field, never all-or-nothing: a gateway that mangles one field must
+ * not cost the caller the other five. Anything of an unexpected type is treated as absent and the
+ * documented default takes over, so decoding an error can itself never throw.
+ */
 class ApiException extends OblodaiException
 {
     /** Statuses a response without an envelope may carry transiently (LB/proxy/timeouts). */
@@ -13,7 +19,8 @@ class ApiException extends OblodaiException
     /**
      * Build the right subclass from an error envelope (or a synthesized one) and the HTTP status.
      *
-     * @param array{code?: string, message?: string, field?: string, retryable?: bool, retry_after?: int|float|string, request_id?: string} $detail
+     * @param array<string, mixed> $detail the `error` object as received; any field may be missing
+     *                                     or of the wrong type
      */
     public static function from(
         int $httpStatus,
@@ -22,14 +29,20 @@ class ApiException extends OblodaiException
         bool $synthetic = false,
         ?int $retryAfterHeader = null,
     ): self {
-        $code = ($detail['code'] ?? '') !== '' ? (string) $detail['code'] : 'internal';
-        $message = ($detail['message'] ?? '') !== ''
-            ? (string) $detail['message']
-            : sprintf('request failed with HTTP %d (%s)', $httpStatus, $detail['code'] ?? 'no envelope');
+        $code = self::stringOrNull($detail['code'] ?? null);
+        if ($code === null || $code === '') {
+            // No usable code means no usable envelope, whatever else the body contained.
+            $code = 'internal';
+            $synthetic = true;
+        }
+        $message = self::stringOrNull($detail['message'] ?? null)
+            ?? sprintf('HTTP %d', $httpStatus);
         $retryable = $synthetic
             ? in_array($httpStatus, self::TRANSIENT_STATUSES, true)
-            : (bool) ($detail['retryable'] ?? ($httpStatus === 429 || $httpStatus === 503));
-        $retryAfter = isset($detail['retry_after']) ? (int) $detail['retry_after'] : $retryAfterHeader;
+            : (is_bool($detail['retryable'] ?? null)
+                ? $detail['retryable']
+                : ($httpStatus === 429 || $httpStatus === 503));
+        $retryAfter = self::retryAfterSeconds($detail['retry_after'] ?? null) ?? $retryAfterHeader;
 
         $class = match (true) {
             $code === 'idempotency.key_reused' => IdempotencyConflictException::class,
@@ -50,10 +63,40 @@ class ApiException extends OblodaiException
             httpStatus: $httpStatus,
             retryable: $retryable,
             retryAfter: $retryAfter,
-            requestId: isset($detail['request_id']) ? (string) $detail['request_id'] : null,
-            field: isset($detail['field']) ? (string) $detail['field'] : null,
+            requestId: self::stringOrNull($detail['request_id'] ?? null),
+            field: self::stringOrNull($detail['field'] ?? null),
             synthetic: $synthetic,
             raw: $raw,
         );
+    }
+
+    /** A string field, or null when the core sent something that is not one. */
+    private static function stringOrNull(mixed $value): ?string
+    {
+        return is_string($value) ? $value : null;
+    }
+
+    /**
+     * `retry_after` as whole seconds: an integer, a float or a numeric string. Anything else is
+     * absent. The value is clamped into [0, MAX_RETRY_AFTER_SECONDS] in float space before it ever
+     * becomes an int, so neither a negative nor a 1e30 can overflow the conversion.
+     */
+    public static function retryAfterSeconds(mixed $value): ?int
+    {
+        if (is_bool($value) || (!is_int($value) && !is_float($value) && !is_string($value))) {
+            return null;
+        }
+        if (is_string($value)) {
+            $value = trim($value);
+            if ($value === '' || !is_numeric($value)) {
+                return null;
+            }
+        }
+        $seconds = (float) $value;
+        if (is_nan($seconds)) {
+            return null;
+        }
+
+        return (int) max(0.0, min((float) OblodaiException::MAX_RETRY_AFTER_SECONDS, $seconds));
     }
 }

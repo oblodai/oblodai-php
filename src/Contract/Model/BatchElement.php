@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Oblodai\Contract\Model;
 
+use JsonSerializable;
+
 /** Element of every batch listing (`/v1/payout/mass`, `/v1/payout/link/batch`, `/v1/batch/info`). */
-final class BatchElement
+final class BatchElement implements JsonSerializable
 {
+    use RedactsSecrets;
+
     /** @var list<string> */
     public const KEYS = ['idx', 'ok', 'order_id', 'result', 'message', 'error_code', 'http_status'];
 

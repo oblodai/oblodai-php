@@ -16,10 +16,14 @@ final class ClaimPreview
         'fee_bearer', 'fee_type', 'title', 'note', 'expires_at',
     ];
 
-    /** @param array<string, mixed> $raw */
+    /**
+     * @param array<string, mixed> $raw
+     * @param OpenEnum<PayoutLinkStatus> $status
+     * @param OpenEnum<FeeBearer> $fee_bearer
+     */
     public function __construct(
         /** Lifecycle of the underlying link (cheque). */
-        public readonly PayoutLinkStatus $status,
+        public readonly OpenEnum $status,
         /** True — the link can be claimed right now. */
         public readonly bool $claimable,
         /** Amount the recipient may claim, decimal string. */
@@ -33,7 +37,7 @@ final class ClaimPreview
         /** How much would actually reach the recipient's address. Null while unpriced. */
         public readonly ?string $payer_amount,
         /** Who is asked to bear the network fee. */
-        public readonly FeeBearer $fee_bearer,
+        public readonly OpenEnum $fee_bearer,
         /** Pricing mode behind `commission` (`percent`/`fixed`/…). Open vocabulary. */
         public readonly string $fee_type,
         /** Title shown to the recipient. */

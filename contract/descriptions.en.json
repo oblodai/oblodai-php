@@ -1,4 +1,19 @@
 {
+  "example": {
+    "POST /v1/payment/link": {
+      "title": "Support the project"
+    },
+    "POST /v1/payout/link": {
+      "note": "Thank you for taking part",
+      "title": "Bonus"
+    },
+    "POST /v1/documents/jobs/info": {
+      "job_id": "6f1c9e2a-..."
+    },
+    "POST /v1/payout/link/cheque": {
+      "claim_token": "nUqx1yG3..."
+    }
+  },
   "request": {
     "POST /v1/batch/info": {
       "batch_id": "Batch id from the submit response.",

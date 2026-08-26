@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Oblodai\Core;
 
-use Oblodai\Exception\ValidationException;
+use Oblodai\Exception\ConfigException;
 
 /**
  * Idempotency keys. On create-type routes the core caches the first response per key for the
@@ -15,7 +15,7 @@ use Oblodai\Exception\ValidationException;
 final class Idempotency
 {
     public const MAX_KEY_LENGTH = 255;
-    public const BAD_KEY = 'sdk.bad_idempotency_key';
+    public const BAD_KEY = ConfigException::BAD_IDEMPOTENCY_KEY;
 
     public static function newKey(): string
     {
@@ -38,14 +38,12 @@ final class Idempotency
         }
     }
 
-    private static function invalid(string $message): ValidationException
+    /**
+     * A key the SDK rejects is a mistake in the CALLER's code, made before anything was sent — a
+     * `ConfigException`, not a `ValidationException`, which would claim the API answered 400.
+     */
+    private static function invalid(string $message): ConfigException
     {
-        return new ValidationException(
-            errorCode: self::BAD_KEY,
-            message: $message,
-            httpStatus: 0,
-            retryable: false,
-            field: 'idempotencyKey',
-        );
+        return new ConfigException(self::BAD_KEY, $message, 'idempotencyKey');
     }
 }

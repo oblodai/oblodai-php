@@ -16,7 +16,10 @@ final class PaymentEvent implements WebhookEvent
         'payer_address_is_refundable', 'additional_data', 'txid', 'event_at', 'sequence',
     ];
 
-    /** @param array<string, mixed> $raw */
+    /**
+     * @param array<string, mixed> $raw
+     * @param OpenEnum<PaymentStatus> $status
+     */
     public function __construct(
         /** Always `"payment"`. */
         public readonly string $type,
@@ -25,7 +28,7 @@ final class PaymentEvent implements WebhookEvent
         /** Your order number, passed at creation. */
         public readonly ?string $order_id,
         /** Where the invoice stands after this change. */
-        public readonly PaymentStatus $status,
+        public readonly OpenEnum $status,
         /** True — the status is final and will not change again. */
         public readonly bool $is_final,
         /** Amount due in the price currency (for example, in USD). */
@@ -50,8 +53,11 @@ final class PaymentEvent implements WebhookEvent
         public readonly string $txid,
         /** When the state change was committed — order events by this, or by `sequence`. */
         public readonly string $event_at,
-        /** Global, increasing (gaps are normal); a lower sequence arriving later is stale. */
-        public readonly int $sequence,
+        /**
+         * Global, increasing (gaps are normal); a lower sequence arriving later is stale. Null when
+         * the core sent no sequence at all — such an event is never reported as stale.
+         */
+        public readonly ?int $sequence,
         /**
          * Present and true ONLY on rehearsal deliveries (`webhooks.test`, sandbox). The body is
          * signed like a live one, so a handler must check this flag (or the `X-Webhook-Test`
@@ -83,7 +89,7 @@ final class PaymentEvent implements WebhookEvent
             Wire::str($data, 'additional_data'),
             Wire::str($data, 'txid'),
             Wire::str($data, 'event_at'),
-            Wire::int($data, 'sequence'),
+            Wire::nullableInt($data, 'sequence'),
             Wire::nullableBool($data, 'test'),
             $data,
         );
@@ -99,7 +105,7 @@ final class PaymentEvent implements WebhookEvent
         return $this->uuid;
     }
 
-    public function sequence(): int
+    public function sequence(): ?int
     {
         return $this->sequence;
     }

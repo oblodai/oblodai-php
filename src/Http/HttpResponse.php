@@ -12,6 +12,13 @@ final class HttpResponse
         public readonly int $status,
         public readonly array $headers = [],
         public readonly string $body = '',
+        /**
+         * The URL the body actually came from. Equal to the requested URL unless the HTTP stack
+         * followed a redirect behind the SDK's back — which the transport treats as an error,
+         * because the signature covers the path that was requested, not the one that answered.
+         * Null when the implementation cannot report it.
+         */
+        public readonly ?string $finalUrl = null,
     ) {
     }
 

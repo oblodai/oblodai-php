@@ -11,6 +11,7 @@ use Oblodai\Core\FileResult;
 use Oblodai\Core\Page;
 use Oblodai\Core\RequestOptions;
 use Oblodai\Core\Transport;
+use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\ContractException;
 
 /**
@@ -77,14 +78,28 @@ abstract class Resource
         $limit = is_numeric($params['limit'] ?? null) ? (int) $params['limit'] : null;
         $offset = is_numeric($params['offset'] ?? null) ? (int) $params['offset'] : null;
         unset($params['limit'], $params['offset']);
-        // One key per page would be wrong on both sides: the core would replay page 1 forever.
-        $options = ($options ?? new RequestOptions())->withoutIdempotencyKey();
+        $options ??= new RequestOptions();
+        if ($options->idempotencyKey !== null) {
+            // Silently dropping it would be worse than refusing: the caller believes the pages are
+            // deduplicated, and one key across every page would make the core replay page 1 forever.
+            throw new ConfigException(
+                ConfigException::IDEMPOTENCY_UNSUPPORTED,
+                sprintf(
+                    '%s does not deduplicate by Idempotency-Key (listing is not a write); remove '
+                        . 'idempotencyKey from this call',
+                    $routeKey
+                ),
+                'idempotencyKey'
+            );
+        }
+        $options = $options->withoutIdempotencyKey();
         $transport = $this->transport;
 
         $fetch = static function (int $pageLimit, int $pageOffset) use (
             $transport,
             $route,
             $params,
+            $pathParams,
             $decodeItem,
             $options
         ): array {
@@ -94,7 +109,7 @@ abstract class Resource
                 $route,
                 $viaQuery ? null : array_merge($params, $paging),
                 $viaQuery ? array_merge($params, $paging) : [],
-                [],
+                $pathParams,
                 $options
             );
             $page = Envelope::asPage($result);

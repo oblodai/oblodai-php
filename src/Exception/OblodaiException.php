@@ -20,6 +20,13 @@ use Throwable;
  */
 class OblodaiException extends RuntimeException implements JsonSerializable
 {
+    /**
+     * Plausibility ceiling for a decoded `retry_after` / `Retry-After`, seconds (24 h). It exists so
+     * a hostile or broken value can neither overflow the conversion to int nor park a caller's own
+     * scheduler forever; the SDK's own backoff is capped much lower, by `Retry::$maxRetryAfterMs`.
+     */
+    public const MAX_RETRY_AFTER_SECONDS = 86_400;
+
     /** The decoded error body (or raw text when the body was not JSON). Never serialized. */
     private mixed $raw;
 

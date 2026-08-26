@@ -4,24 +4,31 @@ declare(strict_types=1);
 
 namespace Oblodai\Contract\Model;
 
+use JsonSerializable;
 use Oblodai\Contract\Enum\FeeBearer;
 use Oblodai\Contract\Enum\PayoutLinkStatus;
 
 /** Payout link (cheque) as `/v1/payout/link`, `/info`, `/list`, `/cancel` and batch elements render it. */
-final class PayoutLink
+final class PayoutLink implements JsonSerializable
 {
+    use RedactsSecrets;
+
     /** Wire keys every rendering of a payout link carries. @var list<string> */
     public const KEYS = [
         'link_id', 'status', 'amount', 'currency', 'network', 'commission', 'payer_amount', 'fee_bearer',
         'fee_type', 'reference', 'title', 'note', 'passcode_protected', 'expires_at', 'created_at',
     ];
 
-    /** @param array<string, mixed> $raw */
+    /**
+     * @param array<string, mixed> $raw
+     * @param OpenEnum<PayoutLinkStatus> $status
+     * @param OpenEnum<FeeBearer> $fee_bearer
+     */
     public function __construct(
         /** Payout link id. */
         public readonly string $link_id,
         /** Lifecycle of the link (cheque). */
-        public readonly PayoutLinkStatus $status,
+        public readonly OpenEnum $status,
         /** Amount the recipient may claim, decimal string. */
         public readonly string $amount,
         /** Link currency code. */
@@ -33,7 +40,7 @@ final class PayoutLink
         /** How much would actually reach the recipient's address. Null while unpriced. */
         public readonly ?string $payer_amount,
         /** Who is asked to bear the network fee. */
-        public readonly FeeBearer $fee_bearer,
+        public readonly OpenEnum $fee_bearer,
         /** Pricing mode behind `commission` (`percent`/`fixed`/…). Open vocabulary. */
         public readonly string $fee_type,
         /** Your reference for this link. */

@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Oblodai\Contract\Model;
 
+use JsonSerializable;
+
 /** An API key pair as minted by onboarding. The secret is shown once. */
-final class ApiKeyPair
+final class ApiKeyPair implements JsonSerializable
 {
+    use RedactsSecrets;
+
     /** @var list<string> */
     public const KEYS = ['public_id', 'secret', 'kind'];
 

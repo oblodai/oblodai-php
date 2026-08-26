@@ -47,11 +47,13 @@ final class Envelope
             )];
         }
 
+        // JSON_BIGINT_AS_STRING: an id or a satoshi amount past PHP_INT_MAX would otherwise come
+        // back as a float and lose its last digits before any model ever saw it.
         $body = null;
         $parsed = true;
         if ($text !== '') {
             try {
-                $body = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+                $body = json_decode($text, true, 512, JSON_THROW_ON_ERROR | JSON_BIGINT_AS_STRING);
             } catch (JsonException) {
                 $parsed = false;
             }
@@ -76,7 +78,7 @@ final class Envelope
         }
 
         if (is_array($body) && isset($body['error']) && is_array($body['error'])) {
-            /** @var array{code?: string, message?: string, field?: string, retryable?: bool, retry_after?: int|float|string, request_id?: string} $detail */
+            /** @var array<string, mixed> $detail */
             $detail = $body['error'];
 
             return ['ok' => false, 'error' => ApiException::from($httpStatus, $detail, $body, false, $retryAfter)];
@@ -101,7 +103,14 @@ final class Envelope
         );
     }
 
-    /** `Retry-After` as delta-seconds or an HTTP-date; null when absent or unparsable. */
+    /**
+     * `Retry-After` as delta-seconds or an HTTP-date; null when absent or unparsable.
+     *
+     * Both forms go through the same clamp as the envelope's `retry_after`: never negative (an
+     * HTTP-date already in the past means "now"), never past the plausibility ceiling (a date in
+     * year 9999 would otherwise become a sleep of centuries), and the arithmetic happens in float
+     * space so nothing overflows on the way to an int.
+     */
     public static function parseRetryAfter(?string $value, ?int $now = null): ?int
     {
         if ($value === null) {
@@ -111,16 +120,17 @@ final class Envelope
         if ($v === '') {
             return null;
         }
-        if (preg_match('/^\d+$/', $v) === 1) {
-            return (int) $v;
+        if (preg_match('/^[0-9]+$/', $v) === 1) {
+            return ApiException::retryAfterSeconds($v);
         }
-        $at = strtotime($v);
-        if ($at === false) {
+        $at = Util::parseHttpDate($v);
+        if ($at === null) {
             return null;
         }
 
-        return max(0, $at - ($now ?? time()));
+        return ApiException::retryAfterSeconds((float) $at - (float) ($now ?? time()));
     }
+
 
     /**
      * Assert the paged-list shape on a decoded result.

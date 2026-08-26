@@ -14,6 +14,12 @@ class TransportException extends OblodaiException
     public const ABORTED = 'transport.aborted';
     public const DEADLINE = 'transport.deadline';
 
+    /**
+     * The response body passed the ceiling for its route and was abandoned. Not retryable: the same
+     * request would produce the same oversized body.
+     */
+    public const RESPONSE_TOO_LARGE = 'sdk.response_too_large';
+
     public function __construct(string $errorCode, string $message, ?Throwable $previous = null)
     {
         parent::__construct(

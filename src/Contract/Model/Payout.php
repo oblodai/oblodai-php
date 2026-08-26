@@ -20,7 +20,11 @@ final class Payout
         'refund_for', 'payment_order_id', 'txid', 'document_url', 'created_at', 'updated_at',
     ];
 
-    /** @param array<string, mixed> $raw */
+    /**
+     * @param array<string, mixed> $raw
+     * @param OpenEnum<PayoutStatus> $status
+     * @param OpenEnum<FeeBearerResult> $fee_bearer
+     */
     public function __construct(
         /** Payout id. */
         public readonly string $uuid,
@@ -31,7 +35,7 @@ final class Payout
          * failed | cancelled. (The public docs group these into coarser names — check, process,
          * paid — but the wire carries the values above, which is what this enum holds.)
          */
-        public readonly PayoutStatus $status,
+        public readonly OpenEnum $status,
         /** True — the status is final (paid / fail / cancel). */
         public readonly bool $is_final,
         /** Payout amount in currency, debited from your balance. Decimal string. */
@@ -49,7 +53,7 @@ final class Payout
         /** Network fee withheld, in the payout currency. 0 — the gateway absorbed the fee. */
         public readonly string $commission,
         /** Who paid the network fee: gateway (absorbed it), merchant, or recipient. */
-        public readonly FeeBearerResult $fee_bearer,
+        public readonly OpenEnum $fee_bearer,
         /** api (via the integration) | manual (from the cabinet). */
         public readonly string $source,
         /** True — the payout is awaiting approval (internal scenarios; always false for an API key). */
