@@ -16,7 +16,7 @@ use Oblodai\Core\RequestOptions;
 final class Refunds extends Resource
 {
     /**
-     * `POST /v1/payment/refund` — refund a paid invoice, fully or partially. Requires the payout key.
+     * `POST /v1/payment/refund` — refund a paid invoice, fully or partially.
      *
      * Codes worth branching on: `refund.nothing_to_refund`, `refund.exceeds_refundable`,
      * `refund.no_address` (the payer address is not refundable — ask for one),
