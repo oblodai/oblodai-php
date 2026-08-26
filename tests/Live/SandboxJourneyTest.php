@@ -60,11 +60,11 @@ final class SandboxJourneyTest extends LiveTestCase
     {
         $key = self::uniqueId('sdk-idem');
         $first = self::$ob->payments->create(
-            ['amount' => '1', 'currency' => 'USDT', 'network' => 'tron', 'order_id' => $key . '-o'],
+            ['amount' => '5', 'currency' => 'USDT', 'network' => 'tron', 'order_id' => $key . '-o'],
             new \Oblodai\Core\RequestOptions(idempotencyKey: $key)
         );
         $replay = self::$ob->payments->create(
-            ['amount' => '1', 'currency' => 'USDT', 'network' => 'tron', 'order_id' => $key . '-o'],
+            ['amount' => '5', 'currency' => 'USDT', 'network' => 'tron', 'order_id' => $key . '-o'],
             new \Oblodai\Core\RequestOptions(idempotencyKey: $key)
         );
         self::assertSame($first->uuid, $replay->uuid);
