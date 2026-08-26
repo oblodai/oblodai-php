@@ -111,14 +111,14 @@ final class SweepTest extends LiveTestCase
         $batch = self::$ob->payments->batch([
             'on_error' => 'continue',
             'payments' => [
-                ['amount' => '3', 'currency' => 'USDT', 'network' => 'tron', 'order_id' => self::uniqueId('sw-b')],
+                ['amount' => '5', 'currency' => 'USDT', 'network' => 'tron', 'order_id' => self::uniqueId('sw-b')],
             ],
         ]);
         self::assertNotSame('', $batch->batch_id);
         self::assertSame($batch->batch_id, self::$ob->batches->info(['batch_id' => $batch->batch_id])->batch_id);
 
         $toCancel = self::$ob->payments->create([
-            'amount' => '1',
+            'amount' => '5',
             'currency' => 'USDT',
             'network' => 'tron',
             'order_id' => self::uniqueId('sw-c'),
@@ -160,7 +160,7 @@ final class SweepTest extends LiveTestCase
             'refunds' => [[
                 'uuid' => $invoice->uuid,
                 'address' => self::ADDRESS,
-                'amount' => '1',
+                'amount' => '5',
                 'reference' => self::uniqueId('sw-rb'),
             ]],
         ]));
@@ -192,7 +192,7 @@ final class SweepTest extends LiveTestCase
 
         $mass = self::$ob->payouts->mass([
             'payouts' => [[
-                'amount' => '1', 'currency' => 'USDT', 'network' => 'tron',
+                'amount' => '5', 'currency' => 'USDT', 'network' => 'tron',
                 'address' => self::ADDRESS, 'order_id' => self::uniqueId('sw-m'),
             ]],
         ]);
@@ -200,7 +200,7 @@ final class SweepTest extends LiveTestCase
 
         $batch = self::$ob->payouts->batch([
             'payouts' => [[
-                'amount' => '1', 'currency' => 'USDT', 'network' => 'tron',
+                'amount' => '5', 'currency' => 'USDT', 'network' => 'tron',
                 'address' => self::ADDRESS, 'order_id' => self::uniqueId('sw-pb'),
             ]],
         ]);
@@ -236,13 +236,13 @@ final class SweepTest extends LiveTestCase
         self::assertNotSame('', $claimed->payout_id);
 
         $second = self::$ob->payoutLinks->create([
-            'amount' => '1', 'currency' => 'USDT', 'network' => 'tron', 'reference' => self::uniqueId('sw-pl2'),
+            'amount' => '5', 'currency' => 'USDT', 'network' => 'tron', 'reference' => self::uniqueId('sw-pl2'),
         ]);
         self::assertTrue(self::$ob->payoutLinks->cancel($second->link_id)->status->is(PayoutLinkStatus::Cancelled));
 
         $batch = self::$ob->payoutLinks->batch([
             'items' => [[
-                'amount' => '1', 'currency' => 'USDT', 'network' => 'tron', 'reference' => self::uniqueId('sw-plb'),
+                'amount' => '5', 'currency' => 'USDT', 'network' => 'tron', 'reference' => self::uniqueId('sw-plb'),
             ]],
         ]);
         self::assertTrue($batch[0]->ok);
@@ -348,7 +348,7 @@ final class SweepTest extends LiveTestCase
         ]));
         $this->accept(fn () => self::$ob->wallets->qr(self::ADDRESS));
         $this->accept(fn () => self::$ob->wallets->block(['address' => self::ADDRESS]));
-        $this->accept(fn () => self::$ob->transfers->toPersonal(['amount' => '1', 'currency' => 'USDT']));
+        $this->accept(fn () => self::$ob->transfers->toPersonal(['amount' => '5', 'currency' => 'USDT']));
         // The refusals above are the documented behaviour for a dev store; what matters is that the
         // SDK's own request and response shapes were accepted (accept() re-throws 400s and
         // ContractExceptions).
