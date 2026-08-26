@@ -26,7 +26,7 @@ use Oblodai\Core\Page;
 use Oblodai\Core\RequestOptions;
 
 /**
- * Outgoing transfers to external addresses. Every route here needs the payout key.
+ * Outgoing transfers to external addresses.
  *
  * A lookup argument is either the payout `uuid` as a string or an array with `uuid` or `order_id`.
  */
