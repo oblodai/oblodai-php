@@ -16,7 +16,7 @@ use Oblodai\Core\Page;
 use Oblodai\Core\RequestOptions;
 
 /**
- * Reusable payment links (tip jars, price tags): each checkout spawns an invoice. Payment key.
+ * Reusable payment links (tip jars, price tags): each checkout spawns an invoice.
  *
  * A link argument is either the `link_id` as a string or an array carrying `link_id`.
  */

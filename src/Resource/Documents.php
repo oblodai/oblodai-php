@@ -11,7 +11,7 @@ use Oblodai\Core\RequestOptions;
 
 /**
  * Generated PDF/CSV documents. Every method returns the bytes (`FileResult`); large ranges go
- * through asynchronous jobs (`createJob` → `jobInfo` → `jobFile`). Payment key.
+ * through asynchronous jobs (`createJob` → `jobInfo` → `jobFile`).
  *
  * The `$query` arrays accept `lang` (2-letter code, 41 supported), `format` (`pdf`|`csv`) where the
  * document offers CSV, and `from`/`to` (`YYYY-MM-DD`) where it covers a period.
