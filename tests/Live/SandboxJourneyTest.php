@@ -37,7 +37,7 @@ final class SandboxJourneyTest extends LiveTestCase
             'network' => 'tron',
             'order_id' => $orderId,
         ]);
-        self::assertSame(PaymentStatus::Created, self::$invoice->status);
+        self::assertTrue(self::$invoice->status->is(PaymentStatus::Created), 'got ' . self::$invoice->status->value);
         self::assertSame('25.000000', self::$invoice->amount);
 
         // by order_id, not just by uuid

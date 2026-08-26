@@ -68,7 +68,10 @@ final class Page implements IteratorAggregate
             }
             $got = count($page['items']);
             $offset += $got;
-            if ($got === 0 || !$page['paginate']->has_pages) {
+            // Two stops, and both are needed: `has_pages` is the server's own answer, and a page
+            // shorter than the limit means the same thing. Without the second one, a server that
+            // always sets `has_pages` (a bug, or a filtered count) would spin forever.
+            if ($got === 0 || $got < $limit || !$page['paginate']->has_pages) {
                 return;
             }
             $page = ($this->fetchPage)($limit, $offset);

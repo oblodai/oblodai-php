@@ -12,7 +12,10 @@ final class PaymentLinkPayment
     /** @var list<string> */
     public const KEYS = ['uuid', 'amount', 'currency', 'status', 'created_at'];
 
-    /** @param array<string, mixed> $raw */
+    /**
+     * @param array<string, mixed> $raw
+     * @param OpenEnum<PaymentStatus> $status
+     */
     public function __construct(
         /** The invoice's own id (use it in `payments->info()`). */
         public readonly string $uuid,
@@ -21,7 +24,7 @@ final class PaymentLinkPayment
         /** Invoice currency code. */
         public readonly string $currency,
         /** Invoice lifecycle status. */
-        public readonly PaymentStatus $status,
+        public readonly OpenEnum $status,
         /** Creation time (RFC 3339). */
         public readonly string $created_at,
         /** Your order number for this invoice, when one was passed. */

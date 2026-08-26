@@ -1,8 +1,13 @@
 parameters:
     level: max
+    # The codegen's own helpers are exercised by tests/Contract/CodegenTest.php; loading them here
+    # lets PHPStan see the functions without analysing the JSON-shaped emitters themselves.
+    bootstrapFiles:
+        - scripts/codegen/emit.php
     paths:
         - src
         - tests
+        - examples
     # scripts/ is JSON-shaped codegen: its inputs are validated by check-drift and the contract
     # tests, and describing every intermediate shape would obscure more than it proves.
     treatPhpDocTypesAsCertain: false

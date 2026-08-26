@@ -12,7 +12,10 @@ final class PaymentRefund
     /** @var list<string> */
     public const KEYS = ['uuid', 'address', 'amount', 'status', 'is_final', 'txid', 'created_at'];
 
-    /** @param array<string, mixed> $raw */
+    /**
+     * @param array<string, mixed> $raw
+     * @param OpenEnum<PayoutStatus> $status
+     */
     public function __construct(
         /** The refund payout's id. */
         public readonly string $uuid,
@@ -20,7 +23,7 @@ final class PaymentRefund
         public readonly string $address,
         /** Refunded amount, decimal string. */
         public readonly string $amount,
-        public readonly PayoutStatus $status,
+        public readonly OpenEnum $status,
         /** True — the status is final and will not change again. */
         public readonly bool $is_final,
         /** Hash of the outgoing transaction, once broadcast. */

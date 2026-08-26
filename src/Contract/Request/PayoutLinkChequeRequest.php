@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// GENERATED FILE — do not edit. Source: contract/contract.json (core bfca971cce71).
+// GENERATED FILE — do not edit. Source: contract/contract.json (core 7ec04293c426).
 // Regenerate with: composer codegen
 
 namespace Oblodai\Contract\Request;
@@ -17,7 +17,7 @@ final class PayoutLinkChequeRequest implements RequestBody
     public function __construct(
         /**
          * Claim secret from the payout link creation response. Stored only as a hash and never reissued — the cheque can be printed only while you still hold the token.
-         * Example: "nUqx1yG3…".
+         * Example: "nUqx1yG3...".
          */
         public readonly string $claim_token,
         /**

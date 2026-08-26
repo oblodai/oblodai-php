@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Oblodai\Contract\Model;
 
+use JsonSerializable;
+
 /** `POST /v1/webhooks`. */
-final class WebhookEndpoint
+final class WebhookEndpoint implements JsonSerializable
 {
+    use RedactsSecrets;
+
     /** @var list<string> */
     public const KEYS = ['endpoint_id', 'url', 'secret'];
 

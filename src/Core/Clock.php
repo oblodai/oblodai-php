@@ -9,6 +9,12 @@ namespace Oblodai\Core;
  * a host with a drifting clock would get `merchant.bad_signature` on every call. The transport
  * learns the server's time from the `Date` header of a signature-failure response, re-signs once,
  * and keeps the offset only if that re-signed attempt got past authentication.
+ *
+ * The offset is shared by every call made through one client, and calls can interleave (Fibers,
+ * Swoole, ReactPHP — anywhere a request can suspend at its socket). So it is never written blindly:
+ * a call remembers the offset it SIGNED with ({@see Clock::stamp()}) and only ever installs or
+ * reverts an offset when the shared value is still the one it saw ({@see Clock::correctIfUnchanged()}).
+ * Two calls discovering the same skew therefore converge instead of undoing each other.
  */
 class Clock
 {
@@ -28,6 +34,20 @@ class Clock
         return $this->base() + $this->offsetSec;
     }
 
+    /**
+     * The timestamp to sign with, together with the offset that produced it — read as one step, so
+     * a concurrent correction cannot land between the two and leave a call unable to tell which
+     * offset its own signature carries.
+     *
+     * @return array{0: int, 1: int} unix seconds (offset applied), offset used
+     */
+    public function stamp(): array
+    {
+        $offset = $this->offsetSec;
+
+        return [$this->base() + $offset, $offset];
+    }
+
     /** Server-minus-local offset currently applied, seconds. */
     public function offset(): int
     {
@@ -42,8 +62,8 @@ class Clock
         if ($dateHeader === null || trim($dateHeader) === '') {
             return null;
         }
-        $serverTs = strtotime($dateHeader);
-        if ($serverTs === false) {
+        $serverTs = Util::parseHttpDate($dateHeader);
+        if ($serverTs === null) {
             return null;
         }
         $offset = $serverTs - $this->base();
@@ -54,6 +74,21 @@ class Clock
     public function correct(int $offsetSec): void
     {
         $this->offsetSec = $offsetSec;
+    }
+
+    /**
+     * Compare-and-set: install `$offsetSec` only while the shared offset is still `$expected`.
+     * Returns whether this call won. A caller that lost must leave the winner's offset alone —
+     * reverting it would push every other in-flight request back into the skew that just failed.
+     */
+    public function correctIfUnchanged(int $expected, int $offsetSec): bool
+    {
+        if ($this->offsetSec !== $expected) {
+            return false;
+        }
+        $this->offsetSec = $offsetSec;
+
+        return true;
     }
 
     public function reset(): void

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Oblodai\Core;
 
+use DateTimeImmutable;
+use DateTimeZone;
+
 /** Small shared helpers: UUIDs, constant-time comparison, header lookup, clock in milliseconds. */
 final class Util
 {
@@ -58,15 +61,32 @@ final class Util
         return null;
     }
 
+    /**
+     * An HTTP header date in one of the three formats RFC 7231 allows, as unix seconds; null for
+     * anything else.
+     *
+     * `strtotime()` is not a substitute: it reads `-3` as a relative time and `now` as today, so a
+     * garbage `Retry-After` or a mangled `Date` would become a real — and wildly wrong — instant.
+     */
+    public static function parseHttpDate(string $value): ?int
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+        foreach (['D, d M Y H:i:s T', 'l, d-M-y H:i:s T', 'D M j H:i:s Y'] as $format) {
+            $parsed = DateTimeImmutable::createFromFormat($format, $value, new DateTimeZone('GMT'));
+            if ($parsed !== false) {
+                return $parsed->getTimestamp();
+            }
+        }
+
+        return null;
+    }
+
     /** Monotonic-enough wall clock in milliseconds, for timeouts and deadlines. */
     public static function nowMs(): float
     {
         return microtime(true) * 1000;
-    }
-
-    /** @param array<mixed> $value */
-    public static function isList(array $value): bool
-    {
-        return array_is_list($value);
     }
 }

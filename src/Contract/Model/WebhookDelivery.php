@@ -16,6 +16,7 @@ final class WebhookDelivery
     ];
 
     /**
+     * @param OpenEnum<DeliveryStatus> $status
      * @param array<string, mixed>|null $payload
      * @param array<string, mixed>      $raw
      */
@@ -27,7 +28,7 @@ final class WebhookDelivery
         /** Wire event type (for example `invoice.paid`). */
         public readonly string $event_type,
         /** `pending` | `delivered` | `dead`. */
-        public readonly DeliveryStatus $status,
+        public readonly OpenEnum $status,
         /** Number of delivery attempts so far. */
         public readonly int $attempts,
         /** Last transport error, if any. */

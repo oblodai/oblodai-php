@@ -16,6 +16,7 @@ final class BatchInfo
     ];
 
     /**
+     * @param OpenEnum<BatchOnError> $on_error
      * @param list<BatchInfoItem>  $items
      * @param array<string, mixed> $raw
      */
@@ -33,7 +34,7 @@ final class BatchInfo
          */
         public readonly string $status,
         /** Error handling mode the batch was submitted with: `continue` | `stop`. */
-        public readonly BatchOnError $on_error,
+        public readonly OpenEnum $on_error,
         /** Total items in the batch; counted over the whole batch and independent of pagination. */
         public readonly int $total,
         /** Processed successfully. */

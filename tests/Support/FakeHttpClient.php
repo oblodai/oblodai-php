@@ -107,7 +107,30 @@ final class FakeHttpClient implements HttpClient
             $headers[strtolower((string) $name)] = is_scalar($value) ? (string) $value : '';
         }
 
-        return new HttpResponse(is_int($next['status'] ?? null) ? $next['status'] : 200, $headers, $text);
+        $finalUrl = $next['finalUrl'] ?? null;
+
+        return new HttpResponse(
+            is_int($next['status'] ?? null) ? $next['status'] : 200,
+            $headers,
+            $text,
+            is_string($finalUrl) ? $finalUrl : null
+        );
+    }
+
+    /**
+     * Queue an answer that claims to come from somewhere else — an HTTP stack that followed a
+     * redirect behind the SDK's back.
+     *
+     * @return array<string, mixed>
+     */
+    public static function redirected(string $finalUrl, mixed $result = []): array
+    {
+        return [
+            'status' => 200,
+            'body' => ['state' => 0, 'result' => $result],
+            'headers' => [],
+            'finalUrl' => $finalUrl,
+        ];
     }
 
     /** Header of the n-th recorded request, case-insensitively. */

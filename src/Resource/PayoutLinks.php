@@ -29,6 +29,11 @@ final class PayoutLinks extends Resource
      * `POST /v1/payout/link` — reserve funds and mint a claim token (`claim_token`/`claim_url` are
      * returned once). Idempotent by `reference`.
      *
+     * Codes worth branching on: `payout_link.disabled`, `payout.insufficient_funds` (retryable),
+     * `payout.funds_maturing` (retryable), `payout.bad_amount`, `payout.bad_address`,
+     * `payout.reference_collision` (that `reference` already minted a different link),
+     * `merchant.wrong_key_kind`.
+     *
      * @param array<string, mixed>|PayoutLinkRequest $params
      */
     public function create(array|PayoutLinkRequest $params, ?RequestOptions $options = null): PayoutLink
@@ -88,8 +93,15 @@ final class PayoutLinks extends Resource
     }
 
     /**
-     * `POST /v1/payout/link/batch` — SYNCHRONOUS: many links in one signed call, per-element
-     * outcomes. `reference` is required on every item.
+     * `POST /v1/payout/link/batch` — SYNCHRONOUS: at most 500 links in one signed call, with
+     * per-element outcomes, so a 200 can still contain failures — check every `->ok`.
+     * `reference` is required on every item.
+     *
+     * Call-level codes worth branching on: `payout.batch_too_large` (>500), `payout.empty_batch`,
+     * `payout_link.disabled`, `payout.insufficient_funds` (retryable), `merchant.wrong_key_kind`.
+     * Per-element failures arrive as `->error_code` with the vocabulary of `create()`.
+     *
+     * Returns the elements themselves, not the wire's `{items}` wrapper.
      *
      * @param  array<string, mixed>|PayoutLinkBatchRequest $params
      * @return list<BatchElement>
@@ -135,6 +147,11 @@ final class PayoutLinks extends Resource
     /**
      * `POST /v1/claim/{token}` — claim to an address (and passcode when the link has one).
      * No credentials needed.
+     *
+     * Codes worth branching on: `request.not_found` (unknown or spent token),
+     * `payout.bad_address`, `payout.address_network_mismatch`, `payout.memo_required`,
+     * `payout.bad_status` (already claimed, cancelled or expired), `request.rate_limited`
+     * (too many passcode attempts — the link locks after 10).
      *
      * @param array<string, mixed>|ClaimRequest $params
      */

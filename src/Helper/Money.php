@@ -4,16 +4,36 @@ declare(strict_types=1);
 
 namespace Oblodai\Helper;
 
-use InvalidArgumentException;
+use Oblodai\Exception\ConfigException;
 
 /**
  * Amounts are decimal strings; never cast them to float (USDT has 6 decimals, BTC 8, ETH 18 — a
  * double loses the last of those). These helpers compare and add at arbitrary precision by working
  * on the digits themselves, so they need no bcmath.
+ *
+ * Scale is preserved, not normalised: `add('10.000000', '0.5')` is `'10.500000'` and
+ * `subtract('1.5', '0.5')` is `'1.0'`, matching what the gateway echoes back and what the other
+ * SDKs return. Compare with {@see Money::compare()}, never with `===` or `strcmp()` — `'9'` sorts
+ * after `'10'` as text and before it as money.
+ *
+ * Anything that is not a decimal amount is a `ConfigException` (`sdk.bad_amount`), so a caller
+ * catching `OblodaiException` catches it; nothing here throws a native `TypeError`.
  */
 final class Money
 {
-    private const DECIMAL = '/^-?\d+(\.\d+)?$/';
+    /**
+     * `-?` digits, at most one dot, non-empty on both sides of it. Deliberately `[0-9]` and not
+     * `\d`: with a Unicode-aware `\d` an Arabic-Indic digit would pass the check and then be
+     * mangled by the arithmetic below.
+     */
+    private const DECIMAL = '/^-?[0-9]+(\.[0-9]+)?$/';
+
+    /**
+     * Longest amount the helpers accept, characters. No asset needs anything close (BTC's total
+     * supply in satoshi is 16 digits; ETH's smallest unit gives 18 decimals), and the cap keeps a
+     * hostile string from turning digit-by-digit arithmetic into a denial of service.
+     */
+    public const MAX_LENGTH = 64;
 
     /** -1, 0 or 1. */
     public static function compare(string $a, string $b): int
@@ -68,11 +88,36 @@ final class Money
         return strlen($frac);
     }
 
+    /**
+     * Validate an amount without doing anything with it — useful before handing it to the API.
+     *
+     * @throws ConfigException when the string is not a decimal amount the gateway would accept
+     */
+    public static function assertAmount(string $amount): void
+    {
+        self::parts($amount);
+    }
+
     /** @return array{0: bool, 1: string, 2: string} negative, integer digits, fractional digits */
     private static function parts(string $amount): array
     {
+        if (strlen($amount) > self::MAX_LENGTH) {
+            throw new ConfigException(
+                ConfigException::BAD_AMOUNT,
+                sprintf('amount is too long (%d chars, max %d)', strlen($amount), self::MAX_LENGTH),
+                'amount'
+            );
+        }
         if (preg_match(self::DECIMAL, $amount) !== 1) {
-            throw new InvalidArgumentException(sprintf('not a decimal amount: "%s"', $amount));
+            throw new ConfigException(
+                ConfigException::BAD_AMOUNT,
+                sprintf(
+                    'not a decimal amount: %s — expected digits with at most one dot and a non-empty '
+                        . 'integer and fractional part, optionally signed',
+                    json_encode($amount, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                ),
+                'amount'
+            );
         }
         $negative = str_starts_with($amount, '-');
         $body = $negative ? substr($amount, 1) : $amount;

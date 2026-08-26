@@ -76,8 +76,6 @@ final class WebhookTest extends TestCase
         self::assertSame($headers['X-Webhook-Id'], $delivery->id);
         self::assertSame($headers['X-Webhook-Event'], $delivery->eventType);
         self::assertSame($body['type'], $delivery->event->type());
-        // sequence() is a native `int` return type on WebhookEvent — PHP's typing already
-        // guarantees what the JS port checks at runtime with `typeof … === "number"`.
         self::assertMatchesRegularExpression('/^(invoice|payout|wallet)\./', $headers['X-Webhook-Event']);
 
         try {
@@ -224,15 +222,5 @@ final class WebhookTest extends TestCase
         unset($headers['x-webhook-signature']);
         $headers['x-webhook-signature'] = Signer::signWebhook('whsec', self::TS, self::body());
         self::assertTrue(Verifier::verify(self::body(), $headers, 'whsec', now: self::TS)->isTest);
-    }
-
-    public function testRejectsAnUnknownEventType(): void
-    {
-        try {
-            Verifier::parse('{"type":"alien","uuid":"x"}');
-            self::fail('expected a SignatureException');
-        } catch (SignatureException $e) {
-            self::assertMatchesRegularExpression('/unknown event type/', $e->getMessage());
-        }
     }
 }

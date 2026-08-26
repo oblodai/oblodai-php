@@ -18,7 +18,11 @@ final class PayoutEvent implements WebhookEvent
         'document_url', 'created_at', 'updated_at', 'event_at', 'sequence',
     ];
 
-    /** @param array<string, mixed> $raw */
+    /**
+     * @param array<string, mixed> $raw
+     * @param OpenEnum<PayoutStatus> $status
+     * @param OpenEnum<FeeBearerResult> $fee_bearer
+     */
     public function __construct(
         /** Always `"payout"`. */
         public readonly string $type,
@@ -27,7 +31,7 @@ final class PayoutEvent implements WebhookEvent
         /** Merchant reference; null for refunds (they are keyed by `reference`/`refund_for`). */
         public readonly ?string $order_id,
         /** Where the payout stands after this change. */
-        public readonly PayoutStatus $status,
+        public readonly OpenEnum $status,
         /** True — the status is final and will not change again. */
         public readonly bool $is_final,
         /** Amount sent, decimal string. */
@@ -44,7 +48,7 @@ final class PayoutEvent implements WebhookEvent
         /** Our commission on this payout. */
         public readonly string $commission,
         /** Who actually bore the network fee. */
-        public readonly FeeBearerResult $fee_bearer,
+        public readonly OpenEnum $fee_bearer,
         /** Balance the payout was funded from (`business` | `personal`). */
         public readonly string $source,
         /** True — a human must approve before broadcasting. */
@@ -65,8 +69,11 @@ final class PayoutEvent implements WebhookEvent
         public readonly string $updated_at,
         /** When the state change was committed — order events by this, or by `sequence`. */
         public readonly string $event_at,
-        /** Global, increasing (gaps are normal); a lower sequence arriving later is stale. */
-        public readonly int $sequence,
+        /**
+         * Global, increasing (gaps are normal); a lower sequence arriving later is stale. Null when
+         * the core sent no sequence at all — such an event is never reported as stale.
+         */
+        public readonly ?int $sequence,
         /**
          * Present and true ONLY on rehearsal deliveries (`webhooks.test`, sandbox). The body is
          * signed like a live one, so a handler must check this flag (or the `X-Webhook-Test`
@@ -105,7 +112,7 @@ final class PayoutEvent implements WebhookEvent
             Wire::str($data, 'created_at'),
             Wire::str($data, 'updated_at'),
             Wire::str($data, 'event_at'),
-            Wire::int($data, 'sequence'),
+            Wire::nullableInt($data, 'sequence'),
             Wire::nullableBool($data, 'test'),
             $data,
         );
@@ -121,7 +128,7 @@ final class PayoutEvent implements WebhookEvent
         return $this->uuid;
     }
 
-    public function sequence(): int
+    public function sequence(): ?int
     {
         return $this->sequence;
     }

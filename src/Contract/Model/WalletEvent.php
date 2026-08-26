@@ -39,8 +39,11 @@ final class WalletEvent implements WebhookEvent
         public readonly string $txid,
         /** When the state change was committed — order events by this, or by `sequence`. */
         public readonly string $event_at,
-        /** Global, increasing (gaps are normal); a lower sequence arriving later is stale. */
-        public readonly int $sequence,
+        /**
+         * Global, increasing (gaps are normal); a lower sequence arriving later is stale. Null when
+         * the core sent no sequence at all — such an event is never reported as stale.
+         */
+        public readonly ?int $sequence,
         /**
          * Present and true ONLY on rehearsal deliveries (`webhooks.test`, sandbox). The body is
          * signed like a live one, so a handler must check this flag (or the `X-Webhook-Test`
@@ -68,7 +71,7 @@ final class WalletEvent implements WebhookEvent
             Wire::str($data, 'payment_amount'),
             Wire::str($data, 'txid'),
             Wire::str($data, 'event_at'),
-            Wire::int($data, 'sequence'),
+            Wire::nullableInt($data, 'sequence'),
             Wire::nullableBool($data, 'test'),
             $data,
         );
@@ -84,7 +87,7 @@ final class WalletEvent implements WebhookEvent
         return $this->uuid;
     }
 
-    public function sequence(): int
+    public function sequence(): ?int
     {
         return $this->sequence;
     }

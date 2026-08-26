@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Oblodai;
 
+use JsonSerializable;
 use Oblodai\Core\Credentials;
+use Oblodai\Core\Secret;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Log\ConsoleLogger;
 use Oblodai\Log\Logger;
@@ -17,17 +19,45 @@ use Oblodai\Log\Logger;
  * `OBLODAI_PAYOUT_SECRET`, `OBLODAI_BASE_URL`, `OBLODAI_ADMIN_TOKEN`, `OBLODAI_ALLOW_INSECURE`,
  * `OBLODAI_LOG`.
  */
-final class Config
+final class Config implements JsonSerializable
 {
     public const DEFAULT_BASE_URL = 'https://api.oblodai.com';
+
+    /** Admin token of a self-hosted gateway; sent as `X-Admin-Token` on `onboard` routes only. */
+    public readonly ?Secret $adminToken;
 
     public function __construct(
         public readonly string $baseUrl,
         public readonly ?Credentials $credentials = null,
         public readonly ?Credentials $payoutCredentials = null,
         public readonly ?Logger $logger = null,
-        public readonly ?string $adminToken = null,
+        Secret|string|null $adminToken = null,
     ) {
+        $this->adminToken = $adminToken === null || $adminToken === ''
+            ? null
+            : ($adminToken instanceof Secret ? $adminToken : new Secret($adminToken));
+    }
+
+    /**
+     * Everything about the client that is safe to log. Secrets are not part of it — neither here
+     * nor through the credentials, which redact themselves.
+     *
+     * @return array<string, mixed>
+     */
+    public function jsonSerialize(): array
+    {
+        return [
+            'baseUrl' => $this->baseUrl,
+            'publicId' => $this->credentials?->publicId,
+            'payoutPublicId' => $this->payoutCredentials?->publicId,
+            'adminToken' => $this->adminToken === null ? null : Secret::REDACTED,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function __debugInfo(): array
+    {
+        return $this->jsonSerialize();
     }
 
     /**
@@ -36,13 +66,12 @@ final class Config
      */
     public static function resolve(array $options = [], ?array $env = null): self
     {
+        // An empty value means "not set" whether it came from the real environment or from an
+        // injected map — otherwise `OBLODAI_SECRET=` would configure a client that signs with ''.
         $read = static function (string $name) use ($env): ?string {
-            if ($env !== null) {
-                return $env[$name] ?? null;
-            }
-            $value = getenv($name);
+            $value = $env !== null ? ($env[$name] ?? null) : getenv($name);
 
-            return $value === false || $value === '' ? null : $value;
+            return $value === false || $value === null || $value === '' ? null : $value;
         };
 
         $baseUrl = rtrim($options['baseUrl'] ?? $read('OBLODAI_BASE_URL') ?? self::DEFAULT_BASE_URL, '/');

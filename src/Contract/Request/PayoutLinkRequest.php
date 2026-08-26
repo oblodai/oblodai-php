@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// GENERATED FILE — do not edit. Source: contract/contract.json (core bfca971cce71).
+// GENERATED FILE — do not edit. Source: contract/contract.json (core 7ec04293c426).
 // Regenerate with: composer codegen
 
 namespace Oblodai\Contract\Request;
@@ -50,7 +50,7 @@ final class PayoutLinkRequest implements RequestBody
         public readonly string|FeeBearer|null $fee_bearer = null,
         /**
          * Message to the recipient (shown on the claim page and in the email).
-         * Example: "Спасибо за участие".
+         * Example: "Thank you for taking part".
          */
         public readonly ?string $note = null,
         /**
@@ -65,7 +65,7 @@ final class PayoutLinkRequest implements RequestBody
         public readonly ?string $reference = null,
         /**
          * Title — shown to the recipient on the claim page.
-         * Example: "Бонус".
+         * Example: "Bonus".
          */
         public readonly ?string $title = null,
     ) {

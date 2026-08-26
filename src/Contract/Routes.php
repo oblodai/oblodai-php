@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// GENERATED FILE — do not edit. Source: contract/contract.json (core bfca971cce71).
+// GENERATED FILE — do not edit. Source: contract/contract.json (core 7ec04293c426).
 // Regenerate with: composer codegen
 
 namespace Oblodai\Contract;
@@ -126,6 +126,14 @@ final class Routes
         'POST /v1/webhooks/deliveries' => ['method' => 'POST', 'path' => '/v1/webhooks/deliveries', 'auth' => 'payment', 'idempotent' => false, 'safe' => true, 'bare' => false, 'list' => 'paged'],
         'POST /v1/webhooks/rotate-secret' => ['method' => 'POST', 'path' => '/v1/webhooks/rotate-secret', 'auth' => 'payout', 'idempotent' => false, 'safe' => false, 'bare' => false, 'list' => null],
     ];
+
+    /**
+     * Request fields the contract declares as JSON numbers. Every other numeric-looking field
+     * is a decimal string; `RequestBuilder::serializeBody()` rejects a float for it.
+     *
+     * @var list<string>
+     */
+    public const NUMBER_FIELDS = ['accuracy_payment_percent'];
 
     /** @var array<string, RouteSpec> */
     private static array $cache = [];

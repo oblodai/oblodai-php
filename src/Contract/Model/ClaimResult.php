@@ -15,7 +15,10 @@ final class ClaimResult
         'payer_amount', 'fee_bearer', 'fee_type',
     ];
 
-    /** @param array<string, mixed> $raw */
+    /**
+     * @param array<string, mixed> $raw
+     * @param OpenEnum<FeeBearer> $fee_bearer
+     */
     public function __construct(
         /** The payout that pays the recipient (look it up with `payouts->info()`). */
         public readonly string $payout_id,
@@ -38,7 +41,7 @@ final class ClaimResult
         /** How much actually reaches the recipient's address. Null while unpriced. */
         public readonly ?string $payer_amount,
         /** Who is asked to bear the network fee. */
-        public readonly FeeBearer $fee_bearer,
+        public readonly OpenEnum $fee_bearer,
         /** Pricing mode behind `commission` (`percent`/`fixed`/…). Open vocabulary. */
         public readonly string $fee_type,
         /** The wire body as received, including any field newer than this SDK. */

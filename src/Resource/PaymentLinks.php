@@ -23,7 +23,11 @@ use Oblodai\Core\RequestOptions;
 final class PaymentLinks extends Resource
 {
     /**
-     * `POST /v1/payment/link`.
+     * `POST /v1/payment/link` — mint a reusable link; each checkout spawns an invoice.
+     *
+     * Codes worth branching on: `invoice.bad_price`, `payment.bad_amount`,
+     * `request.unknown_currency`, `payment.unsupported_network`, `payment.below_minimum`,
+     * `idempotency.key_reused`.
      *
      * @param array<string, mixed>|PaymentLinkRequest $params
      */

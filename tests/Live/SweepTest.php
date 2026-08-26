@@ -228,7 +228,7 @@ final class SweepTest extends LiveTestCase
         ]);
         $link = self::$link;
         self::assertNotNull($link->claim_token);
-        self::assertSame(PayoutLinkStatus::Funded, self::$ob->payoutLinks->get($link->link_id)->status);
+        self::assertTrue(self::$ob->payoutLinks->get($link->link_id)->status->is(PayoutLinkStatus::Funded));
         self::assertNotEmpty(self::$ob->payoutLinks->list(['limit' => 5])->items());
         self::assertTrue(self::$pub->payoutLinks->claimPreview((string) $link->claim_token)->claimable);
 
@@ -238,7 +238,7 @@ final class SweepTest extends LiveTestCase
         $second = self::$ob->payoutLinks->create([
             'amount' => '1', 'currency' => 'USDT', 'network' => 'tron', 'reference' => self::uniqueId('sw-pl2'),
         ]);
-        self::assertSame(PayoutLinkStatus::Cancelled, self::$ob->payoutLinks->cancel($second->link_id)->status);
+        self::assertTrue(self::$ob->payoutLinks->cancel($second->link_id)->status->is(PayoutLinkStatus::Cancelled));
 
         $batch = self::$ob->payoutLinks->batch([
             'items' => [[

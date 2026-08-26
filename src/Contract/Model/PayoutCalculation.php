@@ -12,7 +12,10 @@ final class PayoutCalculation
     /** @var list<string> */
     public const KEYS = ['amount', 'currency', 'network', 'commission', 'payer_amount', 'fee_bearer', 'fee_type'];
 
-    /** @param array<string, mixed> $raw */
+    /**
+     * @param array<string, mixed> $raw
+     * @param OpenEnum<FeeBearerResult> $fee_bearer
+     */
     public function __construct(
         /** Payout amount in currency. Null when the asset cannot be priced right now. */
         public readonly ?string $amount,
@@ -25,7 +28,7 @@ final class PayoutCalculation
         /** How much would actually reach the recipient's address. Null — unpriced. */
         public readonly ?string $payer_amount,
         /** Who would pay the network fee: gateway, merchant, or recipient. */
-        public readonly FeeBearerResult $fee_bearer,
+        public readonly OpenEnum $fee_bearer,
         /** Pricing mode behind `commission` (`percent`/`fixed`/…). Open vocabulary. */
         public readonly string $fee_type,
         /** The wire body as received, including any field newer than this SDK. */

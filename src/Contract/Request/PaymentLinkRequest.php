@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// GENERATED FILE — do not edit. Source: contract/contract.json (core bfca971cce71).
+// GENERATED FILE — do not edit. Source: contract/contract.json (core 7ec04293c426).
 // Regenerate with: composer codegen
 
 namespace Oblodai\Contract\Request;
@@ -59,7 +59,7 @@ final class PaymentLinkRequest implements RequestBody
         public readonly string|Network|null $pinned_network = null,
         /**
          * Title on the payment page.
-         * Example: "Поддержать проект".
+         * Example: "Support the project".
          */
         public readonly ?string $title = null,
     ) {

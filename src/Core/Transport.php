@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Oblodai\Core;
 
 use Oblodai\Contract\RouteSpec;
+use Oblodai\Exception\ApiException;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\ContractException;
 use Oblodai\Exception\OblodaiException;
@@ -13,7 +14,7 @@ use Oblodai\Http\HttpClient;
 use Oblodai\Http\HttpRequest;
 use Oblodai\Http\HttpResponse;
 use Oblodai\Log\Logger;
-use Oblodai\Log\NullLogger;
+use Oblodai\Log\RedactingLogger;
 use Oblodai\Log\Redactor;
 
 /**
@@ -49,11 +50,11 @@ final class Transport
         /** Extra headers on every request. Never signed material. */
         private readonly array $headers = [],
         /** Sent as `X-Admin-Token` on `onboard` routes only. */
-        private readonly ?string $adminToken = null,
+        private readonly ?Secret $adminToken = null,
     ) {
         $this->retry = $retry ?? new Retry();
         $this->clock = $clock ?? new Clock();
-        $this->logger = $logger ?? new NullLogger();
+        $this->logger = RedactingLogger::wrap($logger);
     }
 
     /**
@@ -152,11 +153,11 @@ final class Transport
         $attempt = 0;
         $skewTried = false;
         $skewBefore = 0;
+        $skewInstalled = 0;
         for (;;) {
-            $extraHeaders = $this->headers;
-            if ($route->auth === 'onboard' && $this->adminToken !== null) {
-                $extraHeaders['X-Admin-Token'] = $this->adminToken;
-            }
+            // Sign with the offset as it stands NOW, and remember which offset that was: another
+            // call sharing this client may correct the clock while this request is on the wire.
+            [$ts, $signedOffset] = $this->clock->stamp();
             $request = RequestBuilder::build(
                 baseUrl: $this->baseUrl,
                 route: $route,
@@ -165,9 +166,11 @@ final class Transport
                 body: $serialized,
                 credentials: $this->credentialsFor($route, $options->preferPayoutKey),
                 idempotencyKey: $idempotencyKey,
-                ts: $this->clock->now(),
+                ts: $ts,
                 userAgent: $this->userAgent,
-                extraHeaders: $extraHeaders,
+                extraHeaders: self::mergeHeaders($this->headers, $options->headers),
+                adminToken: $this->adminToken?->reveal(),
+                maxResponseBytes: $route->bare ? HttpRequest::MAX_FILE_BYTES : HttpRequest::MAX_JSON_BYTES,
             );
             $this->logger->debug('request', ['route' => $label, 'attempt' => $attempt]);
 
@@ -183,6 +186,8 @@ final class Transport
 
                 throw $err;
             }
+
+            $this->assertNotRedirected($request, $response);
 
             if ($response->status >= 200 && $response->status < 300) {
                 return $response;
@@ -201,19 +206,28 @@ final class Transport
             if ($response->status === 401 && in_array($failure->errorCode, self::SIGNATURE_FAILURE_CODES, true)) {
                 if (!$skewTried) {
                     $offset = $this->clock->observeServerDate($response->header('date'));
-                    if ($offset !== null && abs($offset - $this->clock->offset()) > Signer::SKEW_SECONDS / 2) {
+                    // Compare against the offset THIS request was signed with, not against whatever
+                    // the shared clock says now: if a concurrent call already corrected it, this
+                    // request simply retries with the corrected time instead of measuring again.
+                    if ($offset !== null && abs($offset - $signedOffset) > Signer::SKEW_SECONDS / 2) {
                         $this->logger->warning('clock skew detected; re-signing with server time', [
                             'route' => $label,
                             'offsetSec' => $offset,
                         ]);
                         $skewTried = true;
-                        $skewBefore = $this->clock->offset();
-                        $this->clock->correct($offset);
+                        $skewBefore = $signedOffset;
+                        $skewInstalled = $offset;
+                        $this->clock->correctIfUnchanged($signedOffset, $offset);
 
                         continue;
                     }
-                } else {
-                    $this->clock->correct($skewBefore); // the corrected timestamp did not help
+                    if ($offset !== null && $signedOffset !== $this->clock->offset()) {
+                        continue; // someone else corrected the clock mid-flight; retry as signed now
+                    }
+                } elseif ($skewInstalled !== $skewBefore) {
+                    // The corrected timestamp did not help. Roll back only while the shared offset
+                    // is still the one this call installed — never undo a later, better correction.
+                    $this->clock->correctIfUnchanged($skewInstalled, $skewBefore);
                 }
             }
 
@@ -226,6 +240,57 @@ final class Transport
 
             throw $failure;
         }
+    }
+
+    /**
+     * Client-wide headers with the per-call ones on top. Names are matched case-insensitively, so
+     * `x-shop` on a call replaces `X-Shop` on the client instead of travelling beside it.
+     *
+     * @param  array<string, string> $base
+     * @param  array<string, string> $overrides
+     * @return array<string, string>
+     */
+    private static function mergeHeaders(array $base, array $overrides): array
+    {
+        if ($overrides === []) {
+            return $base;
+        }
+        $shadowed = array_map(strtolower(...), array_keys($overrides));
+        $merged = [];
+        foreach ($base as $name => $value) {
+            if (!in_array(strtolower($name), $shadowed, true)) {
+                $merged[$name] = $value;
+            }
+        }
+
+        return $merged + $overrides;
+    }
+
+    /**
+     * An HTTP stack that followed a redirect behind the SDK's back answered from a URL the caller
+     * never signed for. The signature covers method + request URI, so the body cannot be trusted —
+     * it is the same failure as a 3xx, and gets the same error.
+     */
+    private function assertNotRedirected(HttpRequest $request, HttpResponse $response): void
+    {
+        if ($response->finalUrl === null || $response->finalUrl === '' || $response->finalUrl === $request->url) {
+            return;
+        }
+
+        throw ApiException::from(
+            $response->status,
+            [
+                'code' => 'internal',
+                'message' => sprintf(
+                    'unexpected redirect: %s answered from %s; the HTTP client is following '
+                        . 'redirects, which the SDK never does — check baseUrl and the client config',
+                    $request->url,
+                    $response->finalUrl
+                ),
+            ],
+            $response->body,
+            true,
+        );
     }
 
     /** Which key pair signs a route. `any` routes take the payment key unless told otherwise. */

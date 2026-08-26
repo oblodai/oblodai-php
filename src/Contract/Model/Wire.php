@@ -15,6 +15,9 @@ use ReflectionClass;
  */
 final class Wire
 {
+    /** Opt-in: make an unknown closed-vocabulary value throw instead of decoding openly. */
+    private static bool $strict = false;
+
     /** @param array<string, mixed> $data */
     public static function str(array $data, string $key, string $default = ''): string
     {
@@ -59,12 +62,32 @@ final class Wire
         return is_numeric($value) ? (float) $value : $default;
     }
 
-    /** @param array<string, mixed> $data */
+    /**
+     * A boolean field. A proxy or a lax serializer may hand over the string `"false"`, which PHP's
+     * own cast turns into `true` — the one wrong answer that matters, since these fields gate
+     * refunds and finality. Strings are read as the words they are; anything unrecognised falls back
+     * to the documented default.
+     *
+     * @param array<string, mixed> $data
+     */
     public static function bool(array $data, string $key, bool $default = false): bool
     {
         $value = $data[$key] ?? null;
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (is_int($value) || is_float($value)) {
+            return $value != 0;
+        }
+        if (is_string($value)) {
+            return match (strtolower(trim($value))) {
+                'true', '1', 'yes', 'on' => true,
+                'false', '0', 'no', 'off', '' => false,
+                default => $default,
+            };
+        }
 
-        return is_bool($value) ? $value : (is_scalar($value) ? (bool) $value : $default);
+        return $default;
     }
 
     /** @param array<string, mixed> $data */
@@ -193,32 +216,53 @@ final class Wire
     }
 
     /**
-     * A closed vocabulary field. An unknown value is contract drift, not a runtime guess, so it
-     * raises `ContractException` — loud in tests, and never a silently wrong branch in production.
+     * A closed-vocabulary field, decoded openly: the result always carries the raw wire string and
+     * carries the typed case only when this contract snapshot knows the value.
+     *
+     * The gateway adds statuses without asking; a webhook receiver that threw on the first unknown
+     * one would answer 500 to an authentic delivery and have it redelivered for a day. Turn
+     * {@see Wire::strict()} on in tests (never in production) to make drift loud instead.
      *
      * @template T of BackedEnum
      *
-     * @param  array<string, mixed> $data
-     * @param  class-string<T>      $enum
-     * @return T
+     * @param array<string, mixed> $data
+     * @param class-string<T>      $enum
+     * @param T|null               $default used when the field is absent or empty
+     *
+     * @return OpenEnum<T>
      */
-    public static function enum(string $enum, array $data, string $key, ?BackedEnum $default = null): BackedEnum
+    public static function enum(string $enum, array $data, string $key, ?BackedEnum $default = null): OpenEnum
     {
         $value = self::str($data, $key);
-        $case = $enum::tryFrom($value);
-        if ($case !== null) {
-            return $case;
+        if ($value === '' && $default instanceof $enum) {
+            return OpenEnum::of($enum, (string) $default->value);
         }
-        if ($default instanceof $enum) {
-            return $default;
+        $decoded = OpenEnum::of($enum, $value);
+        if (self::$strict && !$decoded->isKnown()) {
+            throw new ContractException(sprintf(
+                'the core sent "%s" for `%s`, which is outside the %s vocabulary of this contract '
+                    . 'snapshot — upgrade the SDK (strict vocabulary mode is on)',
+                $value,
+                $key,
+                (new ReflectionClass($enum))->getShortName()
+            ));
         }
 
-        throw new ContractException(sprintf(
-            'the core sent "%s" for `%s`, which is outside the %s vocabulary of this contract '
-                . 'snapshot — upgrade the SDK',
-            $value,
-            $key,
-            (new ReflectionClass($enum))->getShortName()
-        ));
+        return $decoded;
+    }
+
+    /**
+     * Opt-in drift detector: with strict mode on, a closed-vocabulary value outside this snapshot
+     * raises `ContractException` instead of decoding to an unknown {@see OpenEnum}. Meant for test
+     * suites and staging; production receivers should stay permissive.
+     */
+    public static function strict(bool $on = true): void
+    {
+        self::$strict = $on;
+    }
+
+    public static function isStrict(): bool
+    {
+        return self::$strict;
     }
 }

@@ -37,6 +37,88 @@ final class RoutesTest extends TestCase
         self::assertSame(self::sortedKeys($declared), self::sortedKeys(array_fill_keys(Routes::keys(), true)));
     }
 
+    /**
+     * Not just the key set: every FLAG of every route must equal what the core exported. `safe` in
+     * particular decides whether a failed write may be re-sent, and it is the core's own
+     * hand-classification — nothing in the SDK is allowed to infer it from the path.
+     */
+    public function testEveryRegistryRowEqualsTheContractFieldByField(): void
+    {
+        $checked = 0;
+        foreach ((array) Fixtures::contract()['routes'] as $route) {
+            self::assertIsArray($route);
+            $method = $route['method'] ?? null;
+            $path = $route['path'] ?? null;
+            self::assertIsString($method);
+            self::assertIsString($path);
+            $key = $method . ' ' . $path;
+            if (!isset(Routes::SPECS[$key])) {
+                continue; // infrastructure endpoint, excluded from the merchant surface
+            }
+            self::assertArrayHasKey('safe', $route, $key . ': the contract must declare `safe`');
+            self::assertSame(
+                [],
+                self::mismatches($route, Routes::SPECS[$key]),
+                $key . ': generated registry disagrees with contract.json'
+            );
+            ++$checked;
+        }
+        self::assertSame(count(Routes::SPECS), $checked);
+    }
+
+    /**
+     * The comparison above must actually be able to fail. Feed it a row with one flag flipped and
+     * it has to name that flag — otherwise a drifted registry would ship green.
+     *
+     * @return iterable<string, array{string, mixed}>
+     */
+    public static function flippedFields(): iterable
+    {
+        yield 'method' => ['method', 'GET'];
+        yield 'path' => ['path', '/v1/elsewhere'];
+        yield 'auth' => ['auth', 'public'];
+        yield 'idempotent' => ['idempotent', false];
+        yield 'safe' => ['safe', true];
+        yield 'bare' => ['bare', true];
+        yield 'list' => ['list', 'paged'];
+    }
+
+    #[DataProvider('flippedFields')]
+    public function testTheFieldByFieldCheckCatchesAFlippedFlag(string $field, mixed $value): void
+    {
+        $key = 'POST /v1/payout';
+        $spec = Routes::SPECS[$key];
+        $contractRow = ['method' => 'POST', 'path' => '/v1/payout', 'auth' => 'payout',
+            'idempotent' => true, 'safe' => false, 'bare' => false];
+
+        self::assertSame([], self::mismatches($contractRow, $spec), 'the unflipped row must match');
+
+        $contractRow[$field] = $value;
+        self::assertSame([$field], self::mismatches($contractRow, $spec));
+    }
+
+    /**
+     * Fields of the contract row that the generated spec does not reproduce.
+     *
+     * @param  array<mixed>         $route
+     * @param  array<string, mixed> $spec
+     * @return list<string>
+     */
+    private static function mismatches(array $route, array $spec): array
+    {
+        $out = [];
+        foreach (['method', 'path', 'auth', 'idempotent', 'safe', 'bare'] as $field) {
+            if (($route[$field] ?? null) !== ($spec[$field] ?? null)) {
+                $out[] = $field;
+            }
+        }
+        if ((($route['list'] ?? null) ?: null) !== ($spec['list'] ?? null)) {
+            $out[] = 'list';
+        }
+
+        return $out;
+    }
+
     public function testEveryRecordedFixtureBelongsToAKnownRoute(): void
     {
         foreach (array_keys(Fixtures::all()) as $route) {
