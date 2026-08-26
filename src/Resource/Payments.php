@@ -21,7 +21,7 @@ use Oblodai\Core\Page;
 use Oblodai\Core\RequestOptions;
 
 /**
- * Invoices: create, look up, cancel, list, and the payer-facing checkout endpoints. Payment key.
+ * Invoices: create, look up, cancel, list, and the payer-facing checkout endpoints.
  *
  * A lookup argument is either the invoice `uuid` as a string or an array with `uuid` or `order_id`.
  */
