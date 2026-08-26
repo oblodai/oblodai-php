@@ -22,21 +22,14 @@ final class RequestOptions
         public readonly ?int $timeoutMs = null,
         /** Overall budget for this call including retries and pauses, ms. Defaults to the client's. */
         public readonly ?int $deadlineMs = null,
-        /** Sign with the payout key on a route that accepts either kind (e.g. `batches.info`). */
-        public readonly bool $preferPayoutKey = false,
         /** Extra headers for this call only, merged over the client's own. */
         public readonly array $headers = [],
     ) {
     }
 
-    public function withPreferPayoutKey(bool $prefer = true): self
-    {
-        return new self($this->idempotencyKey, $this->timeoutMs, $this->deadlineMs, $prefer, $this->headers);
-    }
-
     /** List pages must never carry the caller's key: the core would replay page 1 forever. */
     public function withoutIdempotencyKey(): self
     {
-        return new self(null, $this->timeoutMs, $this->deadlineMs, $this->preferPayoutKey, $this->headers);
+        return new self(null, $this->timeoutMs, $this->deadlineMs, $this->headers);
     }
 }

@@ -16,7 +16,7 @@ use Oblodai\Core\RequestOptions;
 final class Merchants extends Resource
 {
     /**
-     * `POST /v1/merchants` — create a merchant and mint its payment and payout keys (shown once).
+     * `POST /v1/merchants` — create a merchant and mint its API key (the secret is shown once).
      *
      * @param array<string, mixed>|MerchantsRequest $params
      */

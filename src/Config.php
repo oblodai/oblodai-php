@@ -15,9 +15,8 @@ use Oblodai\Log\Logger;
  * Client configuration: explicit options merged with the environment, validated up front so a
  * misconfiguration fails at construction rather than on the first payout.
  *
- * Environment: `OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`, `OBLODAI_PAYOUT_PUBLIC_ID`,
- * `OBLODAI_PAYOUT_SECRET`, `OBLODAI_BASE_URL`, `OBLODAI_ADMIN_TOKEN`, `OBLODAI_ALLOW_INSECURE`,
- * `OBLODAI_LOG`.
+ * Environment: `OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`, `OBLODAI_ADMIN_TOKEN`, `OBLODAI_BASE_URL`,
+ * `OBLODAI_LOG`, `OBLODAI_ALLOW_INSECURE`.
  */
 final class Config implements JsonSerializable
 {
@@ -29,7 +28,6 @@ final class Config implements JsonSerializable
     public function __construct(
         public readonly string $baseUrl,
         public readonly ?Credentials $credentials = null,
-        public readonly ?Credentials $payoutCredentials = null,
         public readonly ?Logger $logger = null,
         Secret|string|null $adminToken = null,
     ) {
@@ -49,7 +47,6 @@ final class Config implements JsonSerializable
         return [
             'baseUrl' => $this->baseUrl,
             'publicId' => $this->credentials?->publicId,
-            'payoutPublicId' => $this->payoutCredentials?->publicId,
             'adminToken' => $this->adminToken === null ? null : Secret::REDACTED,
         ];
     }
@@ -61,7 +58,7 @@ final class Config implements JsonSerializable
     }
 
     /**
-     * @param array{publicId?: ?string, secret?: ?string, payoutPublicId?: ?string, payoutSecret?: ?string, baseUrl?: ?string, adminToken?: ?string, logger?: ?Logger, allowInsecureBaseUrl?: ?bool} $options
+     * @param array{publicId?: ?string, secret?: ?string, baseUrl?: ?string, adminToken?: ?string, logger?: ?Logger, allowInsecureBaseUrl?: ?bool} $options
      * @param array<string, string>|null $env null reads the process environment
      */
     public static function resolve(array $options = [], ?array $env = null): self
@@ -85,14 +82,6 @@ final class Config implements JsonSerializable
                 'publicId and secret must be provided together (or set both OBLODAI_PUBLIC_ID and OBLODAI_SECRET)'
             );
         }
-        $payoutPublicId = $options['payoutPublicId'] ?? $read('OBLODAI_PAYOUT_PUBLIC_ID');
-        $payoutSecret = $options['payoutSecret'] ?? $read('OBLODAI_PAYOUT_SECRET');
-        if (($payoutPublicId !== null) !== ($payoutSecret !== null)) {
-            throw new ConfigException(
-                ConfigException::BAD_CONFIG,
-                'payoutPublicId and payoutSecret must be provided together'
-            );
-        }
 
         $logger = $options['logger'] ?? null;
         $level = strtolower((string) $read('OBLODAI_LOG'));
@@ -103,9 +92,6 @@ final class Config implements JsonSerializable
         return new self(
             baseUrl: $baseUrl,
             credentials: $publicId !== null && $secret !== null ? new Credentials($publicId, $secret) : null,
-            payoutCredentials: $payoutPublicId !== null && $payoutSecret !== null
-                ? new Credentials($payoutPublicId, $payoutSecret)
-                : null,
             logger: $logger,
             adminToken: $options['adminToken'] ?? $read('OBLODAI_ADMIN_TOKEN'),
         );

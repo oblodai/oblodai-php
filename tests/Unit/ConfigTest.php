@@ -63,7 +63,7 @@ final class ConfigTest extends TestCase
         }
 
         try {
-            Config::resolve(['payoutPublicId' => 'wk'], []);
+            Config::resolve([], ['OBLODAI_SECRET' => 's']);
             self::fail('expected a ConfigException');
         } catch (ConfigException $e) {
             self::assertMatchesRegularExpression('/together/', $e->getMessage());

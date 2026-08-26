@@ -36,10 +36,8 @@ final class Transport
         private readonly string $baseUrl,
         private readonly HttpClient $http,
         private readonly string $userAgent,
-        /** Used for `payment`/`any` routes, and for `payout` routes when no payout key exists. */
+        /** The merchant's one API key; signs every route the core gates with `key`. */
         private readonly ?Credentials $credentials = null,
-        /** Optional second key pair for `payout` routes (the core issues separate key kinds). */
-        private readonly ?Credentials $payoutCredentials = null,
         /** Per-attempt timeout, ms. */
         private readonly int $timeoutMs = 30000,
         /** Overall budget for a call including retries and pauses, ms. */
@@ -164,7 +162,7 @@ final class Transport
                 pathParams: $pathParams,
                 query: $query,
                 body: $serialized,
-                credentials: $this->credentialsFor($route, $options->preferPayoutKey),
+                credentials: $this->credentials,
                 idempotencyKey: $idempotencyKey,
                 ts: $ts,
                 userAgent: $this->userAgent,
@@ -291,16 +289,6 @@ final class Transport
             $response->body,
             true,
         );
-    }
-
-    /** Which key pair signs a route. `any` routes take the payment key unless told otherwise. */
-    private function credentialsFor(RouteSpec $route, bool $preferPayout): ?Credentials
-    {
-        if ($route->auth === 'payout' || ($route->auth === 'any' && $preferPayout)) {
-            return $this->payoutCredentials ?? $this->credentials;
-        }
-
-        return $this->credentials;
     }
 
     private function classify(RouteSpec $route, HttpResponse $response): OblodaiException

@@ -210,10 +210,16 @@ final class ModelRows
             [
                 'POST /v1/merchants',
                 static fn (array $r): mixed => $r['api_key'],
-                ['public_id', 'secret', 'kind'],
+                M\ApiKeyPair::KEYS,
                 [],
             ],
             ['POST /v1/merchants/{id}/sandbox', static fn (array $r): mixed => $r, M\SandboxStore::KEYS, []],
+            [
+                'POST /v1/merchants/{id}/sandbox',
+                static fn (array $r): mixed => $r['api_key'],
+                M\ApiKeyPair::KEYS,
+                [],
+            ],
         ];
     }
 

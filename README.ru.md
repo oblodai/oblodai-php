@@ -48,43 +48,39 @@ PHP 8.1 или новее с `ext-json` и `ext-curl`. Composer подтянет
 
 ## Где взять ключи
 
-Ключи выпускаются в кабинете [my.oblodai.com](https://my.oblodai.com) → **API keys**. Каждый ключ —
-это публичный идентификатор и секрет; секрет только подписывает запрос и никогда не передаётся.
+У мерчанта **один** API-ключ, он выпускается в кабинете
+[my.oblodai.com](https://my.oblodai.com) → **API keys**. Это публичный идентификатор и секрет;
+секрет только подписывает запрос и никогда не передаётся.
 
-| ключ                             | публичный id          | секрет                | что открывает                                                                               |
-| -------------------------------- | --------------------- | --------------------- | --------------------------------------------------------------------------------------------- |
-| **боевой API-ключ**              | `oblodai_<hex>`       | `oblodai_live_<hex>`  | весь мерчантский API — единый ключ и на приём, и на вывод денег                                 |
-| **боевой платёжный ключ** (устар.) | `oblodai_pk_<hex>`  | `oblodai_live_<hex>`  | приём денег и всё только на чтение: инвойсы, ссылки, кошельки, документы, баланс, справочники   |
-| **боевой выплатной ключ** (устар.) | `oblodai_wk_<hex>`  | `oblodai_live_<hex>`  | вывод денег и настройки, которые двигают деньги (список ниже)                                   |
-| **ключ песочницы**               | `test_oblodai_<hex>`  | `oblodai_test_<hex>`  | тот же API, но в песочнице; одна пара работает за оба вида ключа                                |
-| **админ-токен**                  | —                     | —                     | провижининг на **self-hosted** шлюзе: `merchants->create()`, `merchants->createSandbox()`       |
+| ключ                    | публичный id          | секрет                | что открывает                                                                              |
+| ----------------------- | --------------------- | --------------------- | -------------------------------------------------------------------------------------------- |
+| **боевой API-ключ**     | `oblodai_<hex>`       | `oblodai_live_<hex>`  | весь мерчантский API: приём денег, вывод, настройки, документы                                 |
+| **ключ песочницы**      | `test_oblodai_<hex>`  | `oblodai_test_<hex>`  | тот же API, но в песочнице; выдаётся онбордингом песочницы                                     |
+| **админ-токен**         | —                     | —                     | провижининг на **self-hosted** шлюзе: `merchants->create()`, `merchants->createSandbox()`      |
 
-Онбординг выдаёт один боевой ключ, который несёт обе возможности; у старых аккаунтов два вида
-ключей по-прежнему разделены. Там, где они разделены, выплатной ключ обязателен для `payouts->*`,
-`refunds->*`, `payoutLinks->*`, `transfers->*`, `splits->*`, `wallets->refundBlockedDeposit()`,
-`settings->*AutoWithdraw()`, `settings->*ApiAllowlist()`, `webhooks->rotateSecret()`,
-`webhooks->test('payout', …)`, `sandbox->faucet()` и `sandbox->reset()`. Вызов не тем видом ключа —
-это 403 `merchant.wrong_key_kind`.
-
-Передайте обе пары, и SDK сам выберет нужную для каждого вызова; единый ключ передаётся один раз:
+Эта одна пара подписывает все маршруты, которые шлюз закрывает подписью, — выбирать нечего:
 
 ```php
 use Oblodai\Oblodai;
 
-$oblodai = new Oblodai(publicId: $pk, secret: $sk, payoutPublicId: $wk, payoutSecret: $ws);
+$oblodai = new Oblodai(publicId: $publicId, secret: $secret);
 ```
 
-**Ключ песочницы (`test_oblodai_…`) — это оба вида сразу**, какими бы ни были боевые ключи за ним,
-поэтому одной пары хватает на всю интеграцию. Админ-токен вообще не мерчантский ключ: он уходит в
-заголовке `X-Admin-Token` только на двух онбординговых маршрутах, и есть он лишь у шлюза, который вы
-разворачиваете сами.
+Админ-токен вообще не мерчантский ключ: он уходит в заголовке `X-Admin-Token` только на двух
+онбординговых маршрутах, и есть он лишь у шлюза, который вы разворачиваете сами.
+
+У аккаунтов, открытых до перехода на единый ключ, может остаться **старая раздельная пара**:
+платёжный ключ `oblodai_pk_…` и выплатной `oblodai_wk_…`. Каждая половина по-прежнему работает на
+своей половине API, поэтому на каждый ключ заводите свой клиент; и только такая пара может увидеть
+403 `merchant.wrong_key_kind` (выплатной маршрут подписан платёжным ключом или наоборот). Все ключи,
+которые выпускаются сейчас, — один `oblodai_…`.
 
 ## Быстрый старт
 
 ```php
 use Oblodai\Oblodai;
 
-// Credentials fall back to OBLODAI_PUBLIC_ID / OBLODAI_SECRET (and the OBLODAI_PAYOUT_* pair).
+// Credentials fall back to OBLODAI_PUBLIC_ID / OBLODAI_SECRET.
 $oblodai = new Oblodai();
 
 $invoice = $oblodai->payments->create([
@@ -102,8 +98,8 @@ echo $invoice->url, ' ', $invoice->address, ' ', $invoice->status->value; // "cr
 'to_currency' => 'USDT']` — `currency` это то, что вы списываете, а `to_currency` — актив, который
 присылает плательщик.
 
-Вывод денег устроен так же, но с выплатным ключом и своим ключом идемпотентности, чтобы повтор
-после перезапуска не отправил деньги дважды:
+Вывод денег устроен так же и подписывается тем же ключом, только со своим ключом идемпотентности,
+чтобы повтор после перезапуска не отправил деньги дважды:
 
 ```php
 use Oblodai\Core\RequestOptions;
@@ -151,14 +147,14 @@ $oblodai->sandbox->deposit([
     'txid' => 'sandbox-tx-1',
 ]);
 
-$oblodai->sandbox->faucet(['asset' => 'USDT', 'amount' => '100']);   // test funds; payout key
+$oblodai->sandbox->faucet(['asset' => 'USDT', 'amount' => '100']);   // test funds
 
 foreach ($oblodai->sandbox->webhooks(['limit' => 10])->items() as $delivery) {
     echo $delivery->event_type, ' ', $delivery->status->value, "\n";  // the webhook inspector
 }
 
 $oblodai->sandbox->replay($deliveryId);   // re-send a terminal (delivered/dead) delivery
-$oblodai->sandbox->reset();               // cancel open invoices, zero the balances; payout key
+$oblodai->sandbox->reset();               // cancel open invoices, zero the balances
 ```
 
 Репетиционную доставку можно запросить и на бою: `webhooks->test(WebhookKind::Payment,
@@ -192,7 +188,7 @@ $oblodai->sandbox->reset();               // cancel open invoices, zero the bala
 | `merchants`     | `create` · `createSandbox`                                                                                                                                                                | 2 — `/v1/merchants`, `/v1/merchants/{id}/sandbox`               |
 
 Последним аргументом каждый метод принимает необязательный
-`new RequestOptions(idempotencyKey: …, timeoutMs: …, deadlineMs: …, preferPayoutKey: …, headers: […])`.
+`new RequestOptions(idempotencyKey: …, timeoutMs: …, deadlineMs: …, headers: […])`.
 Поиск объекта принимает как голый uuid, так и массив: `$oblodai->payments->info('uuid')`,
 `$oblodai->payments->info(['order_id' => '…'])`.
 
@@ -325,7 +321,7 @@ sequence). После `webhooks->rotateSecret()` передавайте `previou
 | ------------------------------------------------- | ----------- | ----------------------------------------------- |
 | `ValidationException`                             | 400         | тело запроса неверно (`field` укажет, где)      |
 | `AuthenticationException`                         | 401         | плохая подпись, неизвестный ключ, старая метка  |
-| `PermissionException`                             | 403         | ключ верный, но не того вида или без прав       |
+| `PermissionException`                             | 403         | ключ верный, но вызов не разрешён               |
 | `NotFoundException`                               | 404         | объекта нет                                     |
 | `ConflictException` / `IdempotencyConflictException` | 409       | конфликт состояния; ключ повторён с другим телом |
 | `RateLimitException`                              | 429         | троттлинг — `retryAfter` скажет, сколько ждать  |
@@ -338,7 +334,7 @@ sequence). После `webhooks->rotateSecret()` передавайте `previou
 
 `retryable` авторитетен: SDK уже повторил всё, что был должен, поэтому дошедшая до вас
 `retryable`-ошибка — та, которую повтор в принципе может вылечить, но попытки или бюджет вызова
-закончились. Ветвитесь по `errorCode` (`family.reason`): полный каталог из 471 кода лежит в
+закончились. Ветвитесь по `errorCode` (`family.reason`): полный каталог из 469 кодов лежит в
 `Oblodai\Contract\Enums::ERROR_CODES`, а коды, которые стоит обработать, названы в докблоке каждого
 метода, двигающего деньги:
 
@@ -378,8 +374,8 @@ try {
   другим телом, — это 409 `idempotency.key_reused`. Страницы списков ключ вызывающей стороны не
   несут никогда.
 - **Опции вызова:** `new RequestOptions(idempotencyKey: …, timeoutMs: …, deadlineMs: …,
-  preferPayoutKey: …, headers: […])`. Заголовки вызова накладываются на клиентские без учёта
-  регистра; ничего из того, что SDK подписывает, оттуда переопределить нельзя.
+  headers: […])`. Заголовки вызова накладываются на клиентские без учёта регистра; ничего из того,
+  что SDK подписывает, оттуда переопределить нельзя.
 - **Политика:** `retry: new Retry(maxRetries: 2, baseDelayMs: 250, maxDelayMs: 4000, maxRetryAfterMs:
   30000)` — это значения по умолчанию; `new Retry(maxRetries: 0)` отключает повторы. `timeoutMs`
   (по умолчанию 30000) ограничивает одну попытку, `deadlineMs` (по умолчанию 90000) — весь вызов
@@ -410,8 +406,7 @@ $oblodai = new Oblodai(
 
 | опция                  | по умолчанию                | что делает                                                       |
 | ---------------------- | --------------------------- | ---------------------------------------------------------------- |
-| `publicId` / `secret`  | окружение                   | платёжный ключ; секрет только подписывает                        |
-| `payoutPublicId` / `payoutSecret` | окружение        | выплатной ключ, подставляется на маршрутах вывода                |
+| `publicId` / `secret`  | окружение                   | API-ключ; секрет только подписывает                              |
 | `baseUrl`              | `https://api.oblodai.com`   | адрес API; префикс пути сохраняется                              |
 | `http`                 | `CurlHttpClient`            | свой HTTP-стек — см. `Psr18HttpClient`                           |
 | `timeoutMs`            | `30000`                     | таймаут одной попытки                                            |
@@ -425,10 +420,8 @@ $oblodai = new Oblodai(
 
 | переменная                  | что задаёт                                                          |
 | --------------------------- | ------------------------------------------------------------------- |
-| `OBLODAI_PUBLIC_ID`         | публичный id платёжного ключа                                       |
-| `OBLODAI_SECRET`            | секрет платёжного ключа                                             |
-| `OBLODAI_PAYOUT_PUBLIC_ID`  | публичный id выплатного ключа                                       |
-| `OBLODAI_PAYOUT_SECRET`     | секрет выплатного ключа                                             |
+| `OBLODAI_PUBLIC_ID`         | публичный id API-ключа                                              |
+| `OBLODAI_SECRET`            | секрет API-ключа                                                    |
 | `OBLODAI_ADMIN_TOKEN`       | админ-токен для провижининговых маршрутов self-hosted шлюза         |
 | `OBLODAI_BASE_URL`          | адрес API, по умолчанию `https://api.oblodai.com`; префикс пути сохраняется |
 | `OBLODAI_LOG`               | `debug`\|`info`\|`warn`\|`error` — лог в STDERR                      |
@@ -483,15 +476,16 @@ PSR-18 описывает только «отправь запрос, получ
 ## Снимок контракта
 
 `contract/` выгружает собственный набор тестов шлюза: реестр маршрутов (107 мерчантских маршрутов, у
-каждого — свой шлюз авторизации, обёртка идемпотентности и проставленный вручную флаг `safe`), схемы
-DTO запросов с английской документацией полей, перечисления, все коды ошибок (471), векторы подписи,
+каждого — свой шлюз авторизации: `public`, `key` или `onboard`, обёртка идемпотентности и
+проставленный вручную флаг `safe`), схемы
+DTO запросов с английской документацией полей, перечисления, все коды ошибок (469), векторы подписи,
 эталонные тела ответов, записанные с живого шлюза, и настоящие подписанные доставки вебхуков.
 
 `src/Contract/{Routes,Enums,Version}.php`, `src/Contract/Enum/*` и `src/Contract/Request/*`
 генерируются из него командой `composer codegen`; `composer check-drift` падает, когда они
 расходятся, а контрактный ярус тестов сверяет каждую модель с эталонными телами. Какой снимок несёт
 релиз, видно в `Oblodai\Contract\Version` — `CORE_COMMIT`, `EXPORTED_AT`, `CONTRACT_HASH`; этот
-собран на ядре `7ec04293`. Чтобы обновить: положите новую выгрузку в `contract/`, выполните
+собран на ядре `2cc44c16`. Чтобы обновить: положите новую выгрузку в `contract/`, выполните
 `composer codegen`, затем `composer ci`.
 
 ## Разработка

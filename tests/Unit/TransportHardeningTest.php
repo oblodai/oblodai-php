@@ -135,9 +135,7 @@ final class TransportHardeningTest extends TestCase
             FakeHttpClient::ok(['uuid' => 'p']),
             FakeHttpClient::ok([
                 'merchant_id' => 'm', 'project_id' => 'p',
-                'api_key' => ['public_id' => 'a', 'secret' => 'b', 'kind' => 'any'],
-                'payment_key' => ['public_id' => 'a', 'secret' => 'b', 'kind' => 'payment'],
-                'payout_key' => ['public_id' => 'c', 'secret' => 'd', 'kind' => 'payout'],
+                'api_key' => ['public_id' => 'a', 'secret' => 'b'],
             ]),
         ]);
         $ob = new Oblodai(

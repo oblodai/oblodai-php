@@ -20,14 +20,18 @@ $oblodai = new Oblodai\Oblodai();                       // same env vars, read a
 $oblodai = new Oblodai\Oblodai(baseUrl: 'https://api.oblodai.com/');
 ```
 
-Resources are properties, not methods, and the payout key is a first-class option:
+Resources are properties, not methods:
 
 ```php
 $client->payments()->create($params);                   // 1.2
 $oblodai->payments->create($params);                    // 1.3
-
-new Oblodai\Oblodai(publicId: $pk, secret: $sk, payoutPublicId: $wk, payoutSecret: $ws);
 ```
+
+One API key signs everything. 1.3 takes `publicId` + `secret` and nothing else: the separate payout
+credential pair (`payoutPublicId`/`payoutSecret`, `OBLODAI_PAYOUT_*`) and the per-call
+`preferPayoutKey` option are gone, because the gateway issues one key per merchant and it opens
+money in, money out, settings and documents alike. If you still hold a legacy `oblodai_pk_…` /
+`oblodai_wk_…` pair, build one client per key.
 
 `account()`, `rates()` and `webhooks()` were split into the namespaces the API actually has:
 
@@ -203,7 +207,7 @@ gateway. They sign nothing and carry the gateway's admin token:
 ```php
 $ob = new Oblodai\Oblodai(baseUrl: 'https://gw.internal', adminToken: getenv('OBLODAI_ADMIN_TOKEN'));
 $merchant = $ob->merchants->create(['email' => 'owner@shop.example']);
-$merchant->payment_key->public_id;   // the secret is shown once — store it now
+$merchant->api_key->public_id;       // the secret is shown once — store it now
 ```
 
 `X-Admin-Token` rides on those routes and nowhere else, and a caller-supplied header of that name is
@@ -226,8 +230,8 @@ with public properties, so do not `print_r` a model that holds a secret.
 ## Wallet blocking
 
 New in 1.3: `wallets->block()` stops crediting a static address, and
-`wallets->refundBlockedDeposit()` sends back what landed on it afterwards (payout key). Deposits on
-a blocked address are held for a refund decision instead of being credited.
+`wallets->refundBlockedDeposit()` sends back what landed on it afterwards. Deposits on a blocked
+address are held for a refund decision instead of being credited.
 
 ## Requirements
 

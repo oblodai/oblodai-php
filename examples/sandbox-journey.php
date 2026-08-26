@@ -42,8 +42,7 @@ try {
     printf("status  %s (paid: %s)\n", $paid->status->value, Status::isPaymentPaid($paid->status) ? 'yes' : 'no');
     printf("credited %s %s after %s commission\n", $paid->merchant_amount, $paid->payer_currency, $paid->commission);
 
-    // Test funds, then money back out. The faucet and the payout need the PAYOUT key; a sandbox
-    // key is both kinds at once, so the same pair works for all of it.
+    // Test funds, then money back out — signed with the same sandbox key as everything above.
     $oblodai->sandbox->faucet(['asset' => 'USDT', 'amount' => '100']);
     foreach ($oblodai->account->balance()->merchant as $entry) {
         printf("balance %s %s\n", $entry->balance, $entry->currency);

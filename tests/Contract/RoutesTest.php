@@ -88,7 +88,7 @@ final class RoutesTest extends TestCase
     {
         $key = 'POST /v1/payout';
         $spec = Routes::SPECS[$key];
-        $contractRow = ['method' => 'POST', 'path' => '/v1/payout', 'auth' => 'payout',
+        $contractRow = ['method' => 'POST', 'path' => '/v1/payout', 'auth' => 'key',
             'idempotent' => true, 'safe' => false, 'bare' => false];
 
         self::assertSame([], self::mismatches($contractRow, $spec), 'the unflipped row must match');
@@ -145,8 +145,6 @@ final class RoutesTest extends TestCase
         $ob = new Oblodai(
             publicId: 'pk',
             secret: 's',
-            payoutPublicId: 'wk',
-            payoutSecret: 's2',
             adminToken: 'adm',
             baseUrl: 'https://api.test',
             http: $fake,
@@ -169,10 +167,12 @@ final class RoutesTest extends TestCase
             self::assertNull($fake->header(0, 'X-Signature'), sprintf('%s: onboard route must not sign', $key));
             self::assertSame('adm', $fake->header(0, 'X-Admin-Token'), sprintf('%s: admin token', $key));
         } else {
-            self::assertSame(
-                $spec->auth === 'payout' ? 'wk' : 'pk',
-                $fake->header(0, 'X-Public-Id'),
-                sprintf('%s: public id', $key)
+            self::assertSame('key', $spec->auth, sprintf('%s: unknown auth gate', $key));
+            self::assertSame('pk', $fake->header(0, 'X-Public-Id'), sprintf('%s: public id', $key));
+            self::assertNotNull($fake->header(0, 'X-Signature'), sprintf('%s: signed route', $key));
+            self::assertNull(
+                $fake->header(0, 'X-Admin-Token'),
+                sprintf('%s: the admin token rides only on onboard routes', $key)
             );
         }
 
