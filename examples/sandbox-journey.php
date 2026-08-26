@@ -5,9 +5,9 @@ declare(strict_types=1);
 /**
  * The whole money path against the developer sandbox: create an invoice, simulate the deposit that
  * pays it, top the balance up from the faucet and send a payout back out. Nothing here touches a
- * real chain — sandbox keys (`test_…`) drive a chainless copy of the gateway.
+ * real chain — sandbox keys (`test_oblodai_…`) drive a chainless copy of the gateway.
  *
- * Run: OBLODAI_PUBLIC_ID=test_… OBLODAI_SECRET=… php examples/sandbox-journey.php
+ * Run: OBLODAI_PUBLIC_ID=test_oblodai_… OBLODAI_SECRET=oblodai_test_… php examples/sandbox-journey.php
  */
 
 require __DIR__ . '/_bootstrap.php';
@@ -24,7 +24,7 @@ try {
         'amount' => '25', 'currency' => 'USDT', 'network' => 'tron', 'order_id' => $orderId,
     ]);
 } catch (OblodaiException $err) {
-    // A live key gets 403 sandbox.live_key on the helpers below — use a test_… key here.
+    // A live key gets 403 sandbox.live_key on the helpers below — use a test_oblodai_… key here.
     example_fail('could not create the sandbox invoice', $err);
 }
 printf("invoice %s — %s %s to %s\n", $invoice->uuid, $invoice->payer_amount, $invoice->payer_currency, $invoice->address);

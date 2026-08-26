@@ -14,7 +14,7 @@ use Oblodai\Contract\Request\SandboxFaucetRequest;
 use Oblodai\Core\Page;
 use Oblodai\Core\RequestOptions;
 
-/** Developer sandbox (`test_` keys only): fake money, simulated deposits, webhook inspector. */
+/** Developer sandbox (`test_oblodai_…` keys only): fake money, simulated deposits, webhook inspector. */
 final class Sandbox extends Resource
 {
     /**

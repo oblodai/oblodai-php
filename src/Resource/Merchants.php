@@ -25,7 +25,7 @@ final class Merchants extends Resource
         return $this->call('POST /v1/merchants', $params, $options, MerchantOnboarded::fromArray(...));
     }
 
-    /** `POST /v1/merchants/{id}/sandbox` — the merchant's dev store and its `test_` key (idempotent). */
+    /** `POST /v1/merchants/{id}/sandbox` — the merchant's dev store and its `test_oblodai_…` key (idempotent). */
     public function createSandbox(string $merchantId, ?RequestOptions $options = null): SandboxStore
     {
         return $this->call(
