@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * Base for the live tier: the SDK against a REAL core (`OBLODAI_LIVE_URL`, e.g. a local stack).
  * Onboarding is open on such a stack: `POST /v1/merchants` then `POST /v1/merchants/{id}/sandbox`
- * mints a `test_` key, and everything below runs on fake money.
+ * mints a `test_oblodai_…` key, and everything below runs on fake money.
  */
 abstract class LiveTestCase extends TestCase
 {

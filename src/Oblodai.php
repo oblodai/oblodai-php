@@ -32,7 +32,7 @@ use Oblodai\Resource\Webhooks;
  * The Oblodai API client. One instance per key pair; safe to reuse for the whole process.
  *
  * ```php
- * $oblodai = new Oblodai(publicId: 'pk_live_…', secret: '…');
+ * $oblodai = new Oblodai(publicId: 'oblodai_…', secret: 'oblodai_live_…');
  * $invoice = $oblodai->payments->create([
  *     'amount' => '25', 'currency' => 'USDT', 'network' => 'tron', 'order_id' => 'o-1',
  * ]);

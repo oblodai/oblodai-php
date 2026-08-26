@@ -16,57 +16,110 @@ Payments, payouts, payment links, splits, static wallets, webhooks — one API k
 <a href="https://packagist.org/packages/oblodai/sdk"><img src="https://img.shields.io/packagist/php-v/oblodai/sdk?style=flat-square" alt="PHP version"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-000000?style=flat-square" alt="License: MIT"></a>
 
-[Documentation](https://docs.oblodai.com) · [Dashboard](https://my.oblodai.com)
+[Documentation](https://docs.oblodai.com) · [Dashboard](https://my.oblodai.com) · [Читать по-русски →](README.ru.md)
 
 </div>
 
 ---
 
-Invoices, payouts, refunds, payout links, static wallets, webhooks, documents — the whole merchant
-API, typed end to end and verified against the gateway's own contract snapshot.
+The official PHP SDK for the **Oblodai** payment gateway: accepting payments, payouts, bulk
+operations (batches), payment links, payout links (crypto cheques), splits, static wallets,
+transfers, webhooks. Request signing, response parsing, typed errors, idempotency and retries — out
+of the box.
 
-- PHP ≥ 8.1, PSR-4, `declare(strict_types=1)`, readonly value objects for every response body.
-- Every route the gateway exposes has a method here; request DTOs and enums are generated from the
-  gateway's contract, with the English field docs your editor shows on hover.
-- Retries driven by the API's own `retryable` flag, automatic idempotency keys, clock-skew correction.
-- `Oblodai\Webhook\Verifier`: signature verification that needs no client and no API key.
-- cURL out of the box; any PSR-18 client through `Oblodai\Http\Psr18HttpClient`.
+PHP ≥ 8.1 with `ext-json` and `ext-curl`, PSR-4 and `declare(strict_types=1)` throughout, a readonly
+value object for every response body, and nothing else at runtime but the PSR HTTP interfaces: cURL
+is used out of the box, and any PSR-18 client can take its place.
+
+> **Base URL.** Defaults to `https://api.oblodai.com`. Override `baseUrl` and supply your own keys
+> at initialisation if needed. The scheme must be `https://`; plain `http://` is accepted only for
+> loopback (`http://127.0.0.1:8095`) or with the explicit allow-insecure option
+> (`allowInsecureBaseUrl: true`, or `OBLODAI_ALLOW_INSECURE=1`).
+
+## Installation
 
 ```bash
 composer require oblodai/sdk
 ```
 
-Upgrading from 1.2? It signed requests the way the gateway no longer accepts — see
-[MIGRATION-1.3.md](MIGRATION-1.3.md). Writing code with an AI agent? Point it at [AGENTS.md](AGENTS.md).
+PHP 8.1 or newer with `ext-json` and `ext-curl`. Composer pulls in the PSR HTTP interfaces
+(`psr/http-client`, `psr/http-factory`, `psr/http-message`); `psr/log` is optional and only needed
+to route the SDK's log through Monolog or another PSR-3 logger.
 
-## Start in the sandbox
+## Where to get keys
 
-Get your keys in the Oblodai dashboard. A **sandbox key** (`test_…`) drives a chainless copy of the
-gateway — fake balance from a faucet, simulated deposits, real webhooks — so integrate against it first.
+Keys are issued in the dashboard at [my.oblodai.com](https://my.oblodai.com) → **API keys**. Each
+key is a public id and a secret; the secret only ever signs a request, it is never sent.
+
+| key                            | public id             | secret                | what it opens                                                                              |
+| ------------------------------ | --------------------- | --------------------- | ------------------------------------------------------------------------------------------ |
+| **live API key**               | `oblodai_<hex>`       | `oblodai_live_<hex>`  | the whole merchant API — one unified key for money in and money out                          |
+| **live payment key** (legacy)  | `oblodai_pk_<hex>`    | `oblodai_live_<hex>`  | money in and everything read-only: invoices, links, wallets, documents, balance, catalogue  |
+| **live payout key** (legacy)   | `oblodai_wk_<hex>`    | `oblodai_live_<hex>`  | money out and the settings that move money (see the list below)                             |
+| **sandbox key**                | `test_oblodai_<hex>`  | `oblodai_test_<hex>`  | the same API against the sandbox; one pair serves both key kinds                            |
+| **admin token**                | —                     | —                     | provisioning on a **self-hosted** gateway: `merchants->create()`, `merchants->createSandbox()` |
+
+Onboarding issues one unified live key that carries both capabilities; older accounts still hold the
+two separate kinds. Where the kinds are separate, the payout key is required for `payouts->*`,
+`refunds->*`, `payoutLinks->*`, `transfers->*`, `splits->*`, `wallets->refundBlockedDeposit()`,
+`settings->*AutoWithdraw()`, `settings->*ApiAllowlist()`, `webhooks->rotateSecret()`,
+`webhooks->test('payout', …)`, `sandbox->faucet()` and `sandbox->reset()`. A call made with the wrong
+kind is a 403 `merchant.wrong_key_kind`.
+
+Pass both pairs and the SDK picks the right one per call — with a unified key, pass it once:
 
 ```php
 use Oblodai\Oblodai;
 
-$oblodai = new Oblodai(
-    publicId: getenv('OBLODAI_PUBLIC_ID'),
-    secret: getenv('OBLODAI_SECRET'),
-);
+$oblodai = new Oblodai(publicId: $pk, secret: $sk, payoutPublicId: $wk, payoutSecret: $ws);
+```
+
+**A sandbox key (`test_oblodai_…`) is both kinds at once**, whatever the live keys behind it look
+like, so a single pair drives the whole integration. The admin token is not a merchant key at all —
+it is sent as `X-Admin-Token` on the two onboarding routes only, and only a gateway you host
+yourself has one.
+
+## Quick start
+
+```php
+use Oblodai\Oblodai;
+
+// Credentials fall back to OBLODAI_PUBLIC_ID / OBLODAI_SECRET (and the OBLODAI_PAYOUT_* pair).
+$oblodai = new Oblodai();
 
 $invoice = $oblodai->payments->create([
     'amount' => '25',            // amounts are decimal strings, never floats
     'currency' => 'USDT',        // what you price in — a fiat (USD, EUR, …) or a crypto asset
     'network' => 'tron',         // omit to let the payer choose the network on the pay page
-    'order_id' => 'order-1001',  // your reference; idempotent per order_id
+    'order_id' => 'order-1001',  // your reference; the invoice is idempotent per order_id
     'url_callback' => 'https://shop.example/oblodai/webhook',
 ]);
 
 echo $invoice->url, ' ', $invoice->address, ' ', $invoice->status->value; // "created"
 ```
 
-Prices in fiat: `['amount' => '25', 'currency' => 'USD', 'to_currency' => 'USDT']` — `currency` is
-what you charge, `to_currency` the asset the payer sends. See [`examples/`](examples).
+To price in fiat, add `to_currency`: `['amount' => '25', 'currency' => 'USD', 'to_currency' =>
+'USDT']` — `currency` is what you charge, `to_currency` the asset the payer sends.
 
-Every body can also be a generated DTO, which is where the field documentation lives:
+Money out is the same shape, with the payout key and an idempotency key of your own so a retry
+after a restart cannot send twice:
+
+```php
+use Oblodai\Core\RequestOptions;
+
+$payout = $oblodai->payouts->create([
+    'amount' => '10',
+    'currency' => 'USDT',
+    'network' => 'tron',
+    'address' => 'TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx',
+    'order_id' => 'payout-1001',
+], new RequestOptions(idempotencyKey: 'payout-1001'));
+
+echo $payout->uuid, ' ', $payout->status->value; // "pending"
+```
+
+Every request body can also be a generated DTO, which is where the field documentation your editor
+shows on hover lives:
 
 ```php
 use Oblodai\Contract\Enum\Network;
@@ -80,39 +133,61 @@ $invoice = $oblodai->payments->create(new PaymentRequest(
 ));
 ```
 
-### Two keys
+Runnable versions of all of this are in [`examples/`](examples).
 
-The gateway issues a **payment key** (`pk_…`) and a **payout key** (`wk_…`). Sandbox keys are both at
-once; live keys are separate, and money-out routes need the payout one: `payouts`, `refunds`,
-`payoutLinks`, `transfers`, `splits`, `wallets->refundBlockedDeposit()`, auto-withdraw, the IP
-allow-list, `webhooks->rotateSecret()`, `sandbox->faucet()`/`reset()`. Pass both pairs and the SDK
-picks the right one per call:
+## Sandbox / testing
+
+A sandbox key (`test_oblodai_…`) drives a chainless copy of the gateway: fake balance from a faucet,
+simulated deposits, real signed webhooks. Integrate against it first — nothing here touches a chain.
 
 ```php
-new Oblodai(publicId: $pk, secret: $sk, payoutPublicId: $wk, payoutSecret: $ws);
-// or OBLODAI_PUBLIC_ID / OBLODAI_SECRET / OBLODAI_PAYOUT_PUBLIC_ID / OBLODAI_PAYOUT_SECRET
+// The buyer pays: repeat the same txid to add confirmations.
+$oblodai->sandbox->deposit([
+    'invoice_id' => $invoice->uuid,
+    'amount' => '25',
+    'confirmations' => 20,
+    'txid' => 'sandbox-tx-1',
+]);
+
+$oblodai->sandbox->faucet(['asset' => 'USDT', 'amount' => '100']);   // test funds; payout key
+
+foreach ($oblodai->sandbox->webhooks(['limit' => 10])->items() as $delivery) {
+    echo $delivery->event_type, ' ', $delivery->status->value, "\n";  // the webhook inspector
+}
+
+$oblodai->sandbox->replay($deliveryId);   // re-send a terminal (delivered/dead) delivery
+$oblodai->sandbox->reset();               // cancel open invoices, zero the balances; payout key
 ```
 
-A call with the wrong kind is a 403 `merchant.wrong_key_kind`.
+A rehearsal delivery can also be requested against live: `webhooks->test(WebhookKind::Payment,
+['url_callback' => …, 'status' => 'paid'])` sends a sample event signed exactly like a real one,
+with `test: true` in the body. Never let one move money in your system — see
+[Webhooks](#webhooks).
 
-## Resources
+A live key answers 403 `sandbox.live_key` on the sandbox helpers.
 
-| Namespace                 | Methods                                                                                                                                                                                            |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `payments`                | create · info/get · cancel · history/list · batch · qr · services · sendEmail · resend · publicView · select · publicQr                                                                            |
-| `refunds`                 | create · resolve · batch                                                                                                                                                                           |
-| `payouts`                 | create · validate · calculate · info/get · cancel · approve · history/list · mass · batch · services · get/setFeeConfig · get/setRefundFeeConfig                                                   |
-| `payoutLinks`             | create · info/get · list · cancel · batch · cheque · claimPreview · claim                                                                                                                          |
-| `paymentLinks`            | create · info/get · list · toggle · publicView · checkout                                                                                                                                          |
-| `batches` / `transfers`   | info · toPersonal · toUser · batch                                                                                                                                                                 |
-| `wallets`                 | create · qr · block · refundBlockedDeposit                                                                                                                                                         |
-| `webhooks`                | register · rotateSecret · deliveries · test · testLegacy                                                                                                                                           |
-| `documents`               | statement · ledger · balanceCertificate · feeSchedule · splitReport · batchReport · linkReport · walletStatement · referralsReport · createJob · jobInfo · jobFile · download                       |
-| `splits`                  | createRule · listRules · deleteRule · get/setConfig · get/setOptIn                                                                                                                                 |
-| `settings`                | setDiscount · listDiscounts · get/setAccuracy · get/setAutoRefund · listAccepted · setAccepted · get/setPaymentFeeConfig · list/set/deleteAutoWithdraw · list/add/remove/enableApiAllowlist        |
-| `account` / `catalog`     | balance · referral · vrcs · currencies · exchangeRates                                                                                                                                             |
-| `sandbox`                 | faucet · deposit · webhooks · replay · reset                                                                                                                                                       |
-| `merchants`               | create · createSandbox (provisioning; `adminToken` on a self-hosted gateway)                                                                                                                       |
+## Method overview
+
+Sixteen namespaces, 107 routes — every merchant route the gateway exposes.
+
+| namespace       | methods                                                                                                                                                                                   | routes                                                          |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `payments`      | `create` · `info`/`get` · `cancel` · `history`/`list` · `batch` · `qr` · `services` · `sendEmail` · `resend` · `publicView` · `select` · `publicQr`                                        | 12 — `/v1/payment`, `/v1/payment/*`, `/v1/pay/{id}*`             |
+| `refunds`       | `create` · `resolve` · `batch`                                                                                                                                                            | 3 — `/v1/payment/refund`, `/v1/payment/resolve`, `/v1/refund/batch` |
+| `payouts`       | `create` · `validate` · `calculate` · `info`/`get` · `cancel` · `approve` · `history`/`list` · `mass` · `batch` · `services` · `get`/`setFeeConfig` · `get`/`setRefundFeeConfig`           | 14 — `/v1/payout`, `/v1/payout/*`                               |
+| `payoutLinks`   | `create` · `info`/`get` · `list` · `cancel` · `batch` · `cheque` · `claimPreview` · `claim`                                                                                                | 8 — `/v1/payout/link*`, `/v1/claim/{token}`                     |
+| `paymentLinks`  | `create` · `info`/`get` · `list` · `toggle` · `publicView` · `checkout`                                                                                                                    | 6 — `/v1/payment/link*`, `/v1/link/{id}*`                       |
+| `batches`       | `info`                                                                                                                                                                                    | 1 — `/v1/batch/info`                                            |
+| `transfers`     | `toPersonal` · `toUser` · `batch`                                                                                                                                                         | 3 — `/v1/transfer/*`                                            |
+| `wallets`       | `create` · `qr` · `block` · `refundBlockedDeposit`                                                                                                                                        | 4 — `/v1/wallet`, `/v1/wallet/*`                                |
+| `webhooks`      | `register` · `rotateSecret` · `deliveries` · `test` · `testLegacy`                                                                                                                        | 7 — `/v1/webhooks*`, `/v1/test-webhook/{kind}`                  |
+| `documents`     | `statement` · `ledger` · `balanceCertificate` · `feeSchedule` · `splitReport` · `batchReport` · `linkReport` · `walletStatement` · `referralsReport` · `createJob` · `jobInfo` · `jobFile` · `download` | 13 — `/v1/documents/*`                             |
+| `splits`        | `createRule` · `listRules` · `deleteRule` · `get`/`setConfig` · `get`/`setOptIn`                                                                                                          | 7 — `/v1/split/*`                                               |
+| `settings`      | `setDiscount` · `listDiscounts` · `get`/`setAccuracy` · `get`/`setAutoRefund` · `listAccepted` · `setAccepted` · `get`/`setPaymentFeeConfig` · `list`/`set`/`deleteAutoWithdraw` · `list`/`add`/`remove`/`enableApiAllowlist` | 17 — `/v1/payment/{accepted,accuracy,autorefund,discount,fee-config}/*`, `/v1/auto-withdraw/*`, `/v1/api-allowlist/*` |
+| `account`       | `balance` · `referral` · `vrcs`                                                                                                                                                           | 3 — `/v1/balance`, `/v1/referral/info`, `/v1/vrcs`              |
+| `catalog`       | `currencies` · `exchangeRates`                                                                                                                                                            | 2 — `/v1/currencies`, `/v1/exchange-rate/list`                  |
+| `sandbox`       | `faucet` · `deposit` · `webhooks` · `replay` · `reset`                                                                                                                                    | 5 — `/v1/sandbox/*`                                             |
+| `merchants`     | `create` · `createSandbox`                                                                                                                                                                | 2 — `/v1/merchants`, `/v1/merchants/{id}/sandbox`               |
 
 Every method takes an optional last argument
 `new RequestOptions(idempotencyKey: …, timeoutMs: …, deadlineMs: …, preferPayoutKey: …, headers: […])`.
@@ -121,16 +196,9 @@ Lookups accept a bare uuid or an array: `$oblodai->payments->info('uuid')`,
 
 ### Lists
 
-The paged list methods return a `Oblodai\Core\Page` — the first page through `items()`/`paginate()`,
+The paged list methods return an `Oblodai\Core\Page` — the first page through `items()`/`paginate()`,
 every page by iterating it. Nothing is requested until you consume it. Iteration stops when the
 server says `has_pages: false` or hands back a short page, whichever comes first.
-
-A few routes are not paged and return a plain `array` instead: `settings->listAutoWithdraw()`,
-`settings->setAutoWithdraw()`, `settings->deleteAutoWithdraw()`, the `*ApiAllowlist()` methods, and
-the synchronous batches `payouts->mass()` / `payoutLinks->batch()` (a `list<BatchElement>` with a
-per-element outcome). `payments->batch()`, `payouts->batch()`, `refunds->batch()` and
-`transfers->batch()` are asynchronous and return a `BatchSubmitted` ticket to poll with
-`batches->info()`.
 
 ```php
 $page = $oblodai->payments->history(['limit' => 50]);
@@ -144,6 +212,13 @@ foreach ($oblodai->payouts->history(['status' => 'confirmed']) as $payout) {
 $refunds = $oblodai->payouts->history(['kind' => 'refund'])->all(1000);
 ```
 
+A few routes are not paged and return a plain `array` instead: `settings->listAutoWithdraw()`,
+`settings->setAutoWithdraw()`, `settings->deleteAutoWithdraw()`, the `*ApiAllowlist()` methods, and
+the synchronous batches `payouts->mass()` (≤100) / `payoutLinks->batch()` (≤500), which give a
+`list<BatchElement>` with a per-element outcome. `payments->batch()`, `payouts->batch()`,
+`refunds->batch()` and `transfers->batch()` are asynchronous (≤5000) and return a `BatchSubmitted`
+ticket to poll with `batches->info()`.
+
 ### Statuses
 
 - Payment: `select → created → confirm_check → paid | paid_over | wrong_amount | expired | cancelled`.
@@ -154,7 +229,8 @@ $refunds = $oblodai->payouts->history(['kind' => 'refund'])->all(1000);
 
 Prefer webhooks for state changes; poll `info()` only as a fallback.
 
-Statuses (and the other closed vocabularies) decode into an open value, `Oblodai\Contract\Model\OpenEnum`:
+Statuses (and the other closed vocabularies) decode into an open value,
+`Oblodai\Contract\Model\OpenEnum`:
 
 ```php
 $payment->status->value;                     // "paid" — always the raw wire string
@@ -172,55 +248,18 @@ answer false for a status they do not recognise. To make drift loud in a test su
 Open vocabularies the gateway extends routinely — `network`, `kind`, `fee_type`, `source` — stay
 plain strings, and every model keeps the untouched wire body in `->raw`.
 
-### Errors
+### Money
 
-Every failure is an `Oblodai\Exception\OblodaiException` carrying the API's error envelope:
-`errorCode` (`payout.insufficient_funds`), `httpStatus`, `retryable`, `retryAfter`, `requestId`,
-`field`, `synthetic`. Subclasses for `catch`: `ValidationException` (400), `AuthenticationException`
-(401), `PermissionException` (403), `NotFoundException` (404), `ConflictException` /
-`IdempotencyConflictException` (409), `RateLimitException` (429), `UnavailableException` (503),
-`InternalException` (other 5xx), `TransportException` (no response), `ConfigException` (rejected
-before sending), `ContractException` (unreadable envelope), `WebhookPayloadException` (a verified
-webhook whose body is not the documented object). Quote `requestId` to support.
+`Oblodai\Helper\Money::add()`, `subtract()`, `compare()`, `equals()`, `isZero()`, `isPositive()`,
+`assertAmount()` — exact decimal arithmetic on the string amounts the API uses. Never cast a money
+field to `float`, and never compare amounts as strings (`"9"` sorts after `"10"` as text and before
+it as money — use `compare()`). Anything that is not a decimal amount of at most 64 characters is a
+`ConfigException` (`sdk.bad_amount`); the SDK also refuses a float in a request body outright.
 
-The SDK's own codes, all raised before or instead of an API answer: `sdk.missing_credentials`,
-`sdk.bad_config`, `sdk.bad_header`, `sdk.bad_path_param`, `sdk.bad_amount`,
-`sdk.bad_idempotency_key`, `sdk.idempotency_unsupported` (all `ConfigException`),
-`sdk.bad_envelope` and `webhook.bad_payload` (`ContractException`), `sdk.response_too_large`,
-`transport.timeout`, `transport.network`, `transport.deadline` (`TransportException`).
+## Webhooks
 
-```php
-use Oblodai\Exception\OblodaiException;
-
-try {
-    $payout = $oblodai->payouts->create($params);
-} catch (OblodaiException $err) {
-    match ($err->errorCode) {
-        // retryable — the balance may still arrive
-        'payout.insufficient_funds', 'payout.funds_maturing' => scheduleRetry($err->retryAfter ?? 60),
-        default => throw $err, // the SDK already retried what was safe to retry
-    };
-}
-```
-
-`json_encode($err)` keeps the message and the classification and drops the raw body.
-
-### Retries and idempotency
-
-- Create-type routes get an `Idempotency-Key` automatically (one per logical call, reused on every
-  retry), so a timeout can never produce a second payout. Pass your own key to make retries safe
-  across restarts; on routes the gateway does not deduplicate the SDK refuses a key
-  (`sdk.idempotency_unsupported`).
-- An error is retried only when the API says `retryable: true`. Answers without an API envelope (a
-  proxy 502/503) and transport failures are retried only on read routes or keyed writes.
-  `Retry-After` is honoured.
-- Which routes are safe to re-send after a transport failure is the gateway's own answer, shipped in
-  the contract as `safe` per route (`Routes::SPECS`). The SDK never infers it from the path.
-- `retry: new Retry(maxRetries: 2, baseDelayMs: 250, maxDelayMs: 4000, maxRetryAfterMs: 30000)`;
-  `timeoutMs` per attempt, `deadlineMs` per call. `$err->retryAfter` reports what the gateway asked
-  for (clamped to a day); the SDK's own sleep is capped by `maxRetryAfterMs`.
-
-### Webhooks
+Register an endpoint with `webhooks->register($url)` — the signing secret is returned once, so store
+it then. Verify every delivery over the **raw** request bytes; a re-serialised parse will not match.
 
 ```php
 use Oblodai\Contract\Model\PaymentEvent;
@@ -243,7 +282,7 @@ if ($event instanceof PaymentEvent && $event->status->is('paid')) {
 http_response_code(200);
 ```
 
-Answer the right status to the right failure:
+`Verifier` needs no client and no API key. Answer the right status to the right failure:
 
 | exception                   | what happened                                  | answer                |
 | --------------------------- | ---------------------------------------------- | --------------------- |
@@ -252,29 +291,151 @@ Answer the right status to the right failure:
 | `WebhookPayloadException`   | our delivery, unreadable body                  | 2xx (or 400) + alert  |
 
 `webhook.bad_payload` is deliberately NOT in the signature family: the MAC already proved the event
-is authentic, and answering 401 would make the gateway redeliver it for a day. An event `type` this
-SDK does not model is not a failure either — it arrives as `UnknownEvent` with the raw body intact,
-and `Verifier::isKnownEvent($event)` tells you which you have.
+is authentic, and answering 401 would make the gateway redeliver it for a day. **401 is for a
+signature failure and nothing else.** An event `type` this SDK does not model is not a failure
+either — it arrives as `UnknownEvent` with the raw body intact, and `Verifier::isKnownEvent($event)`
+tells you which you have.
 
 Rehearsal deliveries (`webhooks->test()`, sandbox) are signed exactly like live ones and carry
 `test: true` in the body (and `X-Webhook-Test: true`) — check `$delivery->isTest` (or
 `Verifier::isTestEvent($event)`) and never act on one as if money moved.
 `$delivery->id` (`X-Webhook-Id`) is stable across retries — use it to deduplicate;
 `$event->sequence()` orders events (`Verifier::isStale()`, which is false for an event that carries
-no sequence). After `webhooks->rotateSecret()` pass `previousSecret:` for at least 26 hours.
+no sequence). After `webhooks->rotateSecret()` pass `previousSecret:` for at least 26 hours, until
+the `previous_secret_valid_until` the rotation returned.
 
 The secret is checked before any crypto: an empty `secret` (or an empty `previousSecret`, or a
 negative `toleranceSec`) is a `ConfigException`, never a verification against `HMAC('', body)`.
-`toleranceSec: 0` disables the freshness window. The signature is compared BEFORE the timestamp, so
-the window cannot be used to probe your clock.
+The freshness window is 300 seconds by default; `toleranceSec: 0` disables it. The signature is
+compared BEFORE the timestamp, so the window cannot be used to probe your clock.
 
-### Money helpers
+## Errors
 
-`Oblodai\Helper\Money::add()`, `subtract()`, `compare()`, `equals()`, `isZero()`, `isPositive()`,
-`assertAmount()` — exact decimal arithmetic on the string amounts the API uses. Never cast a money
-field to `float`, and never compare amounts as strings (`"9"` sorts after `"10"` as text and before
-it as money — use `compare()`). Anything that is not a decimal amount of at most 64 characters is a
-`ConfigException` (`sdk.bad_amount`); the SDK also refuses a float in a request body outright.
+Every failure is an `Oblodai\Exception\OblodaiException` carrying the API's error envelope:
+`errorCode` (`payout.insufficient_funds`), `httpStatus`, `retryable`, `retryAfter`, `requestId`,
+`field`, `synthetic` (the answer came from a proxy, not the API). Quote `requestId` to support;
+`json_encode($err)` keeps the message and the classification and drops the raw body.
+
+| class                                             | HTTP        | when                                            |
+| ------------------------------------------------- | ----------- | ----------------------------------------------- |
+| `ValidationException`                             | 400         | the request body is wrong (`field` says where)  |
+| `AuthenticationException`                         | 401         | bad signature, unknown key, stale timestamp     |
+| `PermissionException`                             | 403         | right key, wrong kind or scope                  |
+| `NotFoundException`                               | 404         | no such object                                  |
+| `ConflictException` / `IdempotencyConflictException` | 409       | state conflict; a key reused with another body  |
+| `RateLimitException`                              | 429         | throttled — `retryAfter` says how long          |
+| `UnavailableException`                            | 503         | gateway busy or frozen; retryable               |
+| `InternalException`                               | other 5xx   | gateway fault                                   |
+| `TransportException`                              | —           | no response at all (timeout, network, deadline) |
+| `ConfigException`                                 | —           | rejected before anything was sent               |
+| `ContractException`                               | —           | unreadable envelope or webhook body             |
+| `SignatureException`                              | —           | webhook verification failed                     |
+
+`retryable` is authoritative: the SDK already retried whatever it should have, so a `retryable`
+error that reaches you is one repeating is allowed to fix but the SDK ran out of attempts or budget
+for. Branch on `errorCode` — `family.reason`, with the full catalogue of 471 codes in
+`Oblodai\Contract\Enums::ERROR_CODES`, and the codes worth handling named in each money-moving
+method's docblock:
+
+```php
+use Oblodai\Exception\OblodaiException;
+
+try {
+    $payout = $oblodai->payouts->create($params);
+} catch (OblodaiException $err) {
+    match ($err->errorCode) {
+        // retryable — the balance may still arrive
+        'payout.insufficient_funds', 'payout.funds_maturing' => scheduleRetry($err->retryAfter ?? 60),
+        default => throw $err, // the SDK already retried what was safe to retry
+    };
+}
+```
+
+The SDK's own codes never come from the API — they are raised before or instead of an answer:
+`sdk.missing_credentials`, `sdk.bad_config`, `sdk.bad_header`, `sdk.bad_path_param`,
+`sdk.bad_amount`, `sdk.bad_idempotency_key`, `sdk.idempotency_unsupported` (all `ConfigException`),
+`sdk.bad_envelope` and `webhook.bad_payload` (`ContractException`), `sdk.response_too_large`,
+`transport.timeout`, `transport.network`, `transport.deadline` (`TransportException`).
+
+## Retries, idempotency and timeouts
+
+- **Safe to repeat** is the gateway's own answer, not a guess from the path: every route ships in
+  the contract with a hand-classified `safe` flag (`Oblodai\Contract\Routes::SPECS`). The SDK never
+  infers it.
+- An error is retried only when the API says `retryable: true`. Answers without an API envelope (a
+  proxy 502/503) and transport failures are retried only on read routes or keyed writes — a write
+  the gateway does not deduplicate is never re-sent once it may have arrived.
+- **Idempotency keys** are generated automatically on create routes (one per logical call, reused on
+  every retry), so a timeout can never produce a second payout. Pass your own key to make retries
+  safe across restarts too. On a route the gateway does not deduplicate the SDK refuses a key
+  (`sdk.idempotency_unsupported`); a key reused with a different body is a 409
+  `idempotency.key_reused`. List pages never carry a caller's key.
+- **Per-call options:** `new RequestOptions(idempotencyKey: …, timeoutMs: …, deadlineMs: …,
+  preferPayoutKey: …, headers: […])`. Per-call headers merge over the client's, case-insensitively;
+  nothing the SDK signs can be overridden from there.
+- **Policy:** `retry: new Retry(maxRetries: 2, baseDelayMs: 250, maxDelayMs: 4000, maxRetryAfterMs:
+  30000)` — the defaults; `new Retry(maxRetries: 0)` disables retries. `timeoutMs` (default 30000)
+  bounds one attempt, `deadlineMs` (default 90000) the whole call including pauses. `Retry-After`
+  always wins over the computed backoff; `$err->retryAfter` reports what the gateway asked for
+  (clamped to a day) while the SDK's own sleep is capped by `maxRetryAfterMs`.
+- **Clock skew** is corrected once per call: if the gateway rejects the timestamp, the SDK learns
+  the server's time from the `Date` header and re-signs, then keeps the offset for later calls.
+- **Redirects are never followed** — the signature covers the path that was requested — and the
+  response body is read with a ceiling: 8 MiB on JSON routes, 64 MiB on document routes, above which
+  the call fails with `sdk.response_too_large`.
+
+## Configuration
+
+```php
+use Oblodai\Core\Retry;
+use Oblodai\Oblodai;
+
+$oblodai = new Oblodai(
+    publicId: $pk,
+    secret: $sk,
+    baseUrl: 'https://api.oblodai.com',
+    timeoutMs: 30000,
+    deadlineMs: 90000,
+    retry: new Retry(maxRetries: 2),
+);
+```
+
+| option                 | default                     | what it does                                                     |
+| ---------------------- | --------------------------- | ---------------------------------------------------------------- |
+| `publicId` / `secret`  | environment                 | the payment key; the secret only ever signs                      |
+| `payoutPublicId` / `payoutSecret` | environment      | the payout key, used automatically on money-out routes           |
+| `baseUrl`              | `https://api.oblodai.com`   | API origin; a path prefix is kept                                |
+| `http`                 | `CurlHttpClient`            | custom HTTP stack — see `Psr18HttpClient`                        |
+| `timeoutMs`            | `30000`                     | per-attempt timeout                                              |
+| `deadlineMs`           | `90000`                     | overall budget per call, retries and pauses included             |
+| `retry`                | `new Retry()`               | retry policy; `new Retry(maxRetries: 0)` turns retries off       |
+| `logger`               | none                        | structured logger; `OBLODAI_LOG` picks a console one             |
+| `headers`              | `[]`                        | extra headers on every request                                   |
+| `adminToken`           | environment                 | admin token of a self-hosted gateway (onboarding routes)         |
+| `allowInsecureBaseUrl` | `false`                     | permit a plain-http `baseUrl` that is not loopback               |
+| `clock`, `env`         | real clock, real environment | injectable, for tests                                           |
+
+| variable                    | what it sets                                                        |
+| --------------------------- | ------------------------------------------------------------------- |
+| `OBLODAI_PUBLIC_ID`         | payment key's public id                                             |
+| `OBLODAI_SECRET`            | payment key's secret                                                |
+| `OBLODAI_PAYOUT_PUBLIC_ID`  | payout key's public id                                              |
+| `OBLODAI_PAYOUT_SECRET`     | payout key's secret                                                 |
+| `OBLODAI_ADMIN_TOKEN`       | admin token for the provisioning routes of a self-hosted gateway    |
+| `OBLODAI_BASE_URL`          | API origin, default `https://api.oblodai.com`; a path prefix is kept |
+| `OBLODAI_LOG`               | `debug`\|`info`\|`warn`\|`error` — logs to STDERR                    |
+| `OBLODAI_ALLOW_INSECURE`    | `1` permits a plain-http `baseUrl` that is not loopback             |
+
+An empty value counts as unset. Explicit constructor arguments always win over the environment, and
+`env: []` in the constructor ignores it entirely (used by the test suite).
+
+**Secrets never reach a log.** Credentials and the admin token keep their value off the object
+itself, so `print_r`/`var_dump`/`json_encode`/`serialize` of the client, its config or its transport
+show `[redacted]`; the models that carry a one-time secret (`WebhookEndpoint`,
+`WebhookSecretRotated`, `ApiKeyPair`, `MerchantOnboarded`, `PayoutLink` — `claim_token`, `claim_url`
+and `passcode`, the URL because it embeds the token) mask it in every wholesale rendering while the
+property stays readable. Whatever logger you inject is wrapped, so redaction happens before the SDK
+hands anything over.
 
 ### HTTP stack
 
@@ -283,7 +444,11 @@ cURL is the default. To reuse your own client, wrap any PSR-18 implementation:
 ```php
 use Oblodai\Http\Psr18HttpClient;
 
-new Oblodai(publicId: $pk, secret: $sk, http: new Psr18HttpClient($client, $requestFactory, $streamFactory));
+$oblodai = new Oblodai(
+    publicId: $pk,
+    secret: $sk,
+    http: new Psr18HttpClient($client, $requestFactory, $streamFactory),
+);
 ```
 
 PSR-18 describes only "send this request, get a response", so three things must be configured on the
@@ -297,57 +462,46 @@ client itself:
 - **TLS verification left on**.
 
 `CurlHttpClient` (the default) enforces all three itself and cannot be talked out of them through
-`$curlOptions`. Both clients read the response body with a ceiling — 8 MiB on JSON routes, 64 MiB on
-document routes — and refuse anything larger (`sdk.response_too_large`).
+`$curlOptions`.
 
 ### Self-hosted or local gateway
 
-`baseUrl: 'http://localhost:8093'` works out of the box; other plain-http hosts need
+`baseUrl: 'http://localhost:8093'` works out of the box; any other plain-http host needs
 `allowInsecureBaseUrl: true` (or `OBLODAI_ALLOW_INSECURE=1`). A path prefix in `baseUrl` is kept.
-Provisioning routes (`merchants->create()`, `merchants->createSandbox()`) need the gateway's
+The provisioning routes `merchants->create()` and `merchants->createSandbox()` need the gateway's
 `adminToken:` (or `OBLODAI_ADMIN_TOKEN`), which is sent as `X-Admin-Token` on those routes only.
-
-### Environment
-
-| variable                    | what it sets                                                        |
-| --------------------------- | ------------------------------------------------------------------- |
-| `OBLODAI_PUBLIC_ID`         | payment key's public id                                             |
-| `OBLODAI_SECRET`            | payment key's secret                                                |
-| `OBLODAI_PAYOUT_PUBLIC_ID`  | payout key's public id                                              |
-| `OBLODAI_PAYOUT_SECRET`     | payout key's secret                                                 |
-| `OBLODAI_BASE_URL`          | API origin, default `https://api.oblodai.com`; a path prefix is kept |
-| `OBLODAI_ADMIN_TOKEN`       | admin token for the provisioning routes of a self-hosted gateway    |
-| `OBLODAI_ALLOW_INSECURE`    | `1` permits a plain-http `baseUrl` that is not loopback             |
-| `OBLODAI_LOG`               | `debug`\|`info`\|`warn`\|`error` — logs to STDERR                    |
-
-An empty value counts as unset. Explicit constructor arguments always win over the environment, and
-`env: []` in the constructor ignores it entirely (used by the test suite).
-
-Secrets never reach a log. Credentials and the admin token keep their value off the object itself,
-so `print_r`/`var_dump`/`json_encode`/`serialize` of the client, its config or its transport show
-`[redacted]`; the models that carry a one-time secret (`WebhookEndpoint`, `WebhookSecretRotated`,
-`ApiKeyPair`, `MerchantOnboarded`, `PayoutLink` — `claim_token`, `claim_url` and `passcode`, the
-URL because it embeds the token) mask it in every wholesale rendering while the property stays
-readable. Whatever logger you inject is wrapped, so redaction happens before the SDK hands
-anything over.
 
 ## The contract snapshot
 
 `contract/` is exported by the gateway's own test suite: the route registry (107 merchant routes,
 each with its auth gate, idempotency wrapper and hand-classified `safe` flag), request DTO schemas
 with English field docs, enums, every error code (471), signing vectors, golden response bodies
-recorded from a live gateway and real signed webhook deliveries. `src/Contract/{Routes,Enums,Version}.php`,
-`src/Contract/Enum/*` and `src/Contract/Request/*` are generated from it (`composer codegen`);
-`composer check-drift` fails when they disagree; the contract test tier checks every model against
-the golden bodies.
+recorded from a live gateway and real signed webhook deliveries.
+
+`src/Contract/{Routes,Enums,Version}.php`, `src/Contract/Enum/*` and `src/Contract/Request/*` are
+generated from it with `composer codegen`; `composer check-drift` fails when they disagree, and the
+contract test tier checks every model against the golden bodies. Which snapshot a release carries is
+in `Oblodai\Contract\Version` — `CORE_COMMIT`, `EXPORTED_AT`, `CONTRACT_HASH`; this one ships core
+`7ec04293`. To refresh: drop the new export into `contract/`, run `composer codegen`, then
+`composer ci`.
 
 ## Development
 
 ```bash
 composer install
 composer ci          # check-drift + lint + stan (level max) + test (unit + contract)
+composer fmt         # apply the formatting `composer lint` checks
 composer codegen     # after refreshing contract/
 OBLODAI_LIVE_URL=http://127.0.0.1:8095 composer test-live   # the journey against a real gateway
 ```
 
-License: MIT.
+The live tier is skipped unless `OBLODAI_LIVE_URL` points at a running gateway; it provisions its
+own merchant, mints a `test_oblodai_…` key and spends only fake money.
+
+Writing code with an AI agent? Point it at [AGENTS.md](AGENTS.md). Upgrading from 1.2 — which signed
+requests the way the gateway no longer accepts — see [MIGRATION-1.3.md](MIGRATION-1.3.md); the
+release history is in [CHANGELOG.md](CHANGELOG.md).
+
+## License
+
+MIT — see [LICENSE](LICENSE).

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Oblodai\Contract\Model;
 
-/** `POST /v1/merchants/{id}/sandbox` — the merchant's dev store and its `test_` key. */
+/** `POST /v1/merchants/{id}/sandbox` — the merchant's dev store and its `test_oblodai_…` key. */
 final class SandboxStore
 {
     /** @var list<string> */

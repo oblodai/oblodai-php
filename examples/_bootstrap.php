@@ -26,7 +26,7 @@ function example_client(array $required = ['OBLODAI_PUBLIC_ID', 'OBLODAI_SECRET'
     if ($missing !== []) {
         example_die(sprintf(
             "set %s before running this example (keys come from the Oblodai dashboard;\n"
-                . 'a sandbox key looks like test_…)',
+                . 'a sandbox key looks like test_oblodai_…)',
             implode(', ', $missing)
         ));
     }
