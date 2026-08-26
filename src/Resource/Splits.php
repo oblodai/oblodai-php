@@ -14,7 +14,7 @@ use Oblodai\Contract\Request\SplitRuleRequest;
 use Oblodai\Core\Page;
 use Oblodai\Core\RequestOptions;
 
-/** Revenue splits: a percentage of every payment forwarded to a partner. Payout key. */
+/** Revenue splits: a percentage of every payment forwarded to a partner. */
 final class Splits extends Resource
 {
     /**

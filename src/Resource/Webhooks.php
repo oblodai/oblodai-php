@@ -34,7 +34,7 @@ final class Webhooks extends Resource
 
     /**
      * `POST /v1/webhooks/rotate-secret` — new secret; the old one keeps verifying until
-     * `previous_secret_valid_until`. Payout key.
+     * `previous_secret_valid_until`.
      */
     public function rotateSecret(?RequestOptions $options = null): WebhookSecretRotated
     {

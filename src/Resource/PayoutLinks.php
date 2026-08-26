@@ -19,7 +19,7 @@ use Oblodai\Core\Page;
 use Oblodai\Core\RequestOptions;
 
 /**
- * Payout links (cheques): funds reserved now, claimed later by whoever holds the token. Payout key.
+ * Payout links (cheques): funds reserved now, claimed later by whoever holds the token.
  *
  * A link argument is either the `link_id` as a string or an array carrying `link_id`.
  */
