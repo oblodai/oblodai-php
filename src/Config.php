@@ -50,7 +50,7 @@ final class Config implements JsonSerializable
             'baseUrl' => $this->baseUrl,
             'publicId' => $this->credentials?->publicId,
             'payoutPublicId' => $this->payoutCredentials?->publicId,
-            'adminToken' => $this->adminToken === null ? null : Secret::REDACTED,
+            'adminToken' => $this->adminToken === null ? null : Secret::redacted(),
         ];
     }
 

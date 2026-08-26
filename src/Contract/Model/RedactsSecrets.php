@@ -28,11 +28,21 @@ trait RedactsSecrets
      * Wire field names whose value is a one-time secret. `claim_url` is one by content: the claim
      * page URL embeds the cheque's `claim_token`, so printing it hands the money away.
      *
-     * @var list<string>
+     * Static methods rather than constants: PHP 8.1 (the floor in composer.json) does not allow
+     * constants in traits.
+     *
+     * @return list<string>
      */
-    private const SECRET_KEYS = ['secret', 'passcode', 'claim_token', 'claim_url'];
+    private static function secretKeys(): array
+    {
+        return ['secret', 'passcode', 'claim_token', 'claim_url'];
+    }
 
-    public const REDACTED = '[redacted]';
+    /** The placeholder printed instead of a secret. */
+    public static function redacted(): string
+    {
+        return '[redacted]';
+    }
 
     /** @return array<string, mixed> */
     public function __debugInfo(): array
@@ -48,7 +58,7 @@ trait RedactsSecrets
 
     /**
      * Restores a serialized model. The secret is gone by construction — `__serialize()` replaced it
-     * with {@see RedactsSecrets::REDACTED} — so a round-tripped model is safe to keep but useless
+     * with {@see RedactsSecrets::redacted()} — so a round-tripped model is safe to keep but useless
      * for verifying signatures. Fetch the object again, or store the secret where it belongs.
      *
      * @param array<string, mixed> $data
@@ -78,8 +88,8 @@ trait RedactsSecrets
         $out = [];
         foreach ($values as $key => $value) {
             $key = (string) $key;
-            if (in_array($key, self::SECRET_KEYS, true)) {
-                $out[$key] = $value === null ? null : self::REDACTED;
+            if (in_array($key, self::secretKeys(), true)) {
+                $out[$key] = $value === null ? null : self::redacted();
 
                 continue;
             }
