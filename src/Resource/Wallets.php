@@ -51,9 +51,12 @@ final class Wallets extends Resource
      * `POST /v1/wallet/blocked-address-refund` — send funds that landed on a blocked address back.
      * Payout key.
      *
-     * Codes worth branching on: `wallet.bad_uuid` (unknown wallet), `refund.no_address` (the address
-     * is not blocked), `refund.nothing_to_refund` (already refunded or empty), `refund.dust` (below the
-     * network minimum), `refund.destination_internal`, `merchant.wrong_key_kind`.
+     * Codes worth branching on: `wallet.bad_uuid` (unknown wallet, or the address is not blocked),
+     * `refund.no_address` (nowhere to send it — pass an address), `refund.nothing_to_refund`
+     * (already refunded, or nothing landed there), `refund.dust` (below the network's minimum),
+     * `refund.destination_internal` (the destination is a gateway address).
+     *
+     * @param array<string, mixed>|WalletBlockedAddressRefundRequest $params
      */
     public function refundBlockedDeposit(
         array|WalletBlockedAddressRefundRequest $params,
