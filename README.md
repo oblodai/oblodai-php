@@ -326,9 +326,10 @@ An empty value counts as unset. Explicit constructor arguments always win over t
 Secrets never reach a log. Credentials and the admin token keep their value off the object itself,
 so `print_r`/`var_dump`/`json_encode`/`serialize` of the client, its config or its transport show
 `[redacted]`; the models that carry a one-time secret (`WebhookEndpoint`, `WebhookSecretRotated`,
-`ApiKeyPair`, `MerchantOnboarded`, `PayoutLink`) mask it in every wholesale rendering while the
-property stays readable. Whatever logger you inject is wrapped, so redaction happens before the SDK
-hands anything over.
+`ApiKeyPair`, `MerchantOnboarded`, `PayoutLink` — `claim_token`, `claim_url` and `passcode`, the
+URL because it embeds the token) mask it in every wholesale rendering while the property stays
+readable. Whatever logger you inject is wrapped, so redaction happens before the SDK hands
+anything over.
 
 ## The contract snapshot
 

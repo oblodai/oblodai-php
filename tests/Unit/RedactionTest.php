@@ -6,6 +6,7 @@ namespace Oblodai\Tests\Unit;
 
 use Oblodai\Config;
 use Oblodai\Contract\Model\ApiKeyPair;
+use Oblodai\Contract\Model\BatchElement;
 use Oblodai\Contract\Model\MerchantOnboarded;
 use Oblodai\Contract\Model\PayoutLink;
 use Oblodai\Contract\Model\WebhookEndpoint;
@@ -109,7 +110,15 @@ final class RedactionTest extends TestCase
         ])];
         yield 'payout link' => [PayoutLink::fromArray([
             'link_id' => 'l1', 'status' => 'funded', 'claim_token' => self::SECRET, 'passcode' => self::SECRET,
+            'claim_url' => 'https://pay.test/claim/' . self::SECRET,
         ])];
+        yield 'batch element carrying a payout link' => [BatchElement::fromArray([
+            'idx' => 0, 'ok' => true,
+            'result' => [
+                'link_id' => 'l1', 'status' => 'funded', 'claim_token' => self::SECRET,
+                'claim_url' => 'https://pay.test/claim/' . self::SECRET,
+            ],
+        ], static fn (array $raw): PayoutLink => PayoutLink::fromArray($raw))];
         yield 'merchant onboarded' => [MerchantOnboarded::fromArray([
             'merchant_id' => 'm1', 'project_id' => 'p1',
             'api_key' => ['public_id' => 'pk', 'secret' => self::SECRET, 'kind' => 'any'],
@@ -130,6 +139,34 @@ final class RedactionTest extends TestCase
         self::assertStringContainsString('[redacted]', $json);
         self::assertStringNotContainsString(self::SECRET, self::dump($model));
         self::assertStringNotContainsString(self::SECRET, serialize($model));
+    }
+
+    /**
+     * The claim URL does not read like a secret and is one: it embeds the cheque's `claim_token`,
+     * so whoever copies it out of a log can claim the money.
+     */
+    public function testAClaimUrlIsRedactedBecauseItEmbedsTheClaimToken(): void
+    {
+        $url = 'https://pay.test/claim/' . self::SECRET;
+        $link = PayoutLink::fromArray([
+            'link_id' => 'l1', 'status' => 'funded', 'claim_token' => self::SECRET, 'claim_url' => $url,
+        ]);
+
+        self::assertSame($url, $link->claim_url, 'the property is what the caller asked the API for');
+        self::assertSame($url, $link->toArray()['claim_url'] ?? null, 'toArray() is the escape hatch');
+        // Same three renderings as every other secret-bearing model: `print_r`/`var_export` read
+        // public properties directly and cannot be intercepted, which is why they are documented
+        // as unsafe rather than asserted here.
+        self::assertStringNotContainsString($url, (string) json_encode($link));
+        self::assertStringNotContainsString($url, self::dump($link));
+        self::assertStringNotContainsString($url, serialize($link));
+        $decoded = json_decode((string) json_encode($link), true);
+        self::assertIsArray($decoded);
+        self::assertSame('[redacted]', $decoded['claim_url']);
+        $raw = $decoded['raw'];
+        self::assertIsArray($raw);
+        self::assertSame('[redacted]', $raw['claim_url'], 'the copy in the wire body too');
+        self::assertSame('l1', $decoded['link_id'], 'the safe half of the model is still loggable');
     }
 
     public function testTheSecretIsStillReadableWhereTheCallerNeedsIt(): void

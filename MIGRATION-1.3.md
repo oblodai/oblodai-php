@@ -217,8 +217,9 @@ Credentials and the admin token no longer live on the object, so `print_r`, `var
 `Config::$adminToken` is a `Core\Secret` (`->reveal()` for the bytes).
 
 The models that carry a one-time secret — `WebhookEndpoint`, `WebhookSecretRotated`, `ApiKeyPair`,
-`MerchantOnboarded`, `PayoutLink` (`claim_token`, `passcode`) and `BatchElement` — mask it in every
-wholesale rendering, while the property itself stays readable. Whatever logger you inject is wrapped
+`MerchantOnboarded`, `PayoutLink` (`claim_token`, `claim_url` — it embeds the token — and
+`passcode`) and `BatchElement` — mask it in every wholesale rendering, while the property itself
+stays readable. Whatever logger you inject is wrapped
 so redaction happens before the SDK hands anything over. PHP cannot intercept `print_r` on an object
 with public properties, so do not `print_r` a model that holds a secret.
 

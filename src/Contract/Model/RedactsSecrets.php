@@ -9,7 +9,8 @@ use ReflectionObject;
 /**
  * Keeps a model's one-time secrets out of every accidental print.
  *
- * A webhook secret, a freshly minted API secret, a payout link's claim token or passcode are shown
+ * A webhook secret, a freshly minted API secret, a payout link's claim token, claim URL or passcode
+ * are shown
  * by the gateway exactly once. They also sit on models that end up in a `var_dump` while debugging,
  * in a `json_encode` inside a structured log line, or in a serialized session — and from there in a
  * log aggregator that anybody on the team can read. Reading the property is deliberate and stays
@@ -23,8 +24,13 @@ use ReflectionObject;
  */
 trait RedactsSecrets
 {
-    /** Wire field names whose value is a one-time secret. */
-    private const SECRET_KEYS = ['secret', 'passcode', 'claim_token'];
+    /**
+     * Wire field names whose value is a one-time secret. `claim_url` is one by content: the claim
+     * page URL embeds the cheque's `claim_token`, so printing it hands the money away.
+     *
+     * @var list<string>
+     */
+    private const SECRET_KEYS = ['secret', 'passcode', 'claim_token', 'claim_url'];
 
     public const REDACTED = '[redacted]';
 
