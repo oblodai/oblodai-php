@@ -155,8 +155,14 @@ final class ModelsTest extends TestCase
                 )),
             };
             $actual = array_keys($body);
+            // `test` rides only on rehearsal deliveries, so it is optional on every event body.
+            $optional = ['test'];
             self::assertSame([], array_values(array_diff($keys, $actual)), 'webhook sample: missing keys');
-            self::assertSame([], array_values(array_diff($actual, $keys)), 'webhook sample: unexpected keys');
+            self::assertSame(
+                [],
+                array_values(array_diff($actual, $keys, $optional)),
+                'webhook sample: unexpected keys'
+            );
         }
     }
 

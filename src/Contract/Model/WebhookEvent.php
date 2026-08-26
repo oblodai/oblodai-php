@@ -23,6 +23,12 @@ interface WebhookEvent
     /** True — the status is final and will not change again. */
     public function isFinal(): bool;
 
+    /**
+     * True on a rehearsal delivery (`webhooks.test`, sandbox): the body is signed like a live one,
+     * but no money moved — never act on it as if it did.
+     */
+    public function isTest(): bool;
+
     /** @return array<string, mixed> */
     public function toArray(): array;
 }

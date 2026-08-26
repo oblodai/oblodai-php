@@ -70,13 +70,14 @@ use Oblodai\Webhook\Verifier;
 $delivery = Verifier::verify(file_get_contents('php://input'), getallheaders(), $secret);
 ```
 
-Verify over the **raw** bytes. Deduplicate on `$delivery->id` (`X-Webhook-Id`); drop out-of-order
-events with `Verifier::isStale($event, $lastSequence)`. During a rotation pass `previousSecret:`
-for ≥26 h.
+Verify over the **raw** bytes. `$delivery->isTest` (and `Verifier::isTestEvent($event)`) is true for
+rehearsal deliveries (`test: true` in the signed body) — never treat them as money. Deduplicate on
+`$delivery->id` (`X-Webhook-Id`); drop out-of-order events with
+`Verifier::isStale($event, $lastSequence)`. During a rotation pass `previousSecret:` for ≥26 h.
 
 ## Machine-readable surface
 
 `Oblodai\Contract\Routes::SPECS` (107 routes: path, auth, idempotent, safe, bare, list),
 `Oblodai\Contract\Request\*` (typed bodies per route), `Oblodai\Contract\Enums` (statuses, networks,
-event types, 468 error codes), `Oblodai\Contract\Enum\*` (the same as PHP enums), and `contract/`
+event types, 469 error codes), `Oblodai\Contract\Enum\*` (the same as PHP enums), and `contract/`
 itself (schemas, golden response bodies per route, error samples, signed webhook samples).

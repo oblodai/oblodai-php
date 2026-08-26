@@ -67,6 +67,12 @@ final class PayoutEvent implements WebhookEvent
         public readonly string $event_at,
         /** Global, increasing (gaps are normal); a lower sequence arriving later is stale. */
         public readonly int $sequence,
+        /**
+         * Present and true ONLY on rehearsal deliveries (`webhooks.test`, sandbox). The body is
+         * signed like a live one, so a handler must check this flag (or the `X-Webhook-Test`
+         * header) and never act on a test event as if money moved.
+         */
+        public readonly ?bool $test = null,
         /** The wire body as received, including any field newer than this SDK. */
         public readonly array $raw = [],
     ) {
@@ -100,6 +106,7 @@ final class PayoutEvent implements WebhookEvent
             Wire::str($data, 'updated_at'),
             Wire::str($data, 'event_at'),
             Wire::int($data, 'sequence'),
+            Wire::nullableBool($data, 'test'),
             $data,
         );
     }
@@ -122,6 +129,11 @@ final class PayoutEvent implements WebhookEvent
     public function isFinal(): bool
     {
         return $this->is_final;
+    }
+
+    public function isTest(): bool
+    {
+        return $this->test === true;
     }
 
     /** @return array<string, mixed> */

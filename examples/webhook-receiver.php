@@ -51,14 +51,23 @@ if (alreadyProcessed($delivery->id)) {
     exit;
 }
 
-// 2. Drop anything not newer than what you already applied to this object.
+// 2. Rehearsal deliveries (webhooks->test(), sandbox) are signed exactly like live ones and carry
+//    `test: true` (plus X-Webhook-Test: true). Acknowledge them, but never move money for one.
+if ($delivery->isTest) {
+    error_log('rehearsal webhook ' . $event->type() . ' ' . $event->uuid() . ' — not applied');
+    http_response_code(200);
+
+    exit;
+}
+
+// 3. Drop anything not newer than what you already applied to this object.
 if (Verifier::isStale($event, lastSequenceFor($event->uuid()))) {
     http_response_code(200);
 
     exit;
 }
 
-// 3. Apply it. The event is one of three shapes, discriminated by `type`.
+// 4. Apply it. The event is one of three shapes, discriminated by `type`.
 if ($event instanceof PaymentEvent) {
     if ($event->status->value === 'paid' || $event->status->value === 'paid_over') {
         markOrderPaid((string) $event->order_id, $event->payment_amount, $event->payer_currency);

@@ -186,6 +186,46 @@ final class WebhookTest extends TestCase
         self::assertFalse(Verifier::isStale($event, null));
     }
 
+    private static function testBody(): string
+    {
+        return (string) json_encode([
+            'type' => 'payment',
+            'uuid' => 'u1',
+            'order_id' => 'o',
+            'status' => 'paid',
+            'is_final' => true,
+            'sequence' => 7,
+            'event_at' => '2026-01-01T00:00:00Z',
+            'test' => true,
+        ]);
+    }
+
+    public function testFlagsRehearsalDeliveriesFromEitherTheBodyOrTheHeader(): void
+    {
+        // A live delivery: neither the body flag nor the header.
+        $live = Verifier::verify(self::body(), self::headers(), 'whsec', now: self::TS);
+        self::assertFalse($live->isTest);
+        self::assertFalse($live->event->isTest());
+        self::assertFalse(Verifier::isTestEvent($live->event));
+
+        // A rehearsal delivery: the flag rides inside the signed body.
+        $raw = self::testBody();
+        $headers = [
+            'X-Webhook-Timestamp' => (string) self::TS,
+            'x-webhook-signature' => Signer::signWebhook('whsec', self::TS, $raw),
+            'X-Webhook-Test' => 'true',
+        ];
+        $rehearsal = Verifier::verify($raw, $headers, 'whsec', now: self::TS);
+        self::assertTrue($rehearsal->isTest);
+        self::assertTrue($rehearsal->event->isTest());
+        self::assertTrue(Verifier::isTestEvent($rehearsal->event));
+
+        // The header alone is enough, even if a body somehow omits the flag.
+        unset($headers['x-webhook-signature']);
+        $headers['x-webhook-signature'] = Signer::signWebhook('whsec', self::TS, self::body());
+        self::assertTrue(Verifier::verify(self::body(), $headers, 'whsec', now: self::TS)->isTest);
+    }
+
     public function testRejectsAnUnknownEventType(): void
     {
         try {

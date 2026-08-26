@@ -8,7 +8,9 @@ namespace Oblodai\Contract\Model;
 final class Wallet
 {
     /** Wire keys every rendering of a wallet carries. @var list<string> */
-    public const KEYS = ['uuid', 'address', 'network', 'currency', 'order_id', 'url', 'document_url'];
+    public const KEYS = [
+        'uuid', 'address', 'network', 'currency', 'order_id', 'url', 'document_url', 'blocked',
+    ];
 
     /** @param array<string, mixed> $raw */
     public function __construct(
@@ -26,6 +28,8 @@ final class Wallet
         public readonly string $url,
         /** Signed link to the PDF document for this wallet; empty when documents are disabled. */
         public readonly string $document_url,
+        /** True once `wallets.block()` was called: new deposits are quarantined instead of credited. */
+        public readonly bool $blocked,
         /** XRP only: numeric destination tag of this wallet — the customer must include it in every transfer. */
         public readonly ?string $destination_tag = null,
         /** XLM only: numeric memo (type ID) of this wallet — the customer must include it in every transfer. */
@@ -50,6 +54,7 @@ final class Wallet
             Wire::str($data, 'order_id'),
             Wire::str($data, 'url'),
             Wire::str($data, 'document_url'),
+            Wire::bool($data, 'blocked'),
             Wire::nullableStr($data, 'destination_tag'),
             Wire::nullableStr($data, 'memo'),
             Wire::nullableStr($data, 'address_xaddress'),

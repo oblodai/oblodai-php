@@ -20,6 +20,7 @@ use Oblodai\Exception\SignatureException;
  *   X-Webhook-Event: invoice.<status> | payout.<status> | wallet.paid
  *   X-Webhook-Id: stable per delivery (identical across retries) — use it as your idempotency key
  *   X-Webhook-Event-Time: unix seconds when the state change committed (order events by it)
+ *   X-Webhook-Test: "true" on a rehearsal delivery (`webhooks.test`, sandbox) — see `Delivery::$isTest`
  *
  * Always verify over the RAW request bytes (`file_get_contents('php://input')`); a re-serialized
  * parse will not match.
@@ -36,6 +37,7 @@ final class Verifier
     public const HEADER_EVENT = 'X-Webhook-Event';
     public const HEADER_ID = 'X-Webhook-Id';
     public const HEADER_EVENT_TIME = 'X-Webhook-Event-Time';
+    public const HEADER_TEST = 'X-Webhook-Test';
 
     /** Reject deliveries whose timestamp is further away than this, seconds. */
     public const DEFAULT_TOLERANCE_SECONDS = 300;
@@ -111,13 +113,15 @@ final class Verifier
         }
 
         $eventTime = Util::header($headers, self::HEADER_EVENT_TIME);
+        $event = self::parse($rawBody);
 
         return new Delivery(
-            event: self::parse($rawBody),
+            event: $event,
             id: Util::header($headers, self::HEADER_ID),
             eventType: Util::header($headers, self::HEADER_EVENT),
             eventTime: $eventTime !== null && preg_match('/^\d+$/', $eventTime) === 1 ? (int) $eventTime : null,
             sentAt: $ts,
+            isTest: Util::header($headers, self::HEADER_TEST) === 'true' || $event->isTest(),
         );
     }
 
@@ -131,6 +135,15 @@ final class Verifier
 
         /** @var array<string, mixed> $body */
         return WebhookEventFactory::fromArray($body);
+    }
+
+    /**
+     * True for a rehearsal delivery (`webhooks.test`, sandbox). Such a body is signed like a live
+     * one, so a handler must branch on it and never act on it as if money moved.
+     */
+    public static function isTestEvent(WebhookEvent $event): bool
+    {
+        return $event->isTest();
     }
 
     /**
