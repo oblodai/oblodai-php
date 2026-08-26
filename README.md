@@ -202,12 +202,19 @@ $delivery = Verifier::verify(
 );
 
 $event = $delivery->event;                        // PaymentEvent | PayoutEvent | WalletEvent
+if ($delivery->isTest) {                          // a rehearsal delivery — no money moved
+    http_response_code(200);
+    return;
+}
 if ($event instanceof Oblodai\Contract\Model\PaymentEvent && $event->status->value === 'paid') {
     markOrderPaid($event->order_id);
 }
 http_response_code(200);
 ```
 
+Rehearsal deliveries (`webhooks->test()`, sandbox) are signed exactly like live ones and carry
+`test: true` in the body (and `X-Webhook-Test: true`) — check `$delivery->isTest` (or
+`Verifier::isTestEvent($event)`) and never act on one as if money moved.
 `$delivery->id` (`X-Webhook-Id`) is stable across retries — use it to deduplicate;
 `$event->sequence()` orders events (`Verifier::isStale()`). After `webhooks->rotateSecret()` pass
 `previousSecret:` for at least 26 hours.

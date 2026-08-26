@@ -20,6 +20,11 @@ final class Delivery
         public readonly ?int $eventTime = null,
         /** `X-Webhook-Timestamp` — unix seconds when this attempt was sent. */
         public readonly int $sentAt = 0,
+        /**
+         * A rehearsal delivery (`X-Webhook-Test: true`, or `test: true` in the signed body):
+         * signed exactly like a live one, but no money moved — never act on it as if it did.
+         */
+        public readonly bool $isTest = false,
     ) {
     }
 }

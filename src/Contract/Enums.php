@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// GENERATED FILE — do not edit. Source: contract/contract.json (core 7b8eb828b9ec).
+// GENERATED FILE — do not edit. Source: contract/contract.json (core bfca971cce71).
 // Regenerate with: composer codegen
 
 namespace Oblodai\Contract;
@@ -175,24 +175,24 @@ final class Enums
         'onramp.no_refund_evidence', 'onramp.not_captured', 'onramp.not_found', 'onramp.open',
         'onramp.open_conflict', 'onramp.overdue', 'onramp.owner_required', 'onramp.refund_evidence',
         'onramp.release', 'onramp.suppressed_in', 'onramp.suppresses', 'onramp.target_required', 'onramp.terminal',
-        'onramp.token', 'pay.bad_uuid', 'pay.below_minimum', 'pay.method_not_accepted', 'pay.minimum_unavailable',
-        'pay.not_selectable', 'paylink.above_max', 'paylink.amount_required', 'paylink.bad_amount',
-        'paylink.bad_bounds', 'paylink.bad_id', 'paylink.bad_max', 'paylink.bad_min', 'paylink.bad_mode',
-        'paylink.bad_range', 'paylink.below_min', 'paylink.disabled', 'paylink.expires_in_negative',
-        'paylink.expires_in_too_large', 'paylink.not_found', 'paylink.not_positive', 'paylink.order_id_invalid',
-        'paylink.order_id_too_long', 'paylink.rate_limited', 'paylink.unavailable', 'payment.bad_accuracy',
-        'payment.bad_amount', 'payment.bad_payer_email', 'payment.bad_redirect_url', 'payment.bad_status',
-        'payment.bad_subtract', 'payment.bad_url_callback', 'payment.bad_uuid', 'payment.below_minimum',
-        'payment.discount_unavailable', 'payment.minimum_unavailable', 'payment.network_required',
-        'payment.no_lookup', 'payment.not_found', 'payment.subtract_impossible', 'payment.to_currency_required',
-        'payment.unknown_to_currency', 'payment.unsupported_network', 'payout.address_network_mismatch',
-        'payout.amount_below_fee', 'payout.approver_is_creator', 'payout.asset_mismatch', 'payout.bad_address',
-        'payout.bad_amount', 'payout.bad_kind', 'payout.bad_memo', 'payout.bad_owner_kind', 'payout.bad_state',
-        'payout.bad_status', 'payout.bad_url_callback', 'payout.bad_user', 'payout.bad_uuid',
-        'payout.batch_too_large', 'payout.broadcast_in_flight', 'payout.convert_bad_amount',
-        'payout.convert_frozen', 'payout.convert_insufficient', 'payout.convert_no_rate',
-        'payout.convert_same_asset', 'payout.convert_unsupported', 'payout.destination_internal',
-        'payout.empty_batch', 'payout.fee_asset_mismatch', 'payout.freeze_unknown',
+        'onramp.token', 'pay.bad_uuid', 'pay.below_minimum', 'pay.discount_unavailable', 'pay.method_not_accepted',
+        'pay.minimum_unavailable', 'pay.not_selectable', 'paylink.above_max', 'paylink.amount_required',
+        'paylink.bad_amount', 'paylink.bad_bounds', 'paylink.bad_id', 'paylink.bad_max', 'paylink.bad_min',
+        'paylink.bad_mode', 'paylink.bad_range', 'paylink.below_min', 'paylink.disabled',
+        'paylink.expires_in_negative', 'paylink.expires_in_too_large', 'paylink.not_found', 'paylink.not_positive',
+        'paylink.order_id_invalid', 'paylink.order_id_too_long', 'paylink.rate_limited', 'paylink.unavailable',
+        'payment.bad_accuracy', 'payment.bad_amount', 'payment.bad_payer_email', 'payment.bad_redirect_url',
+        'payment.bad_status', 'payment.bad_subtract', 'payment.bad_url_callback', 'payment.bad_uuid',
+        'payment.below_minimum', 'payment.discount_unavailable', 'payment.minimum_unavailable',
+        'payment.network_required', 'payment.no_lookup', 'payment.not_found', 'payment.subtract_impossible',
+        'payment.to_currency_required', 'payment.unknown_to_currency', 'payment.unsupported_network',
+        'payout.address_network_mismatch', 'payout.amount_below_fee', 'payout.approver_is_creator',
+        'payout.asset_mismatch', 'payout.bad_address', 'payout.bad_amount', 'payout.bad_kind', 'payout.bad_memo',
+        'payout.bad_owner_kind', 'payout.bad_state', 'payout.bad_status', 'payout.bad_url_callback',
+        'payout.bad_user', 'payout.bad_uuid', 'payout.batch_too_large', 'payout.broadcast_in_flight',
+        'payout.convert_bad_amount', 'payout.convert_frozen', 'payout.convert_insufficient',
+        'payout.convert_no_rate', 'payout.convert_same_asset', 'payout.convert_unsupported',
+        'payout.destination_internal', 'payout.empty_batch', 'payout.fee_asset_mismatch', 'payout.freeze_unknown',
         'payout.from_currency_unsupported', 'payout.frozen', 'payout.funds_maturing', 'payout.insufficient_funds',
         'payout.memo_conflict', 'payout.memo_required', 'payout.memo_too_long', 'payout.no_destination',
         'payout.no_lookup', 'payout.no_owner', 'payout.no_sender', 'payout.no_txid', 'payout.no_user',
