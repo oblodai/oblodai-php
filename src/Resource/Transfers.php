@@ -12,7 +12,7 @@ use Oblodai\Contract\Request\TransferToPersonalRequest;
 use Oblodai\Contract\Request\TransferToUserRequest;
 use Oblodai\Core\RequestOptions;
 
-/** Internal, instant, fee-free moves between platform balances. Payout key. */
+/** Internal, instant, fee-free moves between platform balances. */
 final class Transfers extends Resource
 {
     /**

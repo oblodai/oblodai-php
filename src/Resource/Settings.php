@@ -131,7 +131,7 @@ final class Settings extends Resource
     }
 
     /**
-     * `POST /v1/auto-withdraw/list`. Payout key.
+     * `POST /v1/auto-withdraw/list`.
      *
      * @return list<AutoWithdrawRule>
      */
@@ -169,7 +169,7 @@ final class Settings extends Resource
         );
     }
 
-    /** `POST /v1/api-allowlist/list` — source IPs allowed to use the API keys. Payout key. */
+    /** `POST /v1/api-allowlist/list` — source IPs allowed to use the API keys. */
     public function listApiAllowlist(?RequestOptions $options = null): ApiAllowlist
     {
         return $this->call('POST /v1/api-allowlist/list', null, $options, ApiAllowlist::fromArray(...));

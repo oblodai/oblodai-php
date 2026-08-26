@@ -18,7 +18,7 @@ use Oblodai\Core\RequestOptions;
 final class Sandbox extends Resource
 {
     /**
-     * `POST /v1/sandbox/faucet` — credit test funds. Payout key.
+     * `POST /v1/sandbox/faucet` — credit test funds.
      *
      * @param array<string, mixed>|SandboxFaucetRequest $params
      */
@@ -62,7 +62,7 @@ final class Sandbox extends Resource
         );
     }
 
-    /** `POST /v1/sandbox/reset` — cancel open invoices and zero balances. Payout key. */
+    /** `POST /v1/sandbox/reset` — cancel open invoices and zero balances. */
     public function reset(?RequestOptions $options = null): SandboxReset
     {
         return $this->call('POST /v1/sandbox/reset', null, $options, SandboxReset::fromArray(...));

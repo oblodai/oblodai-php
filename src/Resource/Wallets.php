@@ -49,7 +49,7 @@ final class Wallets extends Resource
 
     /**
      * `POST /v1/wallet/blocked-address-refund` — send funds that landed on a blocked address back.
-     * Payout key.
+     *
      *
      * Codes worth branching on: `wallet.bad_uuid` (unknown wallet, or the address is not blocked),
      * `refund.no_address` (nowhere to send it — pass an address), `refund.nothing_to_refund`
