@@ -33,12 +33,12 @@ final class Credentials implements JsonSerializable
     /** @return array<string, string> */
     public function __debugInfo(): array
     {
-        return ['publicId' => $this->publicId, 'secret' => Secret::redacted()];
+        return ['publicId' => $this->publicId, 'secret' => Secret::REDACTED];
     }
 
     /** @return array<string, string> */
     public function jsonSerialize(): array
     {
-        return ['publicId' => $this->publicId, 'secret' => Secret::redacted()];
+        return ['publicId' => $this->publicId, 'secret' => Secret::REDACTED];
     }
 }
