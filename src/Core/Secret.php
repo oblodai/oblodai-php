@@ -44,13 +44,13 @@ final class Secret implements JsonSerializable, Stringable
     /** @return array<string, string> */
     public function __debugInfo(): array
     {
-        return ['value' => self::redacted()];
+        return ['value' => self::REDACTED];
     }
 
     /** @return array<string, string> */
     public function __serialize(): array
     {
-        return ['value' => self::redacted()];
+        return ['value' => self::REDACTED];
     }
 
     /**
@@ -61,17 +61,17 @@ final class Secret implements JsonSerializable, Stringable
      */
     public function __unserialize(array $data): void
     {
-        self::values()[$this] = is_string($data['value'] ?? null) ? $data['value'] : self::redacted();
+        self::values()[$this] = is_string($data['value'] ?? null) ? $data['value'] : self::REDACTED;
     }
 
     public function __toString(): string
     {
-        return self::redacted();
+        return self::REDACTED;
     }
 
     public function jsonSerialize(): string
     {
-        return self::redacted();
+        return self::REDACTED;
     }
 
     /** @return WeakMap<self, string> */

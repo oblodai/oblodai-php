@@ -69,8 +69,8 @@ final class RedactionTest extends TestCase
 
         self::assertSame(self::SECRET, $secret->reveal());
         self::assertStringNotContainsString(self::SECRET, self::renderings($secret));
-        self::assertSame(Secret::redacted(), (string) $secret);
-        self::assertSame('"' . Secret::redacted() . '"', json_encode($secret));
+        self::assertSame(Secret::REDACTED, (string) $secret);
+        self::assertSame('"' . Secret::REDACTED . '"', json_encode($secret));
     }
 
     public function testTheClientAndItsConfigNeverRenderCredentialsOrTheAdminToken(): void
