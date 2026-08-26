@@ -57,7 +57,10 @@ final class PayoutLink implements JsonSerializable
         public readonly string $created_at,
         /** Present on create and batch-create only: the secret the recipient claims with. */
         public readonly ?string $claim_token = null,
-        /** Present on create and batch-create only: the URL the recipient opens to claim. */
+        /**
+         * Present on create and batch-create only: the URL the recipient opens to claim. It embeds
+         * `claim_token`, so it is masked in every wholesale rendering just like the token.
+         */
         public readonly ?string $claim_url = null,
         /** Set when the link was created as part of a batch. */
         public readonly ?string $batch_id = null,

@@ -85,9 +85,9 @@ Rewrite generated from the gateway's contract snapshot (`contract/`). See
   the object (`Core\Secret`), so `print_r`, `var_export`, `var_dump`, `json_encode` and `serialize`
   show `[redacted]`. The models that carry a one-time secret — `WebhookEndpoint`,
   `WebhookSecretRotated`, `ApiKeyPair`, `MerchantOnboarded`, `PayoutLink` (`claim_token`,
-  `passcode`) and `BatchElement` — mask it in every wholesale rendering while the property stays
-  readable. A caller-injected logger is wrapped, so redaction happens before the SDK hands anything
-  over.
+  `claim_url` — it embeds the token — and `passcode`) and `BatchElement` — mask it in every
+  wholesale rendering while the property stays readable. A caller-injected logger is wrapped, so
+  redaction happens before the SDK hands anything over.
 - `Oblodai\Core\Page`: the first page through `items()`/`paginate()`, every page by iterating,
   nothing requested until consumed. Iteration also stops on a short page, so a server that always
   claims `has_pages` cannot spin it forever.
