@@ -23,6 +23,28 @@ function routeIsSafe(array $route): bool
     return $route['safe'];
 }
 
+/**
+ * The auth gate of a route, checked against the vocabulary the core exports since the single-key
+ * cleanup: `public` (unsigned), `key` (signed with the merchant's one API key) and `onboard`
+ * (`X-Admin-Token`). The old split-key values (`payment`, `payout`, `any`) are gone; a contract
+ * still carrying them is a stale export and must not be turned into a registry.
+ */
+function routeAuth(array $route): string
+{
+    $auth = $route['auth'] ?? null;
+    if (!is_string($auth) || !in_array($auth, ['public', 'key', 'onboard'], true)) {
+        throw new RuntimeException(sprintf(
+            'route %s %s declares auth %s — expected one of public|key|onboard; re-export '
+                . 'contract/contract.json from a core with the single API key',
+            (string) ($route['method'] ?? '?'),
+            (string) ($route['path'] ?? '?'),
+            is_string($auth) ? '"' . $auth . '"' : gettype($auth)
+        ));
+    }
+
+    return $auth;
+}
+
 function phpString(string $value): string
 {
     return "'" . str_replace(['\\', "'"], ['\\\\', "\\'"], $value) . "'";
@@ -69,7 +91,7 @@ function emitRoutes(string $outDir, string $header, array $routes): string
             phpString($r['method'] . ' ' . $r['path']),
             phpString($r['method']),
             phpString($r['path']),
-            phpString($r['auth']),
+            phpString(routeAuth($r)),
             $r['idempotent'] ? 'true' : 'false',
             routeIsSafe($r) ? 'true' : 'false',
             $r['bare'] ? 'true' : 'false',

@@ -38,8 +38,8 @@ use Oblodai\Resource\Webhooks;
  * ]);
  * ```
  *
- * Credentials fall back to the environment (`OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`, and the
- * `OBLODAI_PAYOUT_*` pair for the payout key). Amounts are always decimal strings.
+ * Credentials fall back to the environment (`OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`). Amounts are
+ * always decimal strings.
  */
 final class Oblodai
 {
@@ -70,8 +70,6 @@ final class Oblodai
     /**
      * @param string|null          $publicId       public id of the API key (`X-Public-Id`)
      * @param string|null          $secret         secret of the API key; only ever signs
-     * @param string|null          $payoutPublicId optional dedicated payout key
-     * @param string|null          $payoutSecret   secret of the payout key
      * @param string|null          $baseUrl        API origin; may carry a path prefix
      * @param HttpClient|null      $http           custom HTTP stack (see Psr18HttpClient)
      * @param int|null             $timeoutMs      per-attempt timeout, default 30000
@@ -87,8 +85,6 @@ final class Oblodai
     public function __construct(
         ?string $publicId = null,
         ?string $secret = null,
-        ?string $payoutPublicId = null,
-        ?string $payoutSecret = null,
         ?string $baseUrl = null,
         ?HttpClient $http = null,
         ?int $timeoutMs = null,
@@ -104,8 +100,6 @@ final class Oblodai
         $this->config = Config::resolve([
             'publicId' => $publicId,
             'secret' => $secret,
-            'payoutPublicId' => $payoutPublicId,
-            'payoutSecret' => $payoutSecret,
             'baseUrl' => $baseUrl,
             'adminToken' => $adminToken,
             'logger' => $logger,
@@ -122,7 +116,6 @@ final class Oblodai
                 PHP_VERSION
             ),
             credentials: $this->config->credentials,
-            payoutCredentials: $this->config->payoutCredentials,
             timeoutMs: $timeoutMs ?? 30000,
             deadlineMs: $deadlineMs ?? 90000,
             retry: $retry,

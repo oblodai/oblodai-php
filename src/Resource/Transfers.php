@@ -21,7 +21,7 @@ final class Transfers extends Resource
      *
      * Codes worth branching on: `transfer.bad_amount`, `merchant.no_owner`,
      * `merchant.no_personal_wallet`, `payout.insufficient_funds` (retryable),
-     * `payout.funds_maturing` (retryable), `merchant.wrong_key_kind`.
+     * `payout.funds_maturing` (retryable).
      *
      * @param array<string, mixed>|TransferToPersonalRequest $params
      */
@@ -38,7 +38,7 @@ final class Transfers extends Resource
      *
      * Codes worth branching on: `transfer.bad_amount`, `transfer.no_recipient`,
      * `transfer.recipient_not_found`, `transfer.bad_recipient` (the recipient is yourself),
-     * `payout.insufficient_funds` (retryable), `merchant.wrong_key_kind`.
+     * `payout.insufficient_funds` (retryable).
      *
      * @param array<string, mixed>|TransferToUserRequest $params
      */
@@ -55,7 +55,7 @@ final class Transfers extends Resource
      *
      * Codes worth branching on: `payout.batch_too_large`, `payout.empty_batch`,
      * `request.missing_field` (an item without `order_id`/`amount`/`currency`),
-     * `transfer.recipient_not_found`, `merchant.wrong_key_kind`, `idempotency.key_reused`.
+     * `transfer.recipient_not_found`, `idempotency.key_reused`.
      *
      * @param array<string, mixed>|TransferBatchRequest $params
      */

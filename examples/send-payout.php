@@ -5,11 +5,9 @@ declare(strict_types=1);
 /**
  * Send money out: check the price, dry-run the payout, then create it.
  *
- * Every route here needs the PAYOUT key. A live merchant has two pairs and must set both, since the
- * balance and the quote are read with the payment key; a sandbox key is both kinds at once, so
- * setting only OBLODAI_PAYOUT_* is enough there.
+ * The same API key signs everything here — the quote, the balance and the payout itself.
  *
- * Run: OBLODAI_PAYOUT_PUBLIC_ID=… OBLODAI_PAYOUT_SECRET=… php examples/send-payout.php
+ * Run: OBLODAI_PUBLIC_ID=… OBLODAI_SECRET=… php examples/send-payout.php
  */
 
 require __DIR__ . '/_bootstrap.php';
@@ -19,7 +17,7 @@ use Oblodai\Core\RequestOptions;
 use Oblodai\Exception\OblodaiException;
 use Oblodai\Helper\Money;
 
-$oblodai = example_client(['OBLODAI_PAYOUT_PUBLIC_ID', 'OBLODAI_PAYOUT_SECRET']);
+$oblodai = example_client();
 
 $address = 'TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx';
 $amount = '10';
@@ -70,7 +68,7 @@ try {
 } catch (OblodaiException $err) {
     // `retryable` is the gateway's own classification — the SDK already retried what it could.
     // Codes worth branching on here: payout.insufficient_funds, payout.funds_maturing (both
-    // retryable), payout.bad_address, payout.memo_required, merchant.wrong_key_kind.
+    // retryable), payout.bad_address, payout.memo_required.
     example_fail('payout refused', $err);
 }
 

@@ -40,7 +40,7 @@ final class Payouts extends Resource
      * SAME key), `payout.funds_maturing` (retryable — deposits not yet mature),
      * `payout.bad_address`, `payout.address_network_mismatch`, `payout.memo_required`,
      * `payout.amount_below_fee`, `payout.frozen`, `payout.order_id_required`,
-     * `idempotency.key_reused`, `merchant.wrong_key_kind` (payment key on a payout route).
+     * `idempotency.key_reused`.
      *
      * @param array<string, mixed>|PayoutRequest $params
      */
@@ -149,7 +149,7 @@ final class Payouts extends Resource
      * the response, so a call that returns 200 can still contain failures — check every `->ok`.
      *
      * Call-level codes worth branching on: `payout.batch_too_large` (>100), `payout.empty_batch`,
-     * `payout.insufficient_funds` (retryable), `payout.frozen`, `merchant.wrong_key_kind`.
+     * `payout.insufficient_funds` (retryable), `payout.frozen`.
      * Per-element failures arrive as `->error_code` with the same vocabulary as `create()`.
      *
      * Returns the elements themselves, not the wire's `{items}` wrapper (the wrapper carries
@@ -179,7 +179,7 @@ final class Payouts extends Resource
      *
      * Codes worth branching on: `payout.batch_too_large`, `payout.empty_batch`,
      * `payout.order_id_required`, `payout.reference_collision`, `payout.frozen`,
-     * `merchant.wrong_key_kind`, `idempotency.key_reused`. Insufficient funds surface per element
+     * `idempotency.key_reused`. Insufficient funds surface per element
      * while the batch runs, not on submission.
      *
      * @param array<string, mixed>|PayoutBatchRequest $params

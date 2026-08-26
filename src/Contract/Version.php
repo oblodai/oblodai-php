@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// GENERATED FILE — do not edit. Source: contract/contract.json (core 7ec04293c426).
+// GENERATED FILE — do not edit. Source: contract/contract.json (core 2cc44c16f516).
 // Regenerate with: composer codegen
 
 namespace Oblodai\Contract;
@@ -10,7 +10,7 @@ namespace Oblodai\Contract;
 /** Which contract snapshot these generated files came from. */
 final class Version
 {
-    public const CORE_COMMIT = '7ec04293c4264faa121409b1715c2e8fcd349f32';
-    public const EXPORTED_AT = '2026-08-26T10:50:02Z';
-    public const CONTRACT_HASH = 'c2d8d4b733eaa4a876a1f8d0525cb838df380ee37fc0d03a711dab77e80b2829';
+    public const CORE_COMMIT = '2cc44c16f516d6c26d6290dcada40b7ed814d6de';
+    public const EXPORTED_AT = '2026-08-26T15:26:29Z';
+    public const CONTRACT_HASH = 'de2c4a5d15d13036fc63d301c1b28209f47189e54692fcb9523bb30e5fa39652';
 }

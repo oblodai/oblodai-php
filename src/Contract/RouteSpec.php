@@ -16,7 +16,7 @@ final class RouteSpec
         public readonly string $method,
         /** Path template; `{name}` segments are filled from path parameters. */
         public readonly string $path,
-        /** Which credential the core's gate expects: public|payment|payout|any|onboard. */
+        /** Which credential the core's gate expects: `public`, `key` or `onboard`. */
         public readonly string $auth,
         /** Wrapped in the core's `withIdempotency`: a key is generated when the caller sends none. */
         public readonly bool $idempotent,

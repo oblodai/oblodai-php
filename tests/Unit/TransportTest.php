@@ -214,25 +214,21 @@ final class TransportTest extends TestCase
         }
     }
 
-    public function testUsesThePayoutCredentialsForPayoutRoutesWhenConfigured(): void
+    public function testTheOneApiKeySignsMoneyOutAndMoneyInAlike(): void
     {
         $fake = new FakeHttpClient([
             FakeHttpClient::ok(['uuid' => 'p', 'status' => 'pending', 'fee_bearer' => 'gateway']),
             FakeHttpClient::ok(['uuid' => 'i', 'status' => 'created']),
         ]);
-        $ob = new Oblodai(
-            ...self::CREDS,
-            payoutPublicId: 'wk_test_1',
-            payoutSecret: 's2',
-            http: $fake,
-            env: [],
-        );
+        $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
         $ob->payouts->create(['amount' => '1', 'currency' => 'USDT', 'address' => 'T', 'order_id' => 'o']);
         $ob->payments->create(['amount' => '1', 'currency' => 'USDT']);
 
-        self::assertSame('wk_test_1', $fake->header(0, 'X-Public-Id'));
+        self::assertSame('pk_test_1', $fake->header(0, 'X-Public-Id'));
         self::assertSame('pk_test_1', $fake->header(1, 'X-Public-Id'));
+        self::assertNotNull($fake->header(0, 'X-Signature'));
+        self::assertNotNull($fake->header(1, 'X-Signature'));
     }
 
     public function testRefusesASignedRouteWithNoCredentialsButAllowsAPublicOne(): void

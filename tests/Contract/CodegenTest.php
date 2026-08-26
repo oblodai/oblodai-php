@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Oblodai\Tests\Contract;
 
 use Oblodai\Tests\Support\Fixtures;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -55,6 +56,52 @@ final class CodegenTest extends TestCase
             self::assertIsString($method);
             self::assertIsString($path);
             self::assertIsBool($route['safe'] ?? null, sprintf('%s %s has no boolean `safe`', $method, $path));
+        }
+    }
+
+    public function testRouteAuthAcceptsOnlyTheSingleKeyVocabulary(): void
+    {
+        self::assertSame('public', routeAuth(['method' => 'GET', 'path' => '/v1/currencies', 'auth' => 'public']));
+        self::assertSame('key', routeAuth(['method' => 'POST', 'path' => '/v1/payout', 'auth' => 'key']));
+        self::assertSame('onboard', routeAuth(['method' => 'POST', 'path' => '/v1/merchants', 'auth' => 'onboard']));
+    }
+
+    /**
+     * The split-key vocabulary is dead. A contract still exporting `payment`/`payout`/`any` is a
+     * stale snapshot, and turning it into a registry would resurrect a key kind the core no longer
+     * issues — the generator refuses instead of quietly emitting it.
+     *
+     * @return iterable<string, array{mixed}>
+     */
+    public static function rejectedAuthValues(): iterable
+    {
+        yield 'payment' => ['payment'];
+        yield 'payout' => ['payout'];
+        yield 'any' => ['any'];
+        yield 'invented' => ['admin'];
+        yield 'missing' => [null];
+        yield 'not a string' => [true];
+    }
+
+    #[DataProvider('rejectedAuthValues')]
+    public function testCodegenRefusesAnyOtherAuthValue(mixed $auth): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/expected one of public\|key\|onboard/');
+
+        routeAuth(['method' => 'POST', 'path' => '/v1/payout', 'auth' => $auth]);
+    }
+
+    /** Every route in the shipped contract already speaks it, so the gate cannot fire in CI. */
+    public function testEveryContractRouteDeclaresAKnownAuthGate(): void
+    {
+        foreach ((array) Fixtures::contract()['routes'] as $route) {
+            self::assertIsArray($route);
+            $method = $route['method'] ?? null;
+            $path = $route['path'] ?? null;
+            self::assertIsString($method);
+            self::assertIsString($path);
+            self::assertContains($route['auth'] ?? null, ['public', 'key', 'onboard'], $method . ' ' . $path);
         }
     }
 

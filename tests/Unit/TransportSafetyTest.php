@@ -22,8 +22,6 @@ final class TransportSafetyTest extends TestCase
     private const CREDS = [
         'publicId' => 'pk',
         'secret' => 's',
-        'payoutPublicId' => 'wk',
-        'payoutSecret' => 's2',
         'baseUrl' => 'https://api.test',
     ];
 

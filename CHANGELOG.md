@@ -98,7 +98,7 @@ Rewrite generated from the gateway's contract snapshot (`contract/`). See
   generated enums (`Oblodai\Contract\Enum\*`) and the route registry (`Oblodai\Contract\Routes`);
   `composer check-drift` fails when they drift from `contract/`.
 - Retries driven by the API's own `retryable` flag, automatic idempotency keys, clock-skew
-  correction, dual key pairs, per-attempt timeout and per-call deadline.
+  correction, per-attempt timeout and per-call deadline.
 - Contract tests against the golden response bodies and real signed webhook deliveries, a route
   registry check that compares every flag field by field, and a live journey against a running
   gateway (`composer test-live`).
@@ -108,6 +108,14 @@ Rewrite generated from the gateway's contract snapshot (`contract/`). See
 
 ### Changed
 
+- **One API key.** The client takes `publicId` + `secret` (plus `adminToken` for the two onboarding
+  routes) and signs every gated route with it. The payout credential pair
+  (`payoutPublicId`/`payoutSecret`, `OBLODAI_PAYOUT_PUBLIC_ID`/`OBLODAI_PAYOUT_SECRET`), the
+  per-call `preferPayoutKey` option and the payout-key retry inside `batches->info()` are gone;
+  the route registry's `auth` is now `public`, `key` or `onboard`. `merchants->create()` and
+  `merchants->createSandbox()` return `api_key` only — `payment_key` and `payout_key` are no longer
+  in the response, and `ApiKeyPair` has no `kind`. Only a legacy `oblodai_pk_…`/`oblodai_wk_…` pair
+  can still see `merchant.wrong_key_kind`; build one client per key if you hold one.
 - PHP ≥ 8.1. Readonly value objects for every response body, each keeping the raw wire body in
   `->raw` and its wire keys in `::KEYS`.
 - Errors are an `OblodaiException` hierarchy carrying `errorCode`, `httpStatus`, `retryable`,
@@ -155,7 +163,7 @@ Rewrite generated from the gateway's contract snapshot (`contract/`). See
 - Signed GET requests: `Client::requestGet($path)` — the same canonical HMAC string as POST with an
   empty body.
 - `Client::isTestKey($key)` — whether a key is a sandbox key (`test_…` / `oblodai_test_…`).
-- **Transfers to platform users** (payout key): `account()->transferToUser()` — an instant, fee-free
+- **Transfers to platform users**: `account()->transferToUser()` — an instant, fee-free
   move from the merchant balance to another platform user's personal wallet (`to_user_id` is a
   platform UUID, not a username) — and `account()->transferBatch()`, tracked through
   `batches()->info()`. Both carry `Idempotency-Key`.

@@ -78,8 +78,6 @@ final class RedactionTest extends TestCase
         $client = new Oblodai(
             publicId: 'pk_live_1',
             secret: self::SECRET,
-            payoutPublicId: 'pk_live_2',
-            payoutSecret: 'payout_' . self::SECRET,
             adminToken: 'admin_' . self::SECRET,
             baseUrl: 'https://api.test',
             http: new FakeHttpClient(),
@@ -106,7 +104,7 @@ final class RedactionTest extends TestCase
             'previous_secret_valid_until' => '2026-01-02T00:00:00Z',
         ])];
         yield 'api key pair' => [ApiKeyPair::fromArray([
-            'public_id' => 'pk', 'secret' => self::SECRET, 'kind' => 'payment',
+            'public_id' => 'pk', 'secret' => self::SECRET,
         ])];
         yield 'payout link' => [PayoutLink::fromArray([
             'link_id' => 'l1', 'status' => 'funded', 'claim_token' => self::SECRET, 'passcode' => self::SECRET,
@@ -121,9 +119,7 @@ final class RedactionTest extends TestCase
         ], static fn (array $raw): PayoutLink => PayoutLink::fromArray($raw))];
         yield 'merchant onboarded' => [MerchantOnboarded::fromArray([
             'merchant_id' => 'm1', 'project_id' => 'p1',
-            'api_key' => ['public_id' => 'pk', 'secret' => self::SECRET, 'kind' => 'any'],
-            'payment_key' => ['public_id' => 'pk', 'secret' => self::SECRET, 'kind' => 'payment'],
-            'payout_key' => ['public_id' => 'wk', 'secret' => self::SECRET, 'kind' => 'payout'],
+            'api_key' => ['public_id' => 'pk', 'secret' => self::SECRET],
         ])];
     }
 

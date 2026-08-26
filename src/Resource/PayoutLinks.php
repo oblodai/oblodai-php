@@ -31,8 +31,7 @@ final class PayoutLinks extends Resource
      *
      * Codes worth branching on: `payout_link.disabled`, `payout.insufficient_funds` (retryable),
      * `payout.funds_maturing` (retryable), `payout.bad_amount`, `payout.bad_address`,
-     * `payout.reference_collision` (that `reference` already minted a different link),
-     * `merchant.wrong_key_kind`.
+     * `payout.reference_collision` (that `reference` already minted a different link).
      *
      * @param array<string, mixed>|PayoutLinkRequest $params
      */
@@ -98,7 +97,7 @@ final class PayoutLinks extends Resource
      * `reference` is required on every item.
      *
      * Call-level codes worth branching on: `payout.batch_too_large` (>500), `payout.empty_batch`,
-     * `payout_link.disabled`, `payout.insufficient_funds` (retryable), `merchant.wrong_key_kind`.
+     * `payout_link.disabled`, `payout.insufficient_funds` (retryable).
      * Per-element failures arrive as `->error_code` with the vocabulary of `create()`.
      *
      * Returns the elements themselves, not the wire's `{items}` wrapper.

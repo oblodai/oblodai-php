@@ -85,11 +85,10 @@ final class RequestBuilder
                 throw new ConfigException(
                     ConfigException::MISSING_CREDENTIALS,
                     sprintf(
-                        '%s %s needs a %s API key: pass publicId/secret to new Oblodai() or set '
+                        '%s %s must be signed: pass publicId/secret to new Oblodai() or set '
                             . 'OBLODAI_PUBLIC_ID / OBLODAI_SECRET',
                         $route->method,
-                        $route->path,
-                        $route->auth === 'any' ? 'merchant' : $route->auth
+                        $route->path
                     )
                 );
             }
