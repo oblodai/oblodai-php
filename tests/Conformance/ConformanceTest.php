@@ -11,6 +11,7 @@ use Oblodai\Core\Transport;
 use Oblodai\Exception\OblodaiException;
 use Oblodai\Exception\SignatureException;
 use Oblodai\Exception\WebhookPayloadException;
+use Oblodai\Generated\Facts;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\Backend;
 use Oblodai\Tests\Support\Operations;
@@ -124,6 +125,14 @@ final class ConformanceTest extends TestCase
         return self::cases('webhook');
     }
 
+    /** @return iterable<string, array{array<string, mixed>, array<string, mixed>, array<string, mixed>}> */
+    public static function webhookDeliveryCases(): iterable
+    {
+        foreach (self::cases('webhook_delivery') as $name => [$check, $delivery, $signing]) {
+            yield sprintf('%s - %s (%s)', $name, self::str($delivery, 'event'), self::str($check, 'key')) => [$check, $delivery, $signing];
+        }
+    }
+
     /** @return iterable<string, array{array<string, mixed>}> */
     public static function callScenarios(): iterable
     {
@@ -216,6 +225,61 @@ final class ConformanceTest extends TestCase
             self::fail('expected a SignatureException');
         } catch (SignatureException $e) {
             self::assertSame('webhook.' . self::str($check, 'expect'), $e->errorCode);
+        }
+    }
+
+    public function testEveryEventOfThisReleaseHasADelivery(): void
+    {
+        $suite = self::suite('webhook_delivery');
+        if ($suite === []) {
+            self::markTestSkipped(sprintf('conformance suite not found at %s; set OBLODAI_BACKEND', Backend::conformance()));
+        }
+        [, $deliveries] = self::source($suite);
+        $events = array_map(static fn (array $d): string => self::str($d, 'event'), $deliveries);
+        $known = array_keys(Facts::WEBHOOK_EVENTS);
+        sort($events);
+        sort($known);
+        self::assertSame($known, $events);
+    }
+
+    /**
+     * A real delivery of every event of the contract verifies (with the current secret and, as a
+     * receiver that has not swapped yet, the previous one), parses into its kind's model and
+     * exposes every delivery header of the spec.
+     *
+     * @param array<string, mixed> $check
+     * @param array<string, mixed> $delivery
+     * @param array<string, mixed> $signing
+     */
+    #[DataProvider('webhookDeliveryCases')]
+    public function testWebhookDelivery(array $check, array $delivery, array $signing): void
+    {
+        self::assertSame('webhook_delivery', $check['kind']);
+        $secret = match ($check['key']) {
+            'current' => self::str($delivery, 'secret'),
+            'previous' => self::str($delivery, 'previous_secret'),
+            default => throw new RuntimeException('unknown key'),
+        };
+        /** @var array<string, string> $headers */
+        $headers = $delivery['headers'];
+        $got = Verifier::verify(self::str($delivery, 'payload'), $headers, $secret, now: self::int($delivery, 'ts'));
+        $kind = self::str($delivery, 'kind');
+        self::assertTrue(Verifier::isKnownEvent($got->event), $kind);
+        self::assertSame($kind, $got->event['type']);
+        self::assertInstanceOf(Facts::WEBHOOK_MODELS[$kind], Verifier::model($got->event));
+        /** @var array<string, string> $fields */
+        $fields = self::suite('webhook_delivery')['headers'];
+        foreach ($fields as $header => $field) {
+            $value = match ($field) {
+                '' => $headers[$header],
+                'id' => $got->id,
+                'event_id' => $got->eventId,
+                'event_type' => $got->eventType,
+                'event_time' => $got->eventTime === null ? null : (string) $got->eventTime,
+                'sent_at' => (string) $got->sentAt,
+                default => throw new RuntimeException(sprintf('the delivery has no field %s for %s', $field, $header)),
+            };
+            self::assertSame($headers[$header], $value, sprintf('%s != %s', $field, $header));
         }
     }
 
