@@ -2,6 +2,12 @@
 
 This package (`oblodai/sdk`) is published to **Packagist** by CI when a `v*` tag is pushed.
 
+**The version bump is scripted for the whole SDK family.** From the backend checkout,
+`tools/sdkgen/release.sh X.Y.Z` raises the version in all eight SDKs (manifest, version constant,
+lock files, the install lines of the READMEs), closes the `## [X.Y.Z] — Unreleased` (or
+`## [Unreleased]`) section of every `CHANGELOG.md` with today's date, commits and tags `vX.Y.Z`
+locally; `-n` only checks. Pushing the tag — the step that publishes — stays manual.
+
 ## Setup (one-time)
 **No CI secret needed.** Register the package once on Packagist and enable the GitHub webhook / Packagist app — every push/tag then auto-syncs.
 
