@@ -4,10 +4,32 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [2.0.0] — 2026-09-25
+## [2.0.0] — Unreleased
 
 The SDK regenerated from the gateway's OpenAPI contract. Breaking: method names, model classes,
 timeouts in seconds, PHP 8.2 — see [MIGRATION-2.0.md](MIGRATION-2.0.md).
+
+### Added
+
+- **`X-Request-ID` on every call** (the caller's `requestId`, else a fresh UUID), the same on every
+  retry; an error carries it when the gateway's envelope names none.
+- **`withRawResponse(fn ($r) => …)`** on every resource: status, headers, request id and body of a
+  successful answer, `parse()` for the usual value.
+- **`$oblodai->withOptions(timeout:, maxRetries:, extraHeaders:)`** — a client copy that shares the
+  HTTP client, clock and hooks.
+- **Hooks** — `new Hooks(onRequest:, onResponse:)`, called per attempt with the signature redacted.
+- **`Page::byPage()` and `Page::first()`** — page by page (`PageResult`), one request each.
+- **Long-running operations** — `asJob(fn ($r) => $r->createPayout(…))->wait()` for batches and
+  document exports, `->download()` for an export's file; which operations are jobs and when a job
+  ends is the contract's `x-sdk-poll` (`Oblodai\Lro::JOBS`, from `Oblodai\Generated\Facts`).
+- **Status classes from the contract** (`x-status-classes`): `PaymentStatus::FINAL`, `::SUCCESS`,
+  `->isFinal()`, `->isSuccess()` on every classified enum; the `Status` helpers wrap them.
+- **Retry-safe routes from the contract** (`x-retry-safe`) and `maxRetries` per call.
+- **Webhook event id** — `Delivery::$eventId` (`X-Webhook-Event-Id`), the key to deduplicate on.
+- **Conformance** — the shared behaviour suite of every Oblodai SDK (signing vectors from
+  `x-oblodai-signing`, retries, idempotency keys, money, forward compatibility) runs in the tests.
+- **`make ci`** — drift check, php-cs-fixer, PHPStan (max), tests, the README's code and the
+  examples run against a mock gateway, and the package contents — all in docker.
 
 ### Changed
 
@@ -33,28 +55,6 @@ timeouts in seconds, PHP 8.2 — see [MIGRATION-2.0.md](MIGRATION-2.0.md).
 - **Webhooks**: `Delivery::$event` is the verified body; `Verifier::model()` reads it into the
   generated `PaymentWebhook`, `PayoutWebhook`, `WalletWebhook` or `ConversionWebhook` — the kinds
   and their models come from the contract's webhooks (`Facts::WEBHOOK_MODELS`).
-
-### Added
-
-- **`X-Request-ID` on every call** (the caller's `requestId`, else a fresh UUID), the same on every
-  retry; an error carries it when the gateway's envelope names none.
-- **`withRawResponse(fn ($r) => …)`** on every resource: status, headers, request id and body of a
-  successful answer, `parse()` for the usual value.
-- **`$oblodai->withOptions(timeout:, maxRetries:, extraHeaders:)`** — a client copy that shares the
-  HTTP client, clock and hooks.
-- **Hooks** — `new Hooks(onRequest:, onResponse:)`, called per attempt with the signature redacted.
-- **`Page::byPage()` and `Page::first()`** — page by page (`PageResult`), one request each.
-- **Long-running operations** — `asJob(fn ($r) => $r->createPayout(…))->wait()` for batches and
-  document exports, `->download()` for an export's file; which operations are jobs and when a job
-  ends is the contract's `x-sdk-poll` (`Oblodai\Lro::JOBS`, from `Oblodai\Generated\Facts`).
-- **Status classes from the contract** (`x-status-classes`): `PaymentStatus::FINAL`, `::SUCCESS`,
-  `->isFinal()`, `->isSuccess()` on every classified enum; the `Status` helpers wrap them.
-- **Retry-safe routes from the contract** (`x-retry-safe`) and `maxRetries` per call.
-- **Webhook event id** — `Delivery::$eventId` (`X-Webhook-Event-Id`), the key to deduplicate on.
-- **Conformance** — the shared behaviour suite of every Oblodai SDK (signing vectors from
-  `x-oblodai-signing`, retries, idempotency keys, money, forward compatibility) runs in the tests.
-- **`make ci`** — drift check, php-cs-fixer, PHPStan (max), tests, the README's code and the
-  examples run against a mock gateway, and the package contents — all in docker.
 
 ## [1.3.0] — 2026-08-26
 
