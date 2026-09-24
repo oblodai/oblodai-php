@@ -21,7 +21,7 @@ foreach (['composer.json', 'LICENSE', 'README.md', 'CHANGELOG.md', 'MIGRATION-2.
     }
 }
 foreach ($names as $name) {
-    if (preg_match('#^(tests|examples|scripts|\.github|\.cache|\.phpunit\.cache|vendor)/|^(Makefile|names\.lock|composer\.lock|phpstan\.neon|phpunit\.xml)$#', $name) === 1) {
+    if (preg_match('#^(tests|examples|scripts|\.github|\.cache|\.phpunit\.cache|vendor)/|^(Makefile|names\.lock|names\.2\.0\.txt|composer\.lock|phpstan\.neon|phpunit\.xml)$#', $name) === 1) {
         $problems[] = "ships {$name}";
     }
 }

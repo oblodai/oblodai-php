@@ -4,16 +4,14 @@ declare(strict_types=1);
 
 namespace Oblodai\Webhook;
 
+use Oblodai\Core\Model;
 use Oblodai\Core\Signer;
 use Oblodai\Core\Util;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\ContractException;
 use Oblodai\Exception\SignatureException;
 use Oblodai\Exception\WebhookPayloadException;
-use Oblodai\Generated\Model\ConversionWebhook;
-use Oblodai\Generated\Model\PaymentWebhook;
-use Oblodai\Generated\Model\PayoutWebhook;
-use Oblodai\Generated\Model\WalletWebhook;
+use Oblodai\Generated\Facts;
 
 /**
  * Webhook verification — usable on its own, no client and no API key required. Deliveries are
@@ -22,7 +20,7 @@ use Oblodai\Generated\Model\WalletWebhook;
  *   X-Webhook-Timestamp: <unix seconds>
  *   X-Webhook-Signature: hex(HMAC-SHA256(secret, "<ts>." + rawBody))
  *   X-Webhook-Signature-Prev: same, with the previous secret — only during a rotation overlap
- *   X-Webhook-Event: invoice.<status> | payout.<status> | wallet.paid
+ *   X-Webhook-Event: the event name ({@see Facts::WEBHOOK_EVENTS}: `invoice.paid`, `payout.sent`, …)
  *   X-Webhook-Id: stable per delivery (identical across retries of THAT delivery)
  *   X-Webhook-Event-Id: stable per STATE — the same for a resend of a state you already handled,
  *     different as soon as the state differs; this is the idempotency key to keep
@@ -36,6 +34,8 @@ use Oblodai\Generated\Model\WalletWebhook;
  * $delivery = Verifier::verify(file_get_contents('php://input'), getallheaders(), $secret);
  * $event = Verifier::model($delivery->event);   // PaymentWebhook, PayoutWebhook, … or null
  * ```
+ *
+ * @phpstan-import-type WebhookEvent from Facts
  */
 final class Verifier
 {
@@ -49,16 +49,11 @@ final class Verifier
     public const HEADER_TEST = 'X-Webhook-Test';
 
     /**
-     * The `type` discriminators this SDK models, with the generated model of each. A delivery naming
-     * anything else is still returned — a newer gateway may add a kind, and dropping it would lose
-     * a real event.
+     * The `type` discriminators this SDK models, with the generated model of each (the contract's
+     * webhooks, {@see Facts::WEBHOOK_MODELS}). A delivery naming anything else is still returned —
+     * a newer gateway may add a kind, and dropping it would lose a real event.
      */
-    public const EVENT_MODELS = [
-        'payment' => PaymentWebhook::class,
-        'payout' => PayoutWebhook::class,
-        'wallet' => WalletWebhook::class,
-        'conversion' => ConversionWebhook::class,
-    ];
+    public const EVENT_MODELS = Facts::WEBHOOK_MODELS;
 
     /** Reject deliveries whose timestamp is further away than this, seconds. */
     public const DEFAULT_TOLERANCE_SECONDS = 300;
@@ -230,26 +225,23 @@ final class Verifier
      *
      * @param array<string, mixed> $event
      *
+     * @return WebhookEvent|null
+     *
      * @throws WebhookPayloadException when the body does not have the documented fields of its type
      */
-    public static function model(array $event): PaymentWebhook|PayoutWebhook|WalletWebhook|ConversionWebhook|null
+    public static function model(array $event): ?Model
     {
-        $type = is_string($event['type'] ?? null) ? $event['type'] : '';
-        $class = self::EVENT_MODELS[$type] ?? null;
-        if ($class === null) {
-            return null;
-        }
-
         try {
-            return $class::fromArray($event);
+            return Facts::webhook($event);
         } catch (ContractException $err) {
+            $type = is_string($event['type'] ?? null) ? $event['type'] : '';
+
             throw new WebhookPayloadException(sprintf('webhook %s: %s', $type, $err->detail), $event);
         }
     }
 
     /**
-     * True when the event's `type` is one this SDK models (`payment`, `payout`, `wallet`,
-     * `conversion`). A false answer is not a failure: the gateway sent a kind of event newer than
+     * True when the event's `type` is one this SDK models ({@see Facts::WEBHOOK_KINDS}). A false answer is not a failure: the gateway sent a kind of event newer than
      * this release; log it and move on.
      *
      * @param array<string, mixed> $event

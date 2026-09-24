@@ -20,4 +20,22 @@ enum PaymentStatus: string
     case Expired = 'expired';
     case Cancelled = 'cancelled';
     case UnderReview = 'under_review';
+
+    /** The values after which nothing else changes (the contract's `x-status-classes.final`). */
+    public const FINAL = [self::Paid, self::PaidOver, self::WrongAmount, self::Expired, self::Cancelled];
+
+    /** The final values that mean success (`x-status-classes.success`). */
+    public const SUCCESS = [self::Paid, self::PaidOver];
+
+    /** Nothing else changes after this value. */
+    public function isFinal(): bool
+    {
+        return in_array($this, self::FINAL, true);
+    }
+
+    /** A final value that means success. */
+    public function isSuccess(): bool
+    {
+        return in_array($this, self::SUCCESS, true);
+    }
 }

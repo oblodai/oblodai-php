@@ -158,27 +158,32 @@ true` в теле. Никогда не двигайте по нему деньг
 
 ## Обзор методов
 
-Шестнадцать пространств, 120 методов — каждая операция контракта шлюза, названная по её
-`operationId` (полный список со старыми именами 1.x — в [MIGRATION-2.0.md](MIGRATION-2.0.md)):
+Каждая операция контракта шлюза — `$oblodai-><пространство>-><метод>()`, названная по её
+`operationId` (старые имена 1.x — в [MIGRATION-2.0.md](MIGRATION-2.0.md)). Таблицу пишет
+генератор:
 
-| пространство   | методы |
-| -------------- | ------ |
+<!-- sdkgen:methods -->
+16 ресурсов, 120 методов.
+
+| Ресурс | Методы |
+| --- | --- |
+| `payments` | `create` · `getInfo` · `getQr` · `listHistory` · `listServices` · `cancel` · `sendEmail` · `setCheckoutConfig` · `getCheckoutConfig` · `getAmlLinks` · `resolve` |
+| `paymentLinks` | `create` · `list` · `get` · `toggle` |
+| `refunds` | `payment` · `blockedWallet` |
+| `payouts` | `create` · `createMass` · `getInfo` · `listHistory` · `calculate` · `validate` · `cancel` · `approve` · `listServices` · `transferToPersonal` · `transferToUser` · `createTransferBatch` |
+| `payoutLinks` | `create` · `createBatch` · `list` · `get` · `cancel` · `getPayoutClaim` · `claimPayout` |
+| `batches` | `createPayment` · `createRefund` · `createPayout` · `getInfo` |
+| `splits` | `createRule` · `listRules` · `deleteRule` · `setConfig` · `getConfig` · `setRecipientOptIn` · `getRecipientOptIn` |
+| `wallets` | `create` · `block` · `getQr` |
 | `account` | `getBalance` · `getSummary` · `listExchangeRates` |
-| `apiAllowlist` | `addEntry` · `list` · `removeEntry` · `setEnabled` |
-| `batches` | `createPayment` · `createPayout` · `createRefund` · `getInfo` |
-| `checkout` | `get` · `getOnramp` · `getPublicPaymentLink` · `getQr` · `getSourceOfFundsForm` · `listCurrencies` · `paymentLink` · `selectMethod` · `startOnramp` · `submitSourceOfFunds` |
-| `documents` | `createJob` · `downloadJobFile` · `getBalance` · `getBatch` · `getFees` · `getJob` · `getLedger` · `getPaymentLink` · `getPayoutLinkCheque` · `getReferrals` · `getSigned` · `getSplit` · `getStatement` · `getWalletStatement` |
-| `paymentLinks` | `create` · `get` · `list` · `toggle` |
-| `payments` | `cancel` · `create` · `getAmlLinks` · `getCheckoutConfig` · `getInfo` · `getQr` · `listHistory` · `listServices` · `resolve` · `sendEmail` · `setCheckoutConfig` |
-| `payoutLinks` | `cancel` · `claimPayout` · `create` · `createBatch` · `get` · `getPayoutClaim` · `list` |
-| `payouts` | `approve` · `calculate` · `cancel` · `create` · `createMass` · `createTransferBatch` · `getInfo` · `listHistory` · `listServices` · `transferToPersonal` · `transferToUser` · `validate` |
+| `webhooks` | `resendPayment` · `register` · `listDeliveries` · `requeueDelivery` · `sendLegacyTest` · `sendTestPayment` · `sendTestWallet` · `sendTestPayout` · `sendTestConversion` · `rotateSecret` · `setActive` |
+| `settings` | `setAccuracy` · `getAccuracy` · `setAutoRefund` · `getAutoRefund` · `setDiscount` · `listDiscounts` · `listApiLog` · `getAutoConvert` · `setAutoConvert` · `setAcceptedCurrencies` · `listAcceptedCurrencies` · `setPayoutFeeConfig` · `getPayoutFeeConfig` · `setRefundFeeConfig` · `getRefundFeeConfig` · `setPaymentFeeConfig` · `getPaymentFeeConfig` · `setAutoWithdrawRule` · `listAutoWithdrawRules` · `deleteAutoWithdrawRule` · `configureVrcs` |
+| `apiAllowlist` | `list` · `addEntry` · `removeEntry` · `setEnabled` |
 | `referrals` | `getInfo` |
-| `refunds` | `blockedWallet` · `payment` |
-| `sandbox` | `faucet` · `listWebhooks` · `onboardStore` · `replayWebhook` · `reset` · `simulateDeposit` |
-| `settings` | `configureVrcs` · `deleteAutoWithdrawRule` · `getAccuracy` · `getAutoConvert` · `getAutoRefund` · `getPaymentFeeConfig` · `getPayoutFeeConfig` · `getRefundFeeConfig` · `listAcceptedCurrencies` · `listApiLog` · `listAutoWithdrawRules` · `listDiscounts` · `setAcceptedCurrencies` · `setAccuracy` · `setAutoConvert` · `setAutoRefund` · `setAutoWithdrawRule` · `setDiscount` · `setPaymentFeeConfig` · `setPayoutFeeConfig` · `setRefundFeeConfig` |
-| `splits` | `createRule` · `deleteRule` · `getConfig` · `getRecipientOptIn` · `listRules` · `setConfig` · `setRecipientOptIn` |
-| `wallets` | `block` · `create` · `getQr` |
-| `webhooks` | `listDeliveries` · `register` · `requeueDelivery` · `resendPayment` · `rotateSecret` · `sendLegacyTest` · `sendTestConversion` · `sendTestPayment` · `sendTestPayout` · `sendTestWallet` · `setActive` |
+| `documents` | `getSigned` · `getBalance` · `getFees` · `getLedger` · `getSplit` · `getPayoutLinkCheque` · `getStatement` · `getBatch` · `getPaymentLink` · `getWalletStatement` · `getReferrals` · `createJob` · `getJob` · `downloadJobFile` |
+| `checkout` | `getSourceOfFundsForm` · `submitSourceOfFunds` · `getPublicPaymentLink` · `paymentLink` · `listCurrencies` · `get` · `selectMethod` · `startOnramp` · `getOnramp` · `getQr` |
+| `sandbox` | `onboardStore` · `faucet` · `simulateDeposit` · `reset` · `listWebhooks` · `replayWebhook` |
+<!-- /sdkgen:methods -->
 
 Каждый метод принимает необязательный последний аргумент `RequestOptions` — см.
 [Повторы, идемпотентность и таймауты](#повторы-идемпотентность-и-таймауты). Параметры пути идут
@@ -235,7 +240,8 @@ $export->wait();
 $export->download()->saveTo(sys_get_temp_dir() . '/statement.csv');
 ```
 
-Какие операции — долгие и как за каждой следить, решает таблица SDK `Oblodai\Lro`.
+Какие операции — долгие и как за каждой следить, решает контракт (`x-sdk-poll`): это сгенерировано
+в `Oblodai\Generated\Facts` и читается через `Oblodai\Lro::JOBS`.
 
 ### Статусы
 
@@ -244,6 +250,10 @@ $export->download()->saveTo(sys_get_temp_dir() . '/statement.csv');
   (недоплата) ждёт `payments->resolve(['uuid' => …, 'action' => 'accept'|'refund'])`;
   `Status::isPaymentFinal()` покрывает остальные.
 - Выплата: `pending → approved → awaiting_cosign → broadcasting → sent → confirmed | failed | cancelled`.
+
+Какие статусы конечные и какие из них означают успех, решает контракт (`x-status-classes`): это
+несут сгенерированные enum'ы (`PaymentStatus::FINAL`, `PaymentStatus::Paid->isSuccess()`), а
+хелперы `Status` — обёртки над ними.
 
 Об изменениях состояния лучше узнавать из вебхуков; `getInfo()` — только запасной путь.
 
@@ -265,8 +275,8 @@ $payment->extra;                            // fields newer than this SDK, exact
 ### Деньги
 
 Суммы — десятичные **строки** в обе стороны: модели типизируют их как `string`, а число с плавающей
-точкой в любом месте тела запроса (кроме единственного неденежного числа —
-`accuracy_payment_percent`) — ошибка `sdk.float_amount` ещё до сети. `Oblodai\Helper\Money::add()`,
+точкой в любом месте тела запроса (кроме чисел, которые контракт типизирует как `number`, — не
+денег, `Oblodai\Generated\Facts::NON_MONEY_NUMBERS`) — ошибка `sdk.float_amount` ещё до сети. `Oblodai\Helper\Money::add()`,
 `subtract()`, `compare()`, `equals()`, `isZero()`, `isPositive()`, `assertAmount()` — точная
 десятичная арифметика над этими строками. Никогда не приводите денежное поле к `float` и не
 сравнивайте суммы как строки (`"9"` как текст больше `"10"`, а как деньги — меньше; используйте
@@ -507,12 +517,14 @@ PSR-18 описывает лишь «отправь запрос — получ�
 
 ## Сгенерированный код
 
-`src/Generated` (`Oblodai\Generated\…` — ресурсы, модели, enum'ы и таблица маршрутов) генерирует
+`src/Generated` (`Oblodai\Generated\…` — ресурсы, модели, enum'ы, таблица маршрутов и `Facts`:
+долгие операции, виды вебхуков, неденежные числа) генерирует
 `tools/sdkgen` шлюза из его OpenAPI-контракта, руками он не правится; рукописный runtime
 (`Oblodai\Core`, `Oblodai\Exception`, `Oblodai\Webhook`, `Oblodai\Http`) подписывает, отправляет,
 повторяет и разбирает. `names.lock` фиксирует каждое публичное имя метода: пропажа или смена имени
-роняет генератор как ломающее изменение. `make drift` перегенерирует во временный каталог и падает,
-если `src/Generated` отличается.
+роняет генератор как ломающее изменение, а новое генератор сам дописывает в lock, как и таблицу
+методов выше. `make drift` перегенерирует во временный каталог и падает, если отличается
+`src/Generated`, `names.lock` или эта таблица.
 
 ## Разработка
 

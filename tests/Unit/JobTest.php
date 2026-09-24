@@ -8,6 +8,8 @@ use LogicException;
 use Oblodai\Core\Job;
 use Oblodai\Core\RequestOptions;
 use Oblodai\Exception\ConfigException;
+use Oblodai\Generated\Enum\BatchStatus;
+use Oblodai\Generated\Enum\DocumentJobStatus;
 use Oblodai\Generated\Model\BatchInfoResponse;
 use Oblodai\Generated\Model\BatchSubmitResponse;
 use Oblodai\Generated\Model\DocumentJobView;
@@ -21,7 +23,7 @@ use Oblodai\Tests\Support\Operations;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
-/** Long-running operations wait with `asJob(...)->wait()` (spec §3 item 8, table {@see Lro}). */
+/** Long-running operations wait with `asJob(...)->wait()` (spec §3 item 8, the contract's `x-sdk-poll`, {@see Lro}). */
 final class JobTest extends TestCase
 {
     private const CREDS = ['publicId' => 'pk', 'secret' => 's', 'baseUrl' => 'https://api.test'];
@@ -52,18 +54,48 @@ final class JobTest extends TestCase
 
     public function testEveryListedOperationIsACreateWhoseAnswerCarriesTheJobId(): void
     {
-        foreach (Lro::LRO as $create => $poll) {
-            $plan = Lro::POLLS[$poll];
+        self::assertSame(array_keys(Lro::JOBS), array_keys(Lro::LRO));
+        foreach (array_keys(Lro::JOBS) as $create) {
+            $plan = Lro::job($create);
+            self::assertNotNull($plan, $create);
+            self::assertSame($plan['poll'], Lro::LRO[$create]);
             self::assertArrayHasKey($create, Operations::all());
-            self::assertArrayHasKey($poll, Operations::all());
+            self::assertArrayHasKey($plan['poll'], Operations::all());
             $answer = Operations::sampleResult($create);
             self::assertIsArray($answer);
             self::assertArrayHasKey($plan['idField'], $answer, $create . ' answers with ' . $plan['idField']);
-            self::assertTrue(class_exists('Oblodai\\Generated\\Model\\' . $plan['model']), $plan['model']);
+            self::assertNotNull($plan['model'], $create);
+            self::assertTrue(class_exists($plan['model']), $plan['model']);
+            self::assertNotSame([], $plan['terminal'], $create);
             if ($plan['download'] !== null) {
                 self::assertSame('requestFile', Operations::get($plan['download'])['entry']);
             }
         }
+    }
+
+    /** A job ends on ITS terminal statuses: `failed` ends an export, not a batch. */
+    public function testEachJobWaitsForItsOwnTerminalStatuses(): void
+    {
+        $values = static fn (array $cases): array => array_map(static fn (mixed $c): string => $c instanceof \BackedEnum ? (string) $c->value : '', $cases);
+        self::assertSame($values(BatchStatus::FINAL), Lro::JOBS['createPayoutBatch']['terminal']);
+        self::assertSame($values(DocumentJobStatus::FINAL), Lro::JOBS['createDocumentJob']['terminal']);
+
+        $fake = new FakeHttpClient([
+            FakeHttpClient::sample('createPayoutBatch', ['batch_id' => 'b-3']),
+            FakeHttpClient::sample('getBatchInfo', ['batch_id' => 'b-3', 'status' => 'failed']),
+            FakeHttpClient::sample('getBatchInfo', ['batch_id' => 'b-3', 'status' => 'stopped']),
+        ]);
+        $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
+        $job = $ob->batches->asJob(static fn (Batches $b) => $b->createPayout(['payouts' => []]));
+
+        self::assertSame('stopped', Job::statusOf($job->wait(timeout: 5, interval: 0)));
+        self::assertSame(3, $fake->count());
+    }
+
+    public function testAJobWithoutTerminalStatusesIsRefused(): void
+    {
+        $this->expectException(LogicException::class);
+        new Job('j', null, static fn (): array => [], []);
     }
 
     public function testADocumentJobDownloadsItsFileWhenDone(): void
@@ -106,7 +138,7 @@ final class JobTest extends TestCase
     public function testWaitGivesUpAfterItsTimeout(): void
     {
         $slept = [];
-        $job = new Job('j', null, static fn (): array => ['status' => 'running'], null, static function (float $s) use (&$slept): void {
+        $job = new Job('j', null, static fn (): array => ['status' => 'running'], ['done'], null, static function (float $s) use (&$slept): void {
             $slept[] = $s;
         });
 
@@ -121,7 +153,7 @@ final class JobTest extends TestCase
 
     public function testAJobWithoutAFileHasNothingToDownload(): void
     {
-        $job = new Job('b', null, static fn (): array => ['status' => 'completed']);
+        $job = new Job('b', null, static fn (): array => ['status' => 'completed'], ['completed']);
 
         $this->expectException(LogicException::class);
         $job->download();

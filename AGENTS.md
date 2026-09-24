@@ -68,5 +68,6 @@ money). Deduplicate on `$delivery->eventId`; drop out-of-order events with
 ## Machine-readable surface
 
 `Oblodai\Generated\Routes` (every operation: method, path, auth, idempotent, retry-safe, file,
-paged), `Oblodai\Generated\Model\*` and `Oblodai\Generated\Enum\*`, `Oblodai\Lro` (which operations
-are jobs), `names.lock`.
+paged), `Oblodai\Generated\Model\*` and `Oblodai\Generated\Enum\*`, `Oblodai\Generated\Facts`
+(which operations are jobs and how they end, webhook kinds and their models, non-money numbers),
+`names.lock`.

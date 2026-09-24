@@ -44,6 +44,23 @@ final class MoneyTest extends TestCase
         self::assertTrue(Status::isPayoutFinal(PayoutStatus::Confirmed));
     }
 
+    /** The helpers are the contract's `x-status-classes`, carried by the generated enums. */
+    public function testStatusHelpersAreTheGeneratedStatusClasses(): void
+    {
+        foreach (PaymentStatus::cases() as $case) {
+            self::assertSame(in_array($case, PaymentStatus::FINAL, true), Status::isPaymentFinal($case->value), $case->value);
+            self::assertSame(in_array($case, PaymentStatus::SUCCESS, true), Status::isPaymentPaid($case), $case->value);
+        }
+        foreach (PayoutStatus::cases() as $case) {
+            self::assertSame($case->isFinal(), Status::isPayoutFinal($case->value), $case->value);
+            self::assertSame($case->isSuccess(), Status::isPayoutSucceeded($case), $case->value);
+        }
+        self::assertSame(PaymentStatus::FINAL, Status::FINAL_PAYMENT_STATUSES);
+        self::assertSame(PayoutStatus::FINAL, Status::FINAL_PAYOUT_STATUSES);
+        self::assertFalse(Status::isPaymentFinal('status_from_the_future'));
+        self::assertFalse(Status::isPayoutSucceeded('status_from_the_future'));
+    }
+
     /** @return iterable<string, array{string}> */
     public static function nonAmounts(): iterable
     {

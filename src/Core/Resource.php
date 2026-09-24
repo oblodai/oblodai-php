@@ -54,7 +54,7 @@ abstract class Resource
     }
 
     /**
-     * Run a create call of a long-running operation ({@see Lro::LRO}) and return its waiter.
+     * Run a create call of a long-running operation ({@see Lro::JOBS}) and return its waiter.
      *
      * ```php
      * $job = $oblodai->documents->asJob(fn (Documents $d) => $d->createJob($export));
@@ -77,14 +77,13 @@ abstract class Resource
         if ($record->route === null) {
             throw new LogicException('asJob(): the callback made no call through the resource it was given');
         }
-        $pollId = Lro::LRO[$record->route->operationId] ?? null;
-        if ($pollId === null) {
+        $plan = Lro::job($record->route->operationId);
+        if ($plan === null) {
             throw new ConfigException(
                 ConfigException::LRO_UNRESOLVED,
-                sprintf('%s is not a long-running operation; asJob() wraps %s', $record->route->operationId, implode(', ', array_keys(Lro::LRO))),
+                sprintf('%s is not a long-running operation; asJob() wraps %s', $record->route->operationId, implode(', ', array_keys(Lro::JOBS))),
             );
         }
-        $plan = Lro::POLLS[$pollId];
         $idField = $plan['idField'];
         $id = is_array($record->result) ? ($record->result[$idField] ?? null) : null;
         if (!is_string($id) && !is_int($id) || $id === '') {
@@ -100,13 +99,12 @@ abstract class Resource
         $options = $record->options ?? new RequestOptions();
         $follow = new RequestOptions(timeout: $options->timeout, maxRetries: $options->maxRetries, extraHeaders: $options->extraHeaders);
         $transport = $this->transport;
-        $pollRoute = Routes::get($pollId);
-        /** @var class-string<Model> $model */
-        $model = 'Oblodai\\Generated\\Model\\' . $plan['model'];
+        $pollRoute = Routes::get($plan['poll']);
+        $model = $plan['model'];
         $poll = static function () use ($transport, $pollRoute, $idField, $id, $follow, $model): mixed {
             $answer = $transport->call($pollRoute, [$idField => $id], [], [], $follow);
 
-            return method_exists($model, 'fromArray') ? $model::fromArray(self::object($answer, $pollRoute)) : $answer;
+            return $model !== null && method_exists($model, 'fromArray') ? $model::fromArray(self::object($answer, $pollRoute)) : $answer;
         };
         $download = null;
         if ($plan['download'] !== null) {
@@ -116,7 +114,7 @@ abstract class Resource
             );
         }
 
-        return new Job($id, $value, $poll, $download, $transport->sleeper());
+        return new Job($id, $value, $poll, $plan['terminal'], $download, $transport->sleeper(), $plan['statusField']);
     }
 
     /**

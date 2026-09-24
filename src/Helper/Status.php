@@ -8,10 +8,10 @@ use Oblodai\Generated\Enum\PaymentStatus;
 use Oblodai\Generated\Enum\PayoutStatus;
 
 /**
- * Reading a status without memorising the vocabulary.
- *
- * Payment: `select → created → confirm_check → paid | paid_over | wrong_amount | expired | cancelled`.
- * Payout:  `pending → approved → awaiting_cosign → broadcasting → sent → confirmed | failed | cancelled`.
+ * Reading a status without memorising the vocabulary. Which statuses are final, and which of those
+ * mean success, is the contract's (`x-status-classes`): the generated enums carry it as
+ * `PaymentStatus::FINAL`, `::SUCCESS`, `->isFinal()` and `->isSuccess()`; these helpers are thin
+ * wrappers over them.
  *
  * Every helper takes what a model carries — a typed case, or the raw wire string of a status this
  * SDK does not know yet (which is simply neither final nor paid).
@@ -19,37 +19,26 @@ use Oblodai\Generated\Enum\PayoutStatus;
 final class Status
 {
     /** Invoice statuses after which nothing else can happen. */
-    public const FINAL_PAYMENT_STATUSES = [
-        PaymentStatus::Paid,
-        PaymentStatus::PaidOver,
-        PaymentStatus::WrongAmount,
-        PaymentStatus::Expired,
-        PaymentStatus::Cancelled,
-    ];
+    public const FINAL_PAYMENT_STATUSES = PaymentStatus::FINAL;
 
     /** Payout statuses after which nothing else can happen. */
-    public const FINAL_PAYOUT_STATUSES = [
-        PayoutStatus::Confirmed,
-        PayoutStatus::Failed,
-        PayoutStatus::Cancelled,
-    ];
+    public const FINAL_PAYOUT_STATUSES = PayoutStatus::FINAL;
 
     /** @param PaymentStatus|string $status */
     public static function isPaymentFinal(PaymentStatus|string $status): bool
     {
-        return in_array(self::payment($status), self::FINAL_PAYMENT_STATUSES, true);
+        return self::payment($status)?->isFinal() ?? false;
     }
 
     /**
-     * `paid` or `paid_over` — the merchant has the money. `wrong_amount` is NOT paid: resolve it.
+     * The merchant has the money (`paid`, `paid_over` — {@see PaymentStatus::SUCCESS}).
+     * `wrong_amount` is NOT paid: resolve it.
      *
      * @param PaymentStatus|string $status
      */
     public static function isPaymentPaid(PaymentStatus|string $status): bool
     {
-        $value = self::payment($status);
-
-        return $value === PaymentStatus::Paid || $value === PaymentStatus::PaidOver;
+        return self::payment($status)?->isSuccess() ?? false;
     }
 
     /**
@@ -65,17 +54,17 @@ final class Status
     /** @param PayoutStatus|string $status */
     public static function isPayoutFinal(PayoutStatus|string $status): bool
     {
-        return in_array(self::payout($status), self::FINAL_PAYOUT_STATUSES, true);
+        return self::payout($status)?->isFinal() ?? false;
     }
 
     /**
-     * The payout reached the chain and is irreversible.
+     * The payout reached the chain and is irreversible ({@see PayoutStatus::SUCCESS}).
      *
      * @param PayoutStatus|string $status
      */
     public static function isPayoutSucceeded(PayoutStatus|string $status): bool
     {
-        return self::payout($status) === PayoutStatus::Confirmed;
+        return self::payout($status)?->isSuccess() ?? false;
     }
 
     /**

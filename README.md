@@ -156,27 +156,32 @@ answers 403 `sandbox.live_key` on the sandbox helpers.
 
 ## Method overview
 
-Sixteen namespaces, 120 methods — every operation of the gateway's contract, named after its
-`operationId` (the full list with the old 1.x names is in [MIGRATION-2.0.md](MIGRATION-2.0.md)):
+Every operation of the gateway's contract, as `$oblodai-><namespace>-><method>()`, named after its
+`operationId` (the 1.x names are in [MIGRATION-2.0.md](MIGRATION-2.0.md)). The table is written by
+the generator:
 
-| namespace      | methods |
-| -------------- | ------- |
+<!-- sdkgen:methods -->
+16 resources, 120 methods.
+
+| Resource | Methods |
+| --- | --- |
+| `payments` | `create` · `getInfo` · `getQr` · `listHistory` · `listServices` · `cancel` · `sendEmail` · `setCheckoutConfig` · `getCheckoutConfig` · `getAmlLinks` · `resolve` |
+| `paymentLinks` | `create` · `list` · `get` · `toggle` |
+| `refunds` | `payment` · `blockedWallet` |
+| `payouts` | `create` · `createMass` · `getInfo` · `listHistory` · `calculate` · `validate` · `cancel` · `approve` · `listServices` · `transferToPersonal` · `transferToUser` · `createTransferBatch` |
+| `payoutLinks` | `create` · `createBatch` · `list` · `get` · `cancel` · `getPayoutClaim` · `claimPayout` |
+| `batches` | `createPayment` · `createRefund` · `createPayout` · `getInfo` |
+| `splits` | `createRule` · `listRules` · `deleteRule` · `setConfig` · `getConfig` · `setRecipientOptIn` · `getRecipientOptIn` |
+| `wallets` | `create` · `block` · `getQr` |
 | `account` | `getBalance` · `getSummary` · `listExchangeRates` |
-| `apiAllowlist` | `addEntry` · `list` · `removeEntry` · `setEnabled` |
-| `batches` | `createPayment` · `createPayout` · `createRefund` · `getInfo` |
-| `checkout` | `get` · `getOnramp` · `getPublicPaymentLink` · `getQr` · `getSourceOfFundsForm` · `listCurrencies` · `paymentLink` · `selectMethod` · `startOnramp` · `submitSourceOfFunds` |
-| `documents` | `createJob` · `downloadJobFile` · `getBalance` · `getBatch` · `getFees` · `getJob` · `getLedger` · `getPaymentLink` · `getPayoutLinkCheque` · `getReferrals` · `getSigned` · `getSplit` · `getStatement` · `getWalletStatement` |
-| `paymentLinks` | `create` · `get` · `list` · `toggle` |
-| `payments` | `cancel` · `create` · `getAmlLinks` · `getCheckoutConfig` · `getInfo` · `getQr` · `listHistory` · `listServices` · `resolve` · `sendEmail` · `setCheckoutConfig` |
-| `payoutLinks` | `cancel` · `claimPayout` · `create` · `createBatch` · `get` · `getPayoutClaim` · `list` |
-| `payouts` | `approve` · `calculate` · `cancel` · `create` · `createMass` · `createTransferBatch` · `getInfo` · `listHistory` · `listServices` · `transferToPersonal` · `transferToUser` · `validate` |
+| `webhooks` | `resendPayment` · `register` · `listDeliveries` · `requeueDelivery` · `sendLegacyTest` · `sendTestPayment` · `sendTestWallet` · `sendTestPayout` · `sendTestConversion` · `rotateSecret` · `setActive` |
+| `settings` | `setAccuracy` · `getAccuracy` · `setAutoRefund` · `getAutoRefund` · `setDiscount` · `listDiscounts` · `listApiLog` · `getAutoConvert` · `setAutoConvert` · `setAcceptedCurrencies` · `listAcceptedCurrencies` · `setPayoutFeeConfig` · `getPayoutFeeConfig` · `setRefundFeeConfig` · `getRefundFeeConfig` · `setPaymentFeeConfig` · `getPaymentFeeConfig` · `setAutoWithdrawRule` · `listAutoWithdrawRules` · `deleteAutoWithdrawRule` · `configureVrcs` |
+| `apiAllowlist` | `list` · `addEntry` · `removeEntry` · `setEnabled` |
 | `referrals` | `getInfo` |
-| `refunds` | `blockedWallet` · `payment` |
-| `sandbox` | `faucet` · `listWebhooks` · `onboardStore` · `replayWebhook` · `reset` · `simulateDeposit` |
-| `settings` | `configureVrcs` · `deleteAutoWithdrawRule` · `getAccuracy` · `getAutoConvert` · `getAutoRefund` · `getPaymentFeeConfig` · `getPayoutFeeConfig` · `getRefundFeeConfig` · `listAcceptedCurrencies` · `listApiLog` · `listAutoWithdrawRules` · `listDiscounts` · `setAcceptedCurrencies` · `setAccuracy` · `setAutoConvert` · `setAutoRefund` · `setAutoWithdrawRule` · `setDiscount` · `setPaymentFeeConfig` · `setPayoutFeeConfig` · `setRefundFeeConfig` |
-| `splits` | `createRule` · `deleteRule` · `getConfig` · `getRecipientOptIn` · `listRules` · `setConfig` · `setRecipientOptIn` |
-| `wallets` | `block` · `create` · `getQr` |
-| `webhooks` | `listDeliveries` · `register` · `requeueDelivery` · `resendPayment` · `rotateSecret` · `sendLegacyTest` · `sendTestConversion` · `sendTestPayment` · `sendTestPayout` · `sendTestWallet` · `setActive` |
+| `documents` | `getSigned` · `getBalance` · `getFees` · `getLedger` · `getSplit` · `getPayoutLinkCheque` · `getStatement` · `getBatch` · `getPaymentLink` · `getWalletStatement` · `getReferrals` · `createJob` · `getJob` · `downloadJobFile` |
+| `checkout` | `getSourceOfFundsForm` · `submitSourceOfFunds` · `getPublicPaymentLink` · `paymentLink` · `listCurrencies` · `get` · `selectMethod` · `startOnramp` · `getOnramp` · `getQr` |
+| `sandbox` | `onboardStore` · `faucet` · `simulateDeposit` · `reset` · `listWebhooks` · `replayWebhook` |
+<!-- /sdkgen:methods -->
 
 Every method takes an optional last argument, `RequestOptions` — see
 [Retries, idempotency and timeouts](#retries-idempotency-and-timeouts). Path parameters come first
@@ -232,7 +237,8 @@ $export->wait();
 $export->download()->saveTo(sys_get_temp_dir() . '/statement.csv');
 ```
 
-Which operations are jobs, and how each is followed, is the SDK's table `Oblodai\Lro`.
+Which operations are jobs, and how each is followed, is the contract's (`x-sdk-poll`), generated
+into `Oblodai\Generated\Facts` and read through `Oblodai\Lro::JOBS`.
 
 ### Statuses
 
@@ -241,6 +247,10 @@ Which operations are jobs, and how each is followed, is the SDK's table `Oblodai
   (underpaid) waits for `payments->resolve(['uuid' => …, 'action' => 'accept'|'refund'])`;
   `Status::isPaymentFinal()` covers the rest.
 - Payout: `pending → approved → awaiting_cosign → broadcasting → sent → confirmed | failed | cancelled`.
+
+Which statuses are final, and which of those mean success, is the contract's (`x-status-classes`):
+the generated enums carry it (`PaymentStatus::FINAL`, `PaymentStatus::Paid->isSuccess()`), and the
+`Status` helpers wrap it.
 
 Prefer webhooks for state changes; poll `getInfo()` only as a fallback.
 
@@ -262,8 +272,8 @@ $payment->extra;                            // fields newer than this SDK, exact
 ### Money
 
 Amounts are decimal **strings** in both directions — the models type them `string`, and a float
-anywhere in a request body (bar the one non-money number, `accuracy_payment_percent`) fails before
-the network with `sdk.float_amount`. `Oblodai\Helper\Money::add()`, `subtract()`, `compare()`,
+anywhere in a request body (bar the numbers the contract types `number` — not money,
+`Oblodai\Generated\Facts::NON_MONEY_NUMBERS`) fails before the network with `sdk.float_amount`. `Oblodai\Helper\Money::add()`, `subtract()`, `compare()`,
 `equals()`, `isZero()`, `isPositive()`, `assertAmount()` do exact decimal arithmetic on those
 strings. Never cast a money field to `float`, and never compare amounts as strings (`"9"` sorts
 after `"10"` as text and before it as money — use `compare()`).
@@ -504,12 +514,14 @@ The provisioning route `sandbox->onboardStore($merchantId)` needs the gateway's 
 
 ## Generated code
 
-`src/Generated` (`Oblodai\Generated\…` — the resources, the models, the enums and the route table)
+`src/Generated` (`Oblodai\Generated\…` — the resources, the models, the enums, the route table and
+`Facts`: long-running operations, webhook kinds, non-money numbers)
 is generated by the gateway's `tools/sdkgen` from its OpenAPI contract and is never edited by hand;
 the hand-written runtime (`Oblodai\Core`, `Oblodai\Exception`, `Oblodai\Webhook`, `Oblodai\Http`) is
 what signs, sends, retries and parses. `names.lock` pins every public method name: a name that
-vanishes or changes fails the generator as a breaking change. `make drift` regenerates into a
-temporary directory and fails when `src/Generated` differs.
+vanishes or changes fails the generator as a breaking change, and a new one is added to the lock
+by the generator, as is the method table above. `make drift` regenerates into a temporary directory
+and fails when `src/Generated`, `names.lock` or that table differs.
 
 ## Development
 

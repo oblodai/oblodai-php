@@ -11,7 +11,7 @@ final class Delivery
     public function __construct(
         /**
          * The verified body — a JSON object with a string `type`. {@see Verifier::model()} turns it
-         * into `PaymentWebhook`, `PayoutWebhook`, `WalletWebhook` or `ConversionWebhook`.
+         * into the generated model of its kind (`PaymentWebhook`, `PayoutWebhook`, …).
          */
         public readonly array $event,
         /**
@@ -19,7 +19,7 @@ final class Delivery
          * on: a resend is a new delivery of a state you may have handled. Use `$eventId`.
          */
         public readonly ?string $id = null,
-        /** `X-Webhook-Event` — `invoice.<status>` | `payout.<status>` | `wallet.paid` | `conversion.*`. */
+        /** `X-Webhook-Event` — the event name (`invoice.paid`, `payout.sent`, …; see `Facts::WEBHOOK_EVENTS`). */
         public readonly ?string $eventType = null,
         /** `X-Webhook-Event-Time` — unix seconds when the state change committed. */
         public readonly ?int $eventTime = null,

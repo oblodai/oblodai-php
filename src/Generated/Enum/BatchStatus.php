@@ -15,4 +15,22 @@ enum BatchStatus: string
     case Processing = 'processing';
     case Completed = 'completed';
     case Stopped = 'stopped';
+
+    /** The values after which nothing else changes (the contract's `x-status-classes.final`). */
+    public const FINAL = [self::Completed, self::Stopped];
+
+    /** The final values that mean success (`x-status-classes.success`). */
+    public const SUCCESS = [];
+
+    /** Nothing else changes after this value. */
+    public function isFinal(): bool
+    {
+        return in_array($this, self::FINAL, true);
+    }
+
+    /** A final value that means success. */
+    public function isSuccess(): bool
+    {
+        return false;
+    }
 }

@@ -16,22 +16,23 @@ timeouts in seconds, PHP 8.2 — see [MIGRATION-2.0.md](MIGRATION-2.0.md).
   methods named after the contract's `operationId`s, a model for every request and response body
   (property names as on the wire, amounts as decimal strings), an enum for every closed vocabulary.
   `names.lock` pins the public names — a vanished or renamed one fails generation as a breaking
-  change. `contract/`, `src/Contract` and the old PHP generator are removed.
+  change, a new one is added by the generator, as is the method table of the README. `contract/`, `src/Contract` and the old PHP generator are removed.
 - **PHP 8.2** is the minimum (was 8.1).
 - **Timeouts are seconds**: the client takes `timeout` and `deadline` (were `timeoutMs`,
   `deadlineMs`), and `RequestOptions` is `idempotencyKey`, `timeout`, `maxRetries`, `extraHeaders`,
   `requestId` (was `idempotencyKey`, `timeoutMs`, `deadlineMs`, `headers`).
 - **Error messages read in a log line**: `getMessage()` and `(string) $err` are
   `[code] text (request_id=…)`; the text alone is `$err->detail`.
-- **A float in a request body is `sdk.float_amount`** (was `sdk.bad_config`); the one non-money
-  number field (`accuracy_payment_percent`) is kept equal to the contract by a test. A model's
+- **A float in a request body is `sdk.float_amount`** (was `sdk.bad_config`); the non-money
+  number fields are the contract's `number` fields (`Oblodai\Generated\Facts::NON_MONEY_NUMBERS`). A model's
   decimal argument (`new PaymentRequest(amount: …)`) takes `string|int` and refuses a float with
   the same code, also from code without `declare(strict_types=1)`, where PHP would otherwise have
   turned the float into a string silently.
 - **Statuses are enum cases or plain strings** (`PaymentStatus|string`) instead of `OpenEnum`; an
   unknown value still never throws, and fields newer than the SDK are kept in `->extra`.
 - **Webhooks**: `Delivery::$event` is the verified body; `Verifier::model()` reads it into the
-  generated `PaymentWebhook`, `PayoutWebhook`, `WalletWebhook` or `ConversionWebhook`.
+  generated `PaymentWebhook`, `PayoutWebhook`, `WalletWebhook` or `ConversionWebhook` — the kinds
+  and their models come from the contract's webhooks (`Facts::WEBHOOK_MODELS`).
 
 ### Added
 
@@ -44,7 +45,10 @@ timeouts in seconds, PHP 8.2 — see [MIGRATION-2.0.md](MIGRATION-2.0.md).
 - **Hooks** — `new Hooks(onRequest:, onResponse:)`, called per attempt with the signature redacted.
 - **`Page::byPage()` and `Page::first()`** — page by page (`PageResult`), one request each.
 - **Long-running operations** — `asJob(fn ($r) => $r->createPayout(…))->wait()` for batches and
-  document exports, `->download()` for an export's file; the table is `Oblodai\Lro`.
+  document exports, `->download()` for an export's file; which operations are jobs and when a job
+  ends is the contract's `x-sdk-poll` (`Oblodai\Lro::JOBS`, from `Oblodai\Generated\Facts`).
+- **Status classes from the contract** (`x-status-classes`): `PaymentStatus::FINAL`, `::SUCCESS`,
+  `->isFinal()`, `->isSuccess()` on every classified enum; the `Status` helpers wrap them.
 - **Retry-safe routes from the contract** (`x-retry-safe`) and `maxRetries` per call.
 - **Webhook event id** — `Delivery::$eventId` (`X-Webhook-Event-Id`), the key to deduplicate on.
 - **Conformance** — the shared behaviour suite of every Oblodai SDK (signing vectors from

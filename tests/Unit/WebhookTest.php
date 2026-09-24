@@ -7,6 +7,8 @@ namespace Oblodai\Tests\Unit;
 use Oblodai\Core\Signer;
 use Oblodai\Exception\SignatureException;
 use Oblodai\Exception\WebhookPayloadException;
+use Oblodai\Generated\Facts;
+use Oblodai\Generated\Model\ConversionWebhook;
 use Oblodai\Tests\Support\Samples;
 use Oblodai\Webhook\Verifier;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -55,6 +57,22 @@ final class WebhookTest extends TestCase
     {
         $this->expectException(WebhookPayloadException::class);
         Verifier::model(['type' => 'payment', 'uuid' => 'u1']);
+    }
+
+    /** The kinds are the contract's webhooks: every event name maps to a modelled kind. */
+    public function testTheModelledKindsAreTheContractsWebhooks(): void
+    {
+        self::assertSame(Facts::WEBHOOK_MODELS, Verifier::EVENT_MODELS);
+        self::assertSame(Facts::WEBHOOK_KINDS, array_keys(Facts::WEBHOOK_MODELS));
+        self::assertContains('conversion', Facts::WEBHOOK_KINDS);
+        self::assertSame('conversion', Facts::WEBHOOK_EVENTS['conversion.completed']);
+        self::assertSame('payment', Facts::WEBHOOK_EVENTS['invoice.paid']);
+        foreach (Facts::WEBHOOK_EVENTS as $event => $kind) {
+            self::assertArrayHasKey($kind, Verifier::EVENT_MODELS, $event);
+        }
+        $conversion = ['type' => 'conversion'] + Samples::of(ConversionWebhook::class, ['type' => 'conversion']);
+        self::assertTrue(Verifier::isKnownEvent($conversion));
+        self::assertInstanceOf(ConversionWebhook::class, Verifier::model($conversion));
     }
 
     public function testAnUnknownTypeHasNoModel(): void

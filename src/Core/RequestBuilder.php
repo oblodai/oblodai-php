@@ -6,6 +6,7 @@ namespace Oblodai\Core;
 
 use JsonException;
 use Oblodai\Exception\ConfigException;
+use Oblodai\Generated\Facts;
 use Oblodai\Http\HttpRequest;
 
 /**
@@ -37,11 +38,11 @@ final class RequestBuilder
     public const HEADER_ADMIN_TOKEN = 'X-Admin-Token';
 
     /**
-     * Request fields the contract types as a JSON `number` that are not money (a tolerance in
-     * percent). A float anywhere else in a body is an amount losing precision; a test keeps this
-     * list equal to the float properties of the generated request models.
+     * Request fields the contract types as a JSON `number` — not money (the generated
+     * {@see Facts::NON_MONEY_NUMBERS}). A float anywhere else in a body is an amount losing
+     * precision.
      */
-    public const NON_MONEY_NUMBERS = ['accuracy_payment_percent'];
+    public const NON_MONEY_NUMBERS = Facts::NON_MONEY_NUMBERS;
 
     /** JSON flags used for every request body: exact bytes, and a hard failure instead of `false`. */
     private const JSON_FLAGS = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR;
@@ -270,6 +271,17 @@ final class RequestBuilder
         }
     }
 
+    /**
+     * {@see self::NON_MONEY_NUMBERS} as the declared shape: the list follows the contract, so no
+     * check may lean on today's contents.
+     *
+     * @return list<string>
+     */
+    private static function nonMoneyNumbers(): array
+    {
+        return self::NON_MONEY_NUMBERS;
+    }
+
     /** @param array<mixed> $body */
     private static function assertNoStrayFloats(array $body, string $prefix): void
     {
@@ -280,7 +292,7 @@ final class RequestBuilder
 
                 continue;
             }
-            if (is_float($value) && !in_array((string) $key, self::NON_MONEY_NUMBERS, true)) {
+            if (is_float($value) && !in_array((string) $key, self::nonMoneyNumbers(), true)) {
                 throw ConfigException::floatAmount($path, $value);
             }
         }

@@ -4,47 +4,46 @@ declare(strict_types=1);
 
 namespace Oblodai;
 
+use Oblodai\Generated\Facts;
+
 /**
- * Which operations are long-running, and how to follow them — a decision of this SDK, not of the
- * API. A create call listed in {@see Lro::LRO} can be wrapped in a {@see Core\Job}:
+ * Which operations are long-running, and how to follow them — the contract's `x-sdk-poll`, read
+ * from the generated {@see Facts}. A create call listed in {@see Lro::LRO} can be wrapped in a
+ * {@see Core\Job}:
  *
  * ```php
  * $job = $oblodai->batches->asJob(fn (Batches $b) => $b->createPayout($batch));
  * $info = $job->wait();          // polls getBatchInfo until the status is terminal
  * ```
  *
- * The runtime applies the table by the route's `operationId`; the generator knows nothing of it.
+ * @phpstan-import-type JobPlan from Facts
  */
 final class Lro
 {
     /** `create operationId => poll operationId`. */
-    public const LRO = [
-        'createPaymentBatch' => 'getBatchInfo',
-        'createPayoutBatch' => 'getBatchInfo',
-        'createRefundBatch' => 'getBatchInfo',
-        'createTransferBatch' => 'getBatchInfo',
-        'createDocumentJob' => 'getDocumentJob',
-    ];
+    public const LRO = Facts::LRO;
 
     /**
-     * `poll operationId => how to follow it`: the job's id in the create answer (sent under the
-     * same name to the poll and the download), the generated model of the poll answer, and the
-     * `operationId` that returns the finished job's file, if the job makes one.
+     * `create operationId => how to follow it`: the poll, the job's id field (sent under the same
+     * name to the poll and the download), the status field and its terminal values, the generated
+     * model of the poll answer, and the `operationId` of the finished job's file, if it makes one.
      *
-     * @var array<string, array{idField: string, model: string, download: string|null}>
+     * @var array<string, JobPlan>
      */
-    public const POLLS = [
-        'getBatchInfo' => ['idField' => 'batch_id', 'model' => 'BatchInfoResponse', 'download' => null],
-        'getDocumentJob' => ['idField' => 'job_id', 'model' => 'DocumentJobView', 'download' => 'downloadDocumentJobFile'],
-    ];
-
-    /**
-     * Statuses after which a job no longer changes: a batch ends `completed` or `stopped`
-     * (`on_error=stop`), a document job `done`, `failed` or `expired`.
-     */
-    public const TERMINAL_STATUSES = ['completed', 'stopped', 'done', 'failed', 'expired'];
+    public const JOBS = Facts::JOBS;
 
     private function __construct()
     {
+    }
+
+    /**
+     * How to follow the create call `$operationId`; null when it is not a long-running operation.
+     * Read the table through here: the declared shape, not today's contents, is what code may rely on.
+     *
+     * @return JobPlan|null
+     */
+    public static function job(string $operationId): ?array
+    {
+        return self::JOBS[$operationId] ?? null;
     }
 }
