@@ -67,6 +67,7 @@ final class RequestOptionsTest extends TestCase
         self::assertSame(2, $fake->count(), 'one attempt and one retry');
 
         $fake2 = new FakeHttpClient([$down]);
+
         try {
             self::client($fake2, maxRetries: 4)->account->getBalance(new RequestOptions(maxRetries: 0));
             self::fail('expected an OblodaiException');

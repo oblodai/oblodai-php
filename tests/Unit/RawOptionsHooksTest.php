@@ -122,6 +122,7 @@ final class RawOptionsHooksTest extends TestCase
         );
 
         $fast = $ob->withOptions(timeout: 5, maxRetries: 0, extraHeaders: ['x-shop' => 'two', 'X-Extra' => 'e']);
+
         try {
             $fast->account->getBalance();
             self::fail('expected an OblodaiException');

@@ -1,20 +1,25 @@
-# Keep the distribution archive to what a consumer actually loads. The contract snapshot, the tests
-# and the examples live in the repository and in CI; they are not needed inside vendor/.
+# Keep the distribution archive to what a consumer actually loads. The tests, the examples and the
+# gates live in the repository; they are not needed inside vendor/.
 /.editorconfig      export-ignore
+/.cache             export-ignore
 /.env.example       export-ignore
 /.gitattributes     export-ignore
 /.github            export-ignore
 /.gitignore         export-ignore
 /.php-cs-fixer.dist.php export-ignore
+/.phpunit.cache     export-ignore
 /AGENTS.md          export-ignore
 /MIGRATION-1.3.md   export-ignore
+/Makefile           export-ignore
 /RELEASING.md       export-ignore
-/contract           export-ignore
 /examples           export-ignore
+/names.lock         export-ignore
+/composer.lock      export-ignore
 /phpstan.neon       export-ignore
 /phpunit.xml        export-ignore
 /scripts            export-ignore
 /tests              export-ignore
+/vendor             export-ignore
 
 # Normalise line endings so a signature computed over a fixture body is byte-identical everywhere.
 * text=auto eol=lf

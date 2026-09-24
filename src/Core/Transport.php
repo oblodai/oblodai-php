@@ -478,6 +478,7 @@ final class Transport
     private function classify(RouteSpec $route, HttpResponse $response, string $requestId): OblodaiException
     {
         $fallbackId = $response->header(self::HEADER_REQUEST_ID) ?? $requestId;
+
         try {
             $decoded = Envelope::decode(
                 $response->status,

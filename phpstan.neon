@@ -4,6 +4,7 @@ parameters:
         - src
         - tests
         - examples
+        - scripts
     treatPhpDocTypesAsCertain: false
     ignoreErrors:
         # Oblodai::attach() initialises the readonly resource properties exactly once — from the

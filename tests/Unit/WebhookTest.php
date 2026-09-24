@@ -180,7 +180,7 @@ final class WebhookTest extends TestCase
         // A live delivery: neither the body flag nor the header.
         $live = Verifier::verify(self::body(), self::headers(), 'whsec', now: self::TS);
         self::assertFalse($live->isTest);
-                self::assertFalse(Verifier::isTestEvent($live->event));
+        self::assertFalse(Verifier::isTestEvent($live->event));
 
         // A rehearsal delivery: the flag rides inside the signed body.
         $raw = self::testBody();
@@ -191,7 +191,7 @@ final class WebhookTest extends TestCase
         ];
         $rehearsal = Verifier::verify($raw, $headers, 'whsec', now: self::TS);
         self::assertTrue($rehearsal->isTest);
-                self::assertTrue(Verifier::isTestEvent($rehearsal->event));
+        self::assertTrue(Verifier::isTestEvent($rehearsal->event));
 
         // The header alone is enough, even if a body somehow omits the flag.
         unset($headers['x-webhook-signature']);

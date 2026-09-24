@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Oblodai\Tests\Unit;
 
-use Oblodai\Generated\Model\CurrenciesResult;
 use Oblodai\Core\RequestOptions;
 use Oblodai\Core\Retry;
 use Oblodai\Exception\AuthenticationException;
@@ -14,6 +13,7 @@ use Oblodai\Exception\OblodaiException;
 use Oblodai\Exception\RateLimitException;
 use Oblodai\Exception\TransportException;
 use Oblodai\Exception\ValidationException;
+use Oblodai\Generated\Model\CurrenciesResult;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\FakeHttpClient;
 use PHPUnit\Framework\TestCase;

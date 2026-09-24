@@ -210,6 +210,7 @@ final class ConformanceTest extends TestCase
 
             return;
         }
+
         try {
             Verifier::verify($payload, $headers, $secret, toleranceSec: $skew, now: $ts + $offset);
             self::fail('expected a SignatureException');
@@ -245,6 +246,7 @@ final class ConformanceTest extends TestCase
 
         $result = null;
         $error = null;
+
         try {
             $result = $call['args'] !== [] ? $method($call['args']) : $method();
         } catch (OblodaiException $e) {

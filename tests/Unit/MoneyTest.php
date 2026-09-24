@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Oblodai\Tests\Unit;
 
-use Oblodai\Generated\Enum\PaymentStatus;
-use Oblodai\Generated\Enum\PayoutStatus;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\OblodaiException;
+use Oblodai\Generated\Enum\PaymentStatus;
+use Oblodai\Generated\Enum\PayoutStatus;
 use Oblodai\Helper\Money;
 use Oblodai\Helper\Status;
 use PHPUnit\Framework\Attributes\DataProvider;

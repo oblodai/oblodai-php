@@ -64,6 +64,7 @@ final class ModelsTest extends TestCase
     {
         $sample = Samples::of(PaymentView::class);
         unset($sample['uuid']);
+
         try {
             PaymentView::fromArray($sample);
             self::fail('expected a ContractException');

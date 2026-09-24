@@ -239,6 +239,7 @@ final class Verifier
         if ($class === null) {
             return null;
         }
+
         try {
             return $class::fromArray($event);
         } catch (ContractException $err) {
