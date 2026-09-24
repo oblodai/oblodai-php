@@ -9,6 +9,7 @@ use Oblodai\Core\Retry;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\OblodaiException;
 use Oblodai\Exception\TransportException;
+use Oblodai\Generated\Model\FaucetRequest;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\FakeHttpClient;
 use PHPUnit\Framework\TestCase;
@@ -181,5 +182,38 @@ final class RequestOptionsTest extends TestCase
 
         $this->expectException(ConfigException::class);
         new Oblodai(...self::CREDS, timeout: 0, env: []);
+    }
+    public function testTheFaucetTakesTheIdempotencyKeyInItsBody(): void
+    {
+        // Ruling 10: the faucet deduplicates by its own body field, not by the header.
+        $fake = new FakeHttpClient([FakeHttpClient::sample('sandboxFaucet')]);
+        self::client($fake)->sandbox->faucet(['asset' => 'USDT', 'amount' => '5'], new RequestOptions(idempotencyKey: 'tap-1'));
+
+        self::assertSame('tap-1', $fake->body(0)['idempotency_key'] ?? null);
+        self::assertNull($fake->header(0, 'Idempotency-Key'));
+    }
+
+    public function testTheFaucetKeyGivenTwiceIsAnErrorBeforeTheNetwork(): void
+    {
+        // The same rule in every SDK: the field and the option both naming the key is ambiguous.
+        $fake = new FakeHttpClient([FakeHttpClient::sample('sandboxFaucet'), FakeHttpClient::sample('sandboxFaucet')]);
+        $ob = self::client($fake);
+        $both = [
+            ['asset' => 'USDT', 'amount' => '5', 'idempotency_key' => 'own'],
+            new FaucetRequest(amount: '5', asset: 'USDT', idempotency_key: 'own'),
+        ];
+        foreach ($both as $params) {
+            try {
+                $ob->sandbox->faucet($params, new RequestOptions(idempotencyKey: 'tap-2'));
+                self::fail('expected an InvalidArgumentException');
+            } catch (\InvalidArgumentException $e) {
+                self::assertStringContainsString('idempotency_key', $e->getMessage());
+            }
+        }
+        self::assertSame(0, $fake->count());
+
+        // A model without its own key takes the option.
+        $ob->sandbox->faucet(new FaucetRequest(amount: '5', asset: 'USDT'), new RequestOptions(idempotencyKey: 'tap-3'));
+        self::assertSame('tap-3', $fake->body(0)['idempotency_key'] ?? null);
     }
 }
