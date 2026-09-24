@@ -15,6 +15,7 @@ use Oblodai\Http\HttpRequest;
 use Oblodai\Http\HttpResponse;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\FakeHttpClient;
+use Oblodai\Tests\Support\Operations;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -75,7 +76,7 @@ final class ClockSkewConcurrencyTest extends TestCase
                 return new HttpResponse(
                     200,
                     ['content-type' => 'application/json', 'date' => $date],
-                    (string) json_encode(['state' => 0, 'result' => ['uuid' => 'p-' . $signedAt]])
+                    (string) json_encode(['state' => 0, 'result' => Operations::sampleResult('createPayment', ['uuid' => 'p-' . $signedAt])])
                 );
             }
         };
@@ -109,7 +110,7 @@ final class ClockSkewConcurrencyTest extends TestCase
     /** A call that carries a caller key on a route the core does not deduplicate is refused. */
     public function testACallerKeyOnANonIdempotentRouteIsStillRefused(): void
     {
-        $fake = new FakeHttpClient([FakeHttpClient::ok(['valid' => true])]);
+        $fake = new FakeHttpClient([FakeHttpClient::sample('validatePayout')]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
         $this->expectException(ConfigException::class);
@@ -122,7 +123,7 @@ final class ClockSkewConcurrencyTest extends TestCase
     /** A key the SDK itself rejects is the caller's mistake, before any request — a config error. */
     public function testAnUnusableIdempotencyKeyIsAConfigErrorNotA400(): void
     {
-        $fake = new FakeHttpClient([FakeHttpClient::ok(['uuid' => 'p'])]);
+        $fake = new FakeHttpClient([FakeHttpClient::sample('createPayment', ['uuid' => 'p'])]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
         foreach (['', ' has space ', str_repeat('k', 256), "tab\tkey"] as $key) {
@@ -151,12 +152,12 @@ final class ClockSkewConcurrencyTest extends TestCase
 
     public function testPerCallHeadersRideOnTopOfTheClientsOwn(): void
     {
-        $fake = new FakeHttpClient([FakeHttpClient::ok(['uuid' => 'p'])]);
+        $fake = new FakeHttpClient([FakeHttpClient::sample('createPayment', ['uuid' => 'p'])]);
         $ob = new Oblodai(...self::CREDS, http: $fake, headers: ['X-Shop' => 'one', 'X-Tenant' => 't'], env: []);
 
         $ob->payments->create(
             ['amount' => '1', 'currency' => 'USDT'],
-            new RequestOptions(headers: ['x-shop' => 'two'])
+            new RequestOptions(extraHeaders: ['x-shop' => 'two'])
         );
 
         self::assertSame('two', $fake->header(0, 'X-Shop'), 'the per-call header wins');
@@ -170,12 +171,12 @@ final class ClockSkewConcurrencyTest extends TestCase
 
     public function testAPerCallHeaderCannotOverrideASignedOne(): void
     {
-        $fake = new FakeHttpClient([FakeHttpClient::ok(['uuid' => 'p'])]);
+        $fake = new FakeHttpClient([FakeHttpClient::sample('createPayment', ['uuid' => 'p'])]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
         $ob->payments->create(
             ['amount' => '1', 'currency' => 'USDT'],
-            new RequestOptions(headers: ['Idempotency-Key' => 'forged', 'X-Timestamp' => '1'])
+            new RequestOptions(extraHeaders: ['Idempotency-Key' => 'forged', 'X-Timestamp' => '1'])
         );
 
         self::assertNotSame('forged', $fake->header(0, 'Idempotency-Key'));
@@ -184,11 +185,11 @@ final class ClockSkewConcurrencyTest extends TestCase
 
     public function testABadCallerHeaderHasItsOwnCode(): void
     {
-        $fake = new FakeHttpClient([FakeHttpClient::ok(['uuid' => 'p'])]);
+        $fake = new FakeHttpClient([FakeHttpClient::sample('createPayment', ['uuid' => 'p'])]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
         try {
-            $ob->payments->create(['amount' => '1', 'currency' => 'USDT'], new RequestOptions(headers: ['X-Shop' => "a\nb"]));
+            $ob->payments->create(['amount' => '1', 'currency' => 'USDT'], new RequestOptions(extraHeaders: ['X-Shop' => "a\nb"]));
             self::fail('expected a ConfigException');
         } catch (ConfigException $e) {
             self::assertSame('sdk.bad_header', $e->errorCode);
@@ -220,7 +221,7 @@ final class ClockSkewConcurrencyTest extends TestCase
         $ob = new Oblodai(...self::CREDS, http: $http, retry: self::fastRetry(3), env: []);
 
         try {
-            $ob->catalog->currencies();
+            $ob->checkout->listCurrencies();
             self::fail('expected a TransportException');
         } catch (TransportException $e) {
             self::assertSame('sdk.response_too_large', $e->errorCode);

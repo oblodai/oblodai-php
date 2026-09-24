@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Oblodai\Core;
 
 use JsonException;
-use Oblodai\Contract\Routes;
-use Oblodai\Contract\RouteSpec;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Http\HttpRequest;
 
@@ -31,11 +29,19 @@ final class RequestBuilder
         'user-agent',
         'x-admin-token',
         'x-public-id',
+        'x-request-id',
         'x-signature',
         'x-timestamp',
     ];
 
     public const HEADER_ADMIN_TOKEN = 'X-Admin-Token';
+
+    /**
+     * Request fields the contract types as a JSON `number` that are not money (a tolerance in
+     * percent). A float anywhere else in a body is an amount losing precision; a test keeps this
+     * list equal to the float properties of the generated request models.
+     */
+    public const NON_MONEY_NUMBERS = ['accuracy_payment_percent'];
 
     /** JSON flags used for every request body: exact bytes, and a hard failure instead of `false`. */
     private const JSON_FLAGS = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR;
@@ -58,6 +64,7 @@ final class RequestBuilder
         array $extraHeaders = [],
         ?string $adminToken = null,
         int $maxResponseBytes = HttpRequest::MAX_JSON_BYTES,
+        ?string $requestId = null,
     ): HttpRequest {
         $path = self::joinPath($baseUrl, self::fillPath($route->path, $pathParams));
         $queryString = self::buildQuery($query);
@@ -67,6 +74,9 @@ final class RequestBuilder
         $headers = self::callerHeaders($extraHeaders);
         $headers['Accept'] = 'application/json';
         $headers['User-Agent'] = $userAgent;
+        if ($requestId !== null && $requestId !== '') {
+            $headers[Transport::HEADER_REQUEST_ID] = $requestId;
+        }
         $hasBody = $route->method !== 'GET';
         if ($hasBody) {
             $headers['Content-Type'] = 'application/json';
@@ -233,9 +243,9 @@ final class RequestBuilder
      * `ConfigException`, never an empty string: an empty body would be signed and sent as `{}`'s
      * evil twin and the core would answer about a request the caller never made.
      *
-     * Floats are refused for every field the contract does not declare as a number. Amounts are
-     * decimal strings precisely because `0.1 + 0.2` is not `0.3`, and PHP will happily serialize
-     * the difference into a payout.
+     * Floats are refused (`sdk.float_amount`) for every field but {@see self::NON_MONEY_NUMBERS}.
+     * Amounts are decimal strings precisely because `0.1 + 0.2` is not `0.3`, and PHP will happily
+     * serialize the difference into a payout.
      *
      * @param array<string, mixed>|null $body
      */
@@ -270,9 +280,9 @@ final class RequestBuilder
 
                 continue;
             }
-            if (is_float($value) && !in_array((string) $key, Routes::NUMBER_FIELDS, true)) {
+            if (is_float($value) && !in_array((string) $key, self::NON_MONEY_NUMBERS, true)) {
                 throw new ConfigException(
-                    ConfigException::BAD_CONFIG,
+                    ConfigException::FLOAT_AMOUNT,
                     sprintf(
                         '"%s" was given as a float (%s); amounts and rates travel as decimal strings '
                             . "— pass '%s' instead",

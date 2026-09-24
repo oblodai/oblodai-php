@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Oblodai\Tests\Unit;
 
-use Oblodai\Contract\Enum\PaymentStatus;
-use Oblodai\Contract\Enum\PayoutStatus;
+use Oblodai\Generated\Enum\PaymentStatus;
+use Oblodai\Generated\Enum\PayoutStatus;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\OblodaiException;
 use Oblodai\Helper\Money;

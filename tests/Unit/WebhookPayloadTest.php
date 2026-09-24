@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Oblodai\Tests\Unit;
 
-use Oblodai\Contract\Model\PaymentEvent;
-use Oblodai\Contract\Model\UnknownEvent;
 use Oblodai\Core\Signer;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\ContractException;
 use Oblodai\Exception\SignatureException;
 use Oblodai\Exception\WebhookPayloadException;
+use Oblodai\Generated\Model\PaymentWebhook;
+use Oblodai\Tests\Support\Samples;
 use Oblodai\Webhook\Verifier;
 use PHPUnit\Framework\TestCase;
 
@@ -54,16 +54,13 @@ final class WebhookPayloadTest extends TestCase
     {
         $event = Verifier::parse('{"type":"alien","uuid":"x","sequence":9,"is_final":true,"test":true}');
 
-        self::assertInstanceOf(UnknownEvent::class, $event);
-        self::assertSame('alien', $event->type());
-        self::assertSame('x', $event->uuid());
-        self::assertSame(9, $event->sequence());
-        self::assertTrue($event->isTest());
+        self::assertSame('alien', $event['type']);
+        self::assertSame('x', $event['uuid']);
         self::assertTrue(Verifier::isTestEvent($event));
         self::assertTrue(Verifier::isStale($event, 9));
         self::assertFalse(Verifier::isStale($event, 8));
-        self::assertSame('alien', $event->toArray()['type'] ?? null);
         self::assertFalse(Verifier::isKnownEvent($event));
+        self::assertNull(Verifier::model($event));
     }
 
     public function testIsKnownEventRecognisesTheModelledKinds(): void
@@ -76,20 +73,15 @@ final class WebhookPayloadTest extends TestCase
 
     public function testAStatusOutsideTheSnapshotDoesNotThrowAndKeepsTheRawString(): void
     {
-        $raw = (string) json_encode([
+        $raw = (string) json_encode(Samples::of(PaymentWebhook::class, [
             'type' => 'payment',
-            'uuid' => 'u1',
             'status' => 'quantum_settled',
-            'is_final' => true,
-            'sequence' => 3,
-        ]);
+        ]));
 
-        $event = Verifier::parse($raw);
+        $event = Verifier::model(Verifier::parse($raw));
 
-        self::assertInstanceOf(PaymentEvent::class, $event);
-        self::assertSame('quantum_settled', $event->status->value);
-        self::assertFalse($event->status->isKnown());
-        self::assertNull($event->status->known);
+        self::assertInstanceOf(PaymentWebhook::class, $event);
+        self::assertSame('quantum_settled', $event->status);
     }
 
     public function testAVerifiedButUnreadableBodyIsAContractErrorNotASignatureError(): void
@@ -200,7 +192,7 @@ final class WebhookPayloadTest extends TestCase
                 'whsec',
                 now: self::TS
             );
-            self::assertSame('u1', $delivery->event->uuid());
+            self::assertSame('u1', $delivery->event['uuid']);
         }
 
         try {
@@ -222,7 +214,6 @@ final class WebhookPayloadTest extends TestCase
             'type' => 'payment', 'uuid' => 'u1', 'status' => 'paid', 'is_final' => true,
         ]));
 
-        self::assertNull($event->sequence());
         self::assertFalse(Verifier::isStale($event, 0));
         self::assertFalse(Verifier::isStale($event, 1_000_000));
         self::assertFalse(Verifier::isStale($event, null));
@@ -234,7 +225,6 @@ final class WebhookPayloadTest extends TestCase
             'type' => 'payment', 'uuid' => 'u1', 'status' => 'paid', 'sequence' => 'later',
         ]));
 
-        self::assertNull($event->sequence());
         self::assertFalse(Verifier::isStale($event, 5));
     }
 }

@@ -14,6 +14,10 @@ class ConfigException extends OblodaiException
     public const BAD_IDEMPOTENCY_KEY = 'sdk.bad_idempotency_key';
     public const BAD_AMOUNT = 'sdk.bad_amount';
     public const BAD_HEADER = 'sdk.bad_header';
+    /** A float where the gateway expects a decimal string: an amount would lose precision. */
+    public const FLOAT_AMOUNT = 'sdk.float_amount';
+    /** A long-running operation could not be followed (no route or id to poll). */
+    public const LRO_UNRESOLVED = 'sdk.lro_unresolved';
 
     public function __construct(string $errorCode, string $message, ?string $field = null)
     {

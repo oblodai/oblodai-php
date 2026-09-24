@@ -4,32 +4,32 @@ declare(strict_types=1);
 
 namespace Oblodai;
 
-use Oblodai\Contract\Version;
 use Oblodai\Core\Clock;
+use Oblodai\Core\Hooks;
 use Oblodai\Core\Retry;
 use Oblodai\Core\Transport;
+use Oblodai\Generated\Resource\Account;
+use Oblodai\Generated\Resource\ApiAllowlist;
+use Oblodai\Generated\Resource\Batches;
+use Oblodai\Generated\Resource\Checkout;
+use Oblodai\Generated\Resource\Documents;
+use Oblodai\Generated\Resource\PaymentLinks;
+use Oblodai\Generated\Resource\Payments;
+use Oblodai\Generated\Resource\PayoutLinks;
+use Oblodai\Generated\Resource\Payouts;
+use Oblodai\Generated\Resource\Referrals;
+use Oblodai\Generated\Resource\Refunds;
+use Oblodai\Generated\Resource\Sandbox;
+use Oblodai\Generated\Resource\Settings;
+use Oblodai\Generated\Resource\Splits;
+use Oblodai\Generated\Resource\Wallets;
+use Oblodai\Generated\Resource\Webhooks;
 use Oblodai\Http\CurlHttpClient;
 use Oblodai\Http\HttpClient;
 use Oblodai\Log\Logger;
-use Oblodai\Resource\Account;
-use Oblodai\Resource\Batches;
-use Oblodai\Resource\Catalog;
-use Oblodai\Resource\Documents;
-use Oblodai\Resource\Merchants;
-use Oblodai\Resource\PaymentLinks;
-use Oblodai\Resource\Payments;
-use Oblodai\Resource\PayoutLinks;
-use Oblodai\Resource\Payouts;
-use Oblodai\Resource\Refunds;
-use Oblodai\Resource\Sandbox;
-use Oblodai\Resource\Settings;
-use Oblodai\Resource\Splits;
-use Oblodai\Resource\Transfers;
-use Oblodai\Resource\Wallets;
-use Oblodai\Resource\Webhooks;
 
 /**
- * The Oblodai API client. One instance per key pair; safe to reuse for the whole process.
+ * The Oblodai API client. One instance per API key; safe to reuse for the whole process.
  *
  * ```php
  * $oblodai = new Oblodai(publicId: 'oblodai_…', secret: 'oblodai_live_…');
@@ -38,29 +38,30 @@ use Oblodai\Resource\Webhooks;
  * ]);
  * ```
  *
- * Credentials fall back to the environment (`OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`). Amounts are
- * always decimal strings.
+ * Credentials, base URL and admin token fall back to the environment (`OBLODAI_PUBLIC_ID`,
+ * `OBLODAI_SECRET`, `OBLODAI_BASE_URL`, `OBLODAI_ADMIN_TOKEN`). Amounts are always decimal strings.
+ * The resource namespaces and their methods are generated from the gateway's OpenAPI contract.
  */
 final class Oblodai
 {
-    public const VERSION = '1.3.0';
+    public const VERSION = '2.0.0';
 
     public readonly Payments $payments;
+    public readonly PaymentLinks $paymentLinks;
     public readonly Refunds $refunds;
     public readonly Payouts $payouts;
     public readonly PayoutLinks $payoutLinks;
-    public readonly PaymentLinks $paymentLinks;
     public readonly Batches $batches;
-    public readonly Transfers $transfers;
-    public readonly Wallets $wallets;
-    public readonly Webhooks $webhooks;
-    public readonly Documents $documents;
     public readonly Splits $splits;
-    public readonly Settings $settings;
+    public readonly Wallets $wallets;
     public readonly Account $account;
-    public readonly Catalog $catalog;
+    public readonly Webhooks $webhooks;
+    public readonly Settings $settings;
+    public readonly ApiAllowlist $apiAllowlist;
+    public readonly Referrals $referrals;
+    public readonly Documents $documents;
+    public readonly Checkout $checkout;
     public readonly Sandbox $sandbox;
-    public readonly Merchants $merchants;
 
     /** The transport, exposed for advanced use (custom routes, tests). */
     public readonly Transport $transport;
@@ -68,27 +69,28 @@ final class Oblodai
     public readonly Config $config;
 
     /**
-     * @param string|null          $publicId       public id of the API key (`X-Public-Id`)
-     * @param string|null          $secret         secret of the API key; only ever signs
-     * @param string|null          $baseUrl        API origin; may carry a path prefix
-     * @param HttpClient|null      $http           custom HTTP stack (see Psr18HttpClient)
-     * @param int|null             $timeoutMs      per-attempt timeout, default 30000
-     * @param int|null             $deadlineMs     overall budget per call including retries, default 90000
-     * @param Retry|null           $retry          retry policy; `new Retry(maxRetries: 0)` disables retries
-     * @param Logger|null          $logger         structured logger; `OBLODAI_LOG=debug` picks a console one
-     * @param array<string,string> $headers        extra headers on every request
-     * @param string|null          $adminToken     admin token of a self-hosted gateway (onboarding routes)
-     * @param bool|null            $allowInsecureBaseUrl permit plain http:// (local core, CI)
-     * @param Clock|null           $clock          injectable clock, for tests
-     * @param array<string,string>|null $env       environment override, for tests
+     * @param string|null           $publicId   public id of the API key (`X-Public-Id`)
+     * @param string|null           $secret     secret of the API key; only ever signs
+     * @param string|null           $baseUrl    API origin; may carry a path prefix
+     * @param HttpClient|null       $http       custom HTTP stack (see Psr18HttpClient)
+     * @param int|float|null        $timeout    per-attempt timeout, seconds (default 30)
+     * @param int|float|null        $deadline   budget per call including retries, seconds (default 90)
+     * @param Retry|null            $retry      retry policy; `new Retry(maxRetries: 0)` disables retries
+     * @param Logger|null           $logger     structured logger; `OBLODAI_LOG=debug` picks a console one
+     * @param array<string, string> $headers    extra headers on every request
+     * @param string|null           $adminToken admin token of a self-hosted gateway (onboarding routes)
+     * @param bool|null             $allowInsecureBaseUrl permit plain http:// (local gateway, CI)
+     * @param Clock|null            $clock      injectable clock, for tests
+     * @param array<string, string>|null $env   environment override, for tests
+     * @param Hooks|null            $hooks      request/response hooks (metrics, tracing)
      */
     public function __construct(
         ?string $publicId = null,
         ?string $secret = null,
         ?string $baseUrl = null,
         ?HttpClient $http = null,
-        ?int $timeoutMs = null,
-        ?int $deadlineMs = null,
+        int|float|null $timeout = null,
+        int|float|null $deadline = null,
         ?Retry $retry = null,
         ?Logger $logger = null,
         array $headers = [],
@@ -96,8 +98,9 @@ final class Oblodai
         ?bool $allowInsecureBaseUrl = null,
         ?Clock $clock = null,
         ?array $env = null,
+        ?Hooks $hooks = null,
     ) {
-        $this->config = Config::resolve([
+        $config = Config::resolve([
             'publicId' => $publicId,
             'secret' => $secret,
             'baseUrl' => $baseUrl,
@@ -106,40 +109,63 @@ final class Oblodai
             'allowInsecureBaseUrl' => $allowInsecureBaseUrl,
         ], $env);
 
-        $this->transport = new Transport(
-            baseUrl: $this->config->baseUrl,
+        $this->attach($config, new Transport(
+            baseUrl: $config->baseUrl,
             http: $http ?? new CurlHttpClient(),
-            userAgent: sprintf(
-                'oblodai-php/%s (contract %s; php %s)',
-                self::VERSION,
-                substr(Version::CONTRACT_HASH, 0, 12),
-                PHP_VERSION
-            ),
-            credentials: $this->config->credentials,
-            timeoutMs: $timeoutMs ?? 30000,
-            deadlineMs: $deadlineMs ?? 90000,
+            userAgent: self::userAgent(),
+            credentials: $config->credentials,
+            timeout: (float) ($timeout ?? 30),
+            deadline: (float) ($deadline ?? 90),
             retry: $retry,
             clock: $clock,
-            logger: $this->config->logger,
+            logger: $config->logger,
             headers: $headers,
-            adminToken: $this->config->adminToken,
-        );
+            adminToken: $config->adminToken,
+            hooks: $hooks,
+        ));
+    }
 
-        $this->payments = new Payments($this->transport);
-        $this->refunds = new Refunds($this->transport);
-        $this->payouts = new Payouts($this->transport);
-        $this->payoutLinks = new PayoutLinks($this->transport);
-        $this->paymentLinks = new PaymentLinks($this->transport);
-        $this->batches = new Batches($this->transport);
-        $this->transfers = new Transfers($this->transport);
-        $this->wallets = new Wallets($this->transport);
-        $this->webhooks = new Webhooks($this->transport);
-        $this->documents = new Documents($this->transport);
-        $this->splits = new Splits($this->transport);
-        $this->settings = new Settings($this->transport);
-        $this->account = new Account($this->transport);
-        $this->catalog = new Catalog($this->transport);
-        $this->sandbox = new Sandbox($this->transport);
-        $this->merchants = new Merchants($this->transport);
+    /** `oblodai-php/2.0.0 (php 8.3.12)`. */
+    public static function userAgent(): string
+    {
+        return sprintf('oblodai-php/%s (php %s)', self::VERSION, PHP_VERSION);
+    }
+
+    /**
+     * A client with these settings overridden; the original is untouched, the HTTP client, clock
+     * and hooks are shared.
+     *
+     * @param int|float|null        $timeout      per-attempt timeout, seconds
+     * @param int|null              $maxRetries   replaces the retry policy's `maxRetries`
+     * @param array<string, string> $extraHeaders merged over the client's headers
+     */
+    public function withOptions(int|float|null $timeout = null, ?int $maxRetries = null, array $extraHeaders = []): self
+    {
+        $copy = (new \ReflectionClass(self::class))->newInstanceWithoutConstructor();
+        $copy->attach($this->config, $this->transport->derive($timeout, $maxRetries, $extraHeaders));
+
+        return $copy;
+    }
+
+    private function attach(Config $config, Transport $transport): void
+    {
+        $this->config = $config;
+        $this->transport = $transport;
+        $this->payments = new Payments($transport);
+        $this->paymentLinks = new PaymentLinks($transport);
+        $this->refunds = new Refunds($transport);
+        $this->payouts = new Payouts($transport);
+        $this->payoutLinks = new PayoutLinks($transport);
+        $this->batches = new Batches($transport);
+        $this->splits = new Splits($transport);
+        $this->wallets = new Wallets($transport);
+        $this->account = new Account($transport);
+        $this->webhooks = new Webhooks($transport);
+        $this->settings = new Settings($transport);
+        $this->apiAllowlist = new ApiAllowlist($transport);
+        $this->referrals = new Referrals($transport);
+        $this->documents = new Documents($transport);
+        $this->checkout = new Checkout($transport);
+        $this->sandbox = new Sandbox($transport);
     }
 }

@@ -23,12 +23,14 @@ class ContractException extends OblodaiException
         int $httpStatus = 0,
         mixed $raw = null,
         string $errorCode = self::BAD_ENVELOPE,
+        ?string $requestId = null,
     ) {
         parent::__construct(
             errorCode: $errorCode,
             message: $message,
             httpStatus: $httpStatus,
             retryable: false,
+            requestId: $requestId,
             raw: $raw,
         );
     }

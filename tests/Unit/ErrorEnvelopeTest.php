@@ -46,7 +46,8 @@ final class ErrorEnvelopeTest extends TestCase
 
         self::assertInstanceOf(ValidationException::class, $error);
         self::assertSame('payment.bad_amount', $error->errorCode);
-        self::assertSame('amount must be positive', $error->getMessage());
+        self::assertSame('amount must be positive', $error->detail);
+        self::assertSame('[payment.bad_amount] amount must be positive (request_id=req-7)', $error->getMessage());
         self::assertSame('req-7', $error->requestId);
         self::assertNull($error->field);
         self::assertFalse($error->retryable, 'a non-boolean retryable falls back to the status default');
@@ -67,7 +68,7 @@ final class ErrorEnvelopeTest extends TestCase
     {
         $error = self::decode(409, ['code' => 'idempotency.key_reused', 'message' => 42]);
 
-        self::assertSame('HTTP 409', $error->getMessage());
+        self::assertSame('HTTP 409', $error->detail);
         self::assertSame('idempotency.key_reused', $error->errorCode);
     }
 

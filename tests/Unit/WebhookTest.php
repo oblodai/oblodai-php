@@ -6,7 +6,8 @@ namespace Oblodai\Tests\Unit;
 
 use Oblodai\Core\Signer;
 use Oblodai\Exception\SignatureException;
-use Oblodai\Tests\Support\Fixtures;
+use Oblodai\Exception\WebhookPayloadException;
+use Oblodai\Tests\Support\Samples;
 use Oblodai\Webhook\Verifier;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -14,76 +15,52 @@ use PHPUnit\Framework\TestCase;
 /** Ports test/unit/webhooks.test.ts against Webhook\Verifier. */
 final class WebhookTest extends TestCase
 {
-    /** @return iterable<string, array{array<string, mixed>}> */
-    public static function webhookSamples(): iterable
+    /** A full delivery of each modelled kind verifies and reads into its generated model. */
+    #[DataProvider('modelledKinds')]
+    public function testAFullDeliveryReadsIntoTheModelOfItsType(string $type, string $class): void
     {
-        foreach (Fixtures::webhookSamples() as $i => $sample) {
-            yield 'sample #' . $i => [$sample];
+        /** @var class-string $class */
+        $body = Samples::of($class, ['type' => $type, 'sequence' => 3]);
+        $raw = (string) json_encode($body);
+        $headers = [
+            'X-Webhook-Timestamp' => (string) self::TS,
+            'X-Webhook-Signature' => Signer::signWebhook('whsec', self::TS, $raw),
+            'X-Webhook-Id' => 'd-1',
+            'X-Webhook-Event-Id' => 'e-1',
+            'X-Webhook-Event' => $type . '.x',
+            'X-Webhook-Event-Time' => '1755600001',
+        ];
+
+        $delivery = Verifier::verify($raw, $headers, 'whsec', now: self::TS);
+        $model = Verifier::model($delivery->event);
+
+        self::assertInstanceOf($class, $model);
+        self::assertTrue(Verifier::isKnownEvent($delivery->event));
+        self::assertSame('d-1', $delivery->id);
+        self::assertSame('e-1', $delivery->eventId);
+        self::assertSame($type . '.x', $delivery->eventType);
+        self::assertSame(1755600001, $delivery->eventTime);
+        self::assertSame(self::TS, $delivery->sentAt);
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function modelledKinds(): iterable
+    {
+        foreach (Verifier::EVENT_MODELS as $type => $class) {
+            yield $type => [$type, $class];
         }
     }
 
-    /**
-     * Real fixture values only ever hold string headers; validate that rather than trusting a
-     * generic `array<string, mixed>` fixture shape.
-     *
-     * @return array<string, string>
-     */
-    private static function asHeaderMap(mixed $value): array
+    public function testAKnownTypeWithoutItsDocumentedFieldsIsABadPayload(): void
     {
-        if (!is_array($value)) {
-            self::fail('malformed webhook sample: headers is not an array');
-        }
-        $out = [];
-        foreach ($value as $key => $header) {
-            if (!is_string($header)) {
-                self::fail(sprintf('malformed webhook sample: header "%s" is not a string', (string) $key));
-            }
-            $out[(string) $key] = $header;
-        }
-
-        return $out;
+        $this->expectException(WebhookPayloadException::class);
+        Verifier::model(['type' => 'payment', 'uuid' => 'u1']);
     }
 
-    /** @return array<string, mixed> */
-    private static function asObjectMap(mixed $value): array
+    public function testAnUnknownTypeHasNoModel(): void
     {
-        if (!is_array($value)) {
-            self::fail('malformed webhook sample: body is not an array');
-        }
-        $out = [];
-        foreach ($value as $key => $field) {
-            $out[(string) $key] = $field;
-        }
-
-        return $out;
-    }
-
-    /** @param array<string, mixed> $sample */
-    #[DataProvider('webhookSamples')]
-    public function testVerifiesARealRecordedDelivery(array $sample): void
-    {
-        $headers = self::asHeaderMap($sample['headers'] ?? null);
-        $body = self::asObjectMap($sample['body'] ?? null);
-        $rawValue = $sample['raw'] ?? null;
-        // The recorder keeps the exact delivered bytes; only fall back to a re-encode when absent.
-        $raw = is_string($rawValue) ? $rawValue : (string) json_encode($body);
-        $ts = (int) $headers['X-Webhook-Timestamp'];
-        $secret = Fixtures::webhookSecret();
-
-        $delivery = Verifier::verify($raw, $headers, $secret, now: $ts);
-
-        self::assertSame($body['uuid'], $delivery->event->uuid());
-        self::assertSame($headers['X-Webhook-Id'], $delivery->id);
-        self::assertSame($headers['X-Webhook-Event'], $delivery->eventType);
-        self::assertSame($body['type'], $delivery->event->type());
-        self::assertMatchesRegularExpression('/^(invoice|payout|wallet)\./', $headers['X-Webhook-Event']);
-
-        try {
-            Verifier::verify($raw, $headers, 'some-other-secret', 'another', now: $ts);
-            self::fail('expected a SignatureException');
-        } catch (SignatureException $e) {
-            self::assertMatchesRegularExpression('/does not match/', $e->getMessage());
-        }
+        self::assertNull(Verifier::model(['type' => 'refund_v2', 'uuid' => 'u1']));
+        self::assertFalse(Verifier::isKnownEvent(['type' => 'refund_v2']));
     }
 
     private const TS = 1_755_600_000;
@@ -117,7 +94,7 @@ final class WebhookTest extends TestCase
     {
         $event = Verifier::verify(self::body(), self::headers(), 'whsec', now: self::TS);
 
-        self::assertSame('payment', $event->event->type());
+        self::assertSame('payment', $event->event['type']);
     }
 
     public function testRejectsAWrongSecretATamperedBodyAndAMissingHeader(): void
@@ -153,7 +130,7 @@ final class WebhookTest extends TestCase
         }
 
         $event = Verifier::verify(self::body(), self::headers(), 'whsec', toleranceSec: 0, now: self::TS + 600);
-        self::assertSame('u1', $event->event->uuid());
+        self::assertSame('u1', $event->event['uuid']);
     }
 
     public function testVerifiesDuringASecretRotationViaThePrevHeaderOrThePreviousSecretOption(): void
@@ -164,13 +141,13 @@ final class WebhookTest extends TestCase
         ]);
 
         // Not yet swapped: the stored secret is still "old", verified via the Prev header.
-        self::assertSame('u1', Verifier::verify(self::body(), $rotated, 'old', now: self::TS)->event->uuid());
+        self::assertSame('u1', Verifier::verify(self::body(), $rotated, 'old', now: self::TS)->event['uuid']);
         // Swapped: the stored secret is "new", verified via the main header.
-        self::assertSame('u1', Verifier::verify(self::body(), $rotated, 'new', now: self::TS)->event->uuid());
+        self::assertSame('u1', Verifier::verify(self::body(), $rotated, 'new', now: self::TS)->event['uuid']);
         // Or via the explicit previousSecret option.
         self::assertSame(
             'u1',
-            Verifier::verify(self::body(), $rotated, 'unrelated', previousSecret: 'old', now: self::TS)->event->uuid()
+            Verifier::verify(self::body(), $rotated, 'unrelated', previousSecret: 'old', now: self::TS)->event['uuid']
         );
     }
 
@@ -178,7 +155,7 @@ final class WebhookTest extends TestCase
     {
         $event = Verifier::parse(self::body());
 
-        self::assertSame('payment', $event->type());
+        self::assertSame('payment', $event['type']);
         self::assertTrue(Verifier::isStale($event, 7));
         self::assertFalse(Verifier::isStale($event, 6));
         self::assertFalse(Verifier::isStale($event, null));
@@ -203,8 +180,7 @@ final class WebhookTest extends TestCase
         // A live delivery: neither the body flag nor the header.
         $live = Verifier::verify(self::body(), self::headers(), 'whsec', now: self::TS);
         self::assertFalse($live->isTest);
-        self::assertFalse($live->event->isTest());
-        self::assertFalse(Verifier::isTestEvent($live->event));
+                self::assertFalse(Verifier::isTestEvent($live->event));
 
         // A rehearsal delivery: the flag rides inside the signed body.
         $raw = self::testBody();
@@ -215,8 +191,7 @@ final class WebhookTest extends TestCase
         ];
         $rehearsal = Verifier::verify($raw, $headers, 'whsec', now: self::TS);
         self::assertTrue($rehearsal->isTest);
-        self::assertTrue($rehearsal->event->isTest());
-        self::assertTrue(Verifier::isTestEvent($rehearsal->event));
+                self::assertTrue(Verifier::isTestEvent($rehearsal->event));
 
         // The header alone is enough, even if a body somehow omits the flag.
         unset($headers['x-webhook-signature']);

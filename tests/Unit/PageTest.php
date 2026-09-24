@@ -4,36 +4,38 @@ declare(strict_types=1);
 
 namespace Oblodai\Tests\Unit;
 
-use Oblodai\Contract\Model\Payment;
-use Oblodai\Contract\Model\Payout;
+use Oblodai\Core\PageResult;
 use Oblodai\Core\RequestOptions;
 use Oblodai\Exception\ConfigException;
+use Oblodai\Generated\Model\PaymentView;
+use Oblodai\Generated\Model\PayoutView;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\FakeHttpClient;
-use Oblodai\Tests\Support\PagedProbe;
+use Oblodai\Tests\Support\ProbeResource;
+use Oblodai\Tests\Support\Samples;
 use PHPUnit\Framework\TestCase;
 
-/** Ports test/unit/pagination.test.ts against Core\Page over a fake HTTP stack. */
+/** Paged lists (spec §3 item 7): `foreach` over every item, `byPage()` over every page. */
 final class PageTest extends TestCase
 {
     /**
-     * A minimal wire shape `Payment::fromArray()` accepts, identified by `uuid`.
+     * A payment history row, identified by `uuid`.
      *
      * @return array<string, mixed>
      */
     private static function paymentRow(string $uuid): array
     {
-        return ['uuid' => $uuid, 'status' => 'created'];
+        return Samples::of(PaymentView::class, ['uuid' => $uuid]);
     }
 
     /**
-     * A minimal wire shape `Payout::fromArray()` accepts, identified by `uuid`.
+     * A payout history row, identified by `uuid`.
      *
      * @return array<string, mixed>
      */
     private static function payoutRow(string $uuid): array
     {
-        return ['uuid' => $uuid, 'status' => 'pending', 'fee_bearer' => 'gateway'];
+        return Samples::of(PayoutView::class, ['uuid' => $uuid]);
     }
 
     /**
@@ -54,12 +56,12 @@ final class PageTest extends TestCase
     }
 
     /**
-     * @param  list<Payment|Payout> $items
+     * @param  list<mixed> $items
      * @return list<string>
      */
     private static function uuidsOf(array $items): array
     {
-        return array_map(static fn (Payment|Payout $p): string => $p->uuid, $items);
+        return array_map(static fn (mixed $p): string => $p instanceof PaymentView || $p instanceof PayoutView ? $p->uuid : '?', $items);
     }
 
     public function testItemsFetchesExactlyOnePage(): void
@@ -67,7 +69,7 @@ final class PageTest extends TestCase
         $fake = new FakeHttpClient([self::page([self::paymentRow('1'), self::paymentRow('2')], 0, 5, 2)]);
         $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
 
-        $page = $ob->payments->history(['limit' => 2]);
+        $page = $ob->payments->listHistory(['limit' => 2]);
         self::assertSame(['1', '2'], self::uuidsOf($page->items()));
         self::assertTrue($page->paginate()->has_pages);
         self::assertSame(1, $fake->count());
@@ -84,13 +86,14 @@ final class PageTest extends TestCase
         $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
 
         // Consume the first page once (script entry #1) …
-        $first = $ob->payments->history(['limit' => 2]);
+        $first = $ob->payments->listHistory(['limit' => 2]);
         self::assertSame(['1', '2'], self::uuidsOf($first->items()));
         self::assertSame(1, $fake->count());
 
         // … then a FRESH Page object walks every page from the start (script entries #2-4).
         $seen = [];
-        foreach ($ob->payments->history(['limit' => 2]) as $item) {
+        foreach ($ob->payments->listHistory(['limit' => 2]) as $item) {
+            self::assertInstanceOf(PaymentView::class, $item);
             $seen[] = $item->uuid;
         }
         self::assertSame(['1', '2', '3', '4', '5'], $seen);
@@ -106,7 +109,7 @@ final class PageTest extends TestCase
         ]);
         $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
 
-        self::assertSame(['1', '2', '3'], self::uuidsOf($ob->payouts->history(['limit' => 2])->all()));
+        self::assertSame(['1', '2', '3'], self::uuidsOf($ob->payouts->listHistory(['limit' => 2])->all()));
     }
 
     public function testAllCaps(): void
@@ -117,7 +120,7 @@ final class PageTest extends TestCase
         ]);
         $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
 
-        self::assertSame(['1', '2'], self::uuidsOf($ob->payouts->history(['limit' => 2])->all(2)));
+        self::assertSame(['1', '2'], self::uuidsOf($ob->payouts->listHistory(['limit' => 2])->all(2)));
     }
 
     public function testNothingIsRequestedUntilThePageIsConsumed(): void
@@ -125,7 +128,7 @@ final class PageTest extends TestCase
         $fake = new FakeHttpClient([self::page([], 0, 0, 50)]);
         $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
 
-        $ob->payments->history();
+        $ob->payments->listHistory();
         self::assertSame(0, $fake->count());
     }
 
@@ -139,7 +142,7 @@ final class PageTest extends TestCase
         $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
 
         try {
-            $ob->payouts->history([], new RequestOptions(idempotencyKey: 'k'));
+            $ob->payouts->listHistory([], new RequestOptions(idempotencyKey: 'k'));
             self::fail('expected a ConfigException');
         } catch (ConfigException $e) {
             self::assertSame('sdk.idempotency_unsupported', $e->errorCode);
@@ -162,7 +165,8 @@ final class PageTest extends TestCase
         $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
 
         $seen = [];
-        foreach ($ob->payments->history(['limit' => 2]) as $payment) {
+        foreach ($ob->payments->listHistory(['limit' => 2]) as $payment) {
+            self::assertInstanceOf(PaymentView::class, $payment);
             $seen[] = $payment->uuid;
         }
 
@@ -182,9 +186,10 @@ final class PageTest extends TestCase
             self::page([['b' => 2]], 1, 4, 1, false),
         ]);
         $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
-        $probe = new PagedProbe($ob->transport);
+        $probe = new ProbeResource($ob->transport);
+        $route = ProbeResource::route('GET', '/v1/claim/{token}', safe: true, listKind: 'paged');
 
-        $rows = $probe->paged('GET /v1/claim/{token}', ['limit' => 1], ['token' => 'tok-42'])->all();
+        $rows = $probe->page($route, null, null, ['token' => 'tok-42'], ['limit' => 1])->all();
 
         self::assertCount(2, $rows);
         self::assertSame(2, $fake->count());
@@ -197,9 +202,56 @@ final class PageTest extends TestCase
     {
         $fake = new FakeHttpClient([self::page([['a' => 1]], 0, 1, 1)]);
         $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
-        $probe = new PagedProbe($ob->transport);
+        $probe = new ProbeResource($ob->transport);
 
         $this->expectException(ConfigException::class);
-        $probe->paged('GET /v1/claim/{token}')->items();
+        $probe->page(ProbeResource::route('GET', '/v1/claim/{token}', listKind: 'paged'))->items();
+    }
+
+    public function testByPageYieldsEveryPageWithItsPagination(): void
+    {
+        $fake = new FakeHttpClient([
+            self::page([self::paymentRow('1'), self::paymentRow('2')], 0, 5, 2),
+            self::page([self::paymentRow('3'), self::paymentRow('4')], 2, 5, 2),
+            self::page([self::paymentRow('5')], 4, 5, 2),
+        ]);
+        $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
+
+        $pages = iterator_to_array($ob->payments->listHistory(['limit' => 2, 'offset' => 0])->byPage(), false);
+
+        self::assertCount(3, $pages);
+        self::assertContainsOnlyInstancesOf(PageResult::class, $pages);
+        self::assertSame(['1', '2'], self::uuidsOf($pages[0]->items));
+        self::assertSame(2, $pages[1]->paginate->offset);
+        self::assertTrue($pages[1]->hasMore());
+        self::assertFalse($pages[2]->hasMore());
+        self::assertCount(1, $pages[2]);
+        self::assertSame(['limit' => 2, 'offset' => 4], $fake->body(2));
+    }
+
+    public function testByPageReusesAFirstPageAlreadyFetched(): void
+    {
+        $fake = new FakeHttpClient([
+            self::page([self::paymentRow('1')], 0, 1, 50),
+        ]);
+        $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
+
+        $page = $ob->payments->listHistory();
+        $first = $page->first();
+        $pages = iterator_to_array($page->byPage(), false);
+
+        self::assertSame($first, $pages[0]);
+        self::assertSame(1, $fake->count());
+    }
+
+    public function testAGetListSendsPagingOnTheQueryString(): void
+    {
+        $fake = new FakeHttpClient([self::page([], 0, 0, 10)]);
+        $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
+
+        $ob->sandbox->listWebhooks(limit: 10)->items();
+
+        self::assertSame('https://api.test/v1/sandbox/webhooks?limit=10&offset=0', $fake->calls[0]->url);
+        self::assertNull($fake->calls[0]->body);
     }
 }

@@ -42,6 +42,18 @@ final class FakeHttpClient implements HttpClient
     }
 
     /**
+     * Queue a minimal valid answer of an operation (built from its generated result model).
+     *
+     * @param  array<string, mixed>  $overrides wire fields set on top of the sample
+     * @param  array<string, string> $headers
+     * @return array<string, mixed>
+     */
+    public static function sample(string $operationId, array $overrides = [], array $headers = []): array
+    {
+        return self::ok(Operations::sampleResult($operationId, $overrides), $headers);
+    }
+
+    /**
      * Queue an error envelope.
      *
      * @param  array<string, mixed>  $error

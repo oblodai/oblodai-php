@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Oblodai\Tests\Unit;
 
-use Oblodai\Contract\Model\Currencies;
+use Oblodai\Generated\Model\CurrenciesResult;
 use Oblodai\Core\RequestOptions;
 use Oblodai\Core\Retry;
 use Oblodai\Exception\AuthenticationException;
@@ -39,7 +39,7 @@ final class TransportTest extends TestCase
         ]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
-        $ob->sandbox->webhooks(['limit' => 10, 'offset' => 0])->items();
+        $ob->sandbox->listWebhooks(limit: 10, offset: 0)->items();
 
         self::assertSame('https://api.test/v1/sandbox/webhooks?limit=10&offset=0', $fake->calls[0]->url);
         self::assertNull($fake->calls[0]->body);
@@ -51,7 +51,7 @@ final class TransportTest extends TestCase
     {
         $fake = new FakeHttpClient([
             FakeHttpClient::error(503, ['code' => 'db.unavailable', 'message' => 'down', 'retryable' => true]),
-            FakeHttpClient::ok(['uuid' => 'u', 'status' => 'created']),
+            FakeHttpClient::sample('createPayment'),
         ]);
         $ob = new Oblodai(...self::CREDS, http: $fake, retry: self::fastRetry(), env: []);
 
@@ -67,8 +67,8 @@ final class TransportTest extends TestCase
     public function testHonoursACallerSuppliedIdempotencyKeyAndDoesNotAddOneToReadRoutes(): void
     {
         $fake = new FakeHttpClient([
-            FakeHttpClient::ok(['uuid' => 'u', 'status' => 'pending', 'fee_bearer' => 'gateway']),
-            FakeHttpClient::ok(['uuid' => 'u', 'status' => 'created']),
+            FakeHttpClient::sample('createPayout'),
+            FakeHttpClient::sample('getPaymentInfo'),
         ]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
@@ -76,7 +76,7 @@ final class TransportTest extends TestCase
             ['amount' => '1', 'currency' => 'USDT', 'address' => 'T', 'order_id' => 'o'],
             new RequestOptions(idempotencyKey: 'my-key-1')
         );
-        $ob->payments->info('u');
+        $ob->payments->getInfo(['uuid' => 'u']);
 
         self::assertSame('my-key-1', $fake->header(0, 'Idempotency-Key'));
         self::assertNull($fake->header(1, 'Idempotency-Key'));
@@ -88,7 +88,7 @@ final class TransportTest extends TestCase
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
         try {
-            $ob->account->balance();
+            $ob->account->getBalance();
             self::fail('expected an OblodaiException');
         } catch (OblodaiException $e) {
             self::assertSame('internal', $e->errorCode);
@@ -108,7 +108,7 @@ final class TransportTest extends TestCase
         $ob = new Oblodai(...self::CREDS, http: $fake, retry: self::fastRetry(), env: []);
 
         try {
-            $ob->account->balance();
+            $ob->account->getBalance();
             self::fail('expected a RateLimitException');
         } catch (RateLimitException $e) {
             self::assertSame(0, $e->retryAfter);
@@ -121,11 +121,11 @@ final class TransportTest extends TestCase
         // Read route -> retried.
         $fake = new FakeHttpClient([FakeHttpClient::throws(), FakeHttpClient::ok(['balance' => ['merchant' => []]])]);
         $ob = new Oblodai(...self::CREDS, http: $fake, retry: self::fastRetry(), env: []);
-        $ob->account->balance();
+        $ob->account->getBalance();
         self::assertSame(2, $fake->count());
 
         // Unkeyed write -> not retried.
-        $fake2 = new FakeHttpClient([FakeHttpClient::throws(), FakeHttpClient::ok([])]);
+        $fake2 = new FakeHttpClient([FakeHttpClient::throws(), FakeHttpClient::sample('setAccuracy')]);
         $ob2 = new Oblodai(...self::CREDS, http: $fake2, retry: self::fastRetry(), env: []);
 
         try {
@@ -137,7 +137,7 @@ final class TransportTest extends TestCase
         self::assertSame(1, $fake2->count());
 
         // Keyed create -> retried.
-        $fake3 = new FakeHttpClient([FakeHttpClient::throws(), FakeHttpClient::ok(['uuid' => 'u', 'status' => 'created'])]);
+        $fake3 = new FakeHttpClient([FakeHttpClient::throws(), FakeHttpClient::sample('createPayment')]);
         $ob3 = new Oblodai(...self::CREDS, http: $fake3, retry: self::fastRetry(), env: []);
         $ob3->payments->create(['amount' => '1', 'currency' => 'USDT']);
         self::assertSame(2, $fake3->count());
@@ -169,7 +169,7 @@ final class TransportTest extends TestCase
         }
 
         try {
-            $ob->account->balance();
+            $ob->account->getBalance();
             self::fail('expected an AuthenticationException');
         } catch (AuthenticationException) {
         }
@@ -194,7 +194,7 @@ final class TransportTest extends TestCase
         ]);
         $ob = new Oblodai(...self::CREDS, http: $fake, retry: new Retry(maxRetries: 0), env: []);
 
-        $ob->account->balance();
+        $ob->account->getBalance();
 
         self::assertSame(2, $fake->count());
         $ts = (int) $fake->header(1, 'X-Timestamp');
@@ -204,10 +204,10 @@ final class TransportTest extends TestCase
     public function testTimesOutAndReportsTransportTimeout(): void
     {
         $fake = new FakeHttpClient([['delaySeconds' => 1]]);
-        $ob = new Oblodai(...self::CREDS, http: $fake, timeoutMs: 20, retry: new Retry(maxRetries: 0), env: []);
+        $ob = new Oblodai(...self::CREDS, http: $fake, timeout: 0.02, retry: new Retry(maxRetries: 0), env: []);
 
         try {
-            $ob->account->balance();
+            $ob->account->getBalance();
             self::fail('expected a TransportException');
         } catch (TransportException $e) {
             self::assertSame(TransportException::TIMEOUT, $e->errorCode);
@@ -217,8 +217,8 @@ final class TransportTest extends TestCase
     public function testTheOneApiKeySignsMoneyOutAndMoneyInAlike(): void
     {
         $fake = new FakeHttpClient([
-            FakeHttpClient::ok(['uuid' => 'p', 'status' => 'pending', 'fee_bearer' => 'gateway']),
-            FakeHttpClient::ok(['uuid' => 'i', 'status' => 'created']),
+            FakeHttpClient::sample('createPayout'),
+            FakeHttpClient::sample('createPayment'),
         ]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
@@ -233,13 +233,13 @@ final class TransportTest extends TestCase
 
     public function testRefusesASignedRouteWithNoCredentialsButAllowsAPublicOne(): void
     {
-        $fake = new FakeHttpClient([FakeHttpClient::ok(['currencies' => [], 'pricing_currencies' => []])]);
+        $fake = new FakeHttpClient([FakeHttpClient::sample('listCurrencies')]);
         $ob = new Oblodai(baseUrl: 'https://api.test', http: $fake, env: []);
 
-        self::assertInstanceOf(Currencies::class, $ob->catalog->currencies());
+        self::assertInstanceOf(CurrenciesResult::class, $ob->checkout->listCurrencies());
 
         try {
-            $ob->account->balance();
+            $ob->account->getBalance();
             self::fail('expected a ConfigException');
         } catch (ConfigException $e) {
             self::assertSame(ConfigException::MISSING_CREDENTIALS, $e->errorCode);
@@ -257,7 +257,7 @@ final class TransportTest extends TestCase
             env: [],
         );
 
-        $ob->account->balance();
+        $ob->account->getBalance();
 
         self::assertSame('https://gw.corp/oblodai/v1/balance', $fake->calls[0]->url);
     }
@@ -274,7 +274,7 @@ final class TransportTest extends TestCase
             env: [],
         );
 
-        $ob->account->balance();
+        $ob->account->getBalance();
 
         self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', (string) $fake->header(0, 'x-signature'));
         self::assertSame('t1', $fake->header(0, 'x-trace'));
@@ -287,7 +287,7 @@ final class TransportTest extends TestCase
 
         foreach (['..', 'a/b', ''] as $bad) {
             try {
-                $ob->payments->publicView($bad);
+                $ob->checkout->get($bad);
                 self::fail(sprintf('expected a ConfigException for "%s"', $bad));
             } catch (ConfigException $e) {
                 self::assertSame(ConfigException::BAD_PATH_PARAM, $e->errorCode);
@@ -316,14 +316,16 @@ final class TransportTest extends TestCase
         }
     }
 
-    public function testSendsUuidForDocumentReportsKeyedByBatchId(): void
+    public function testSendsDocumentQueryParametersOnTheQueryString(): void
     {
         $fake = new FakeHttpClient([FakeHttpClient::raw(200, '%PDF', ['content-type' => 'application/pdf'])]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
-        $ob->documents->batchReport('b-1', ['format' => 'csv']);
+        $file = $ob->documents->getBatch('b-1', format: 'csv');
 
         parse_str((string) parse_url($fake->calls[0]->url, PHP_URL_QUERY), $query);
-        self::assertSame('b-1', $query['uuid']);
+        self::assertSame(['uuid' => 'b-1', 'format' => 'csv'], $query);
+        self::assertSame('%PDF', $file->bytes);
+        self::assertNull($fake->calls[0]->body);
     }
 }

@@ -17,6 +17,9 @@ use Throwable;
  * of the failure. A response without an envelope (a proxy 502, an HTML 503) is `synthetic` — the
  * core never saw or never answered the request — and is retried only when repeating is safe.
  * Subclasses exist for `instanceof` ergonomics; the discriminator is always `errorCode`.
+ *
+ * `getMessage()` (and `(string) $e`) reads in a log line: `[code] text (request_id=…)`; the
+ * gateway's own words alone are `$e->detail`.
  */
 class OblodaiException extends RuntimeException implements JsonSerializable
 {
@@ -29,6 +32,9 @@ class OblodaiException extends RuntimeException implements JsonSerializable
 
     /** The decoded error body (or raw text when the body was not JSON). Never serialized. */
     private mixed $raw;
+
+    /** The error text alone, without the code and the request id. */
+    public readonly string $detail;
 
     public function __construct(
         /** Stable machine code (`family.reason`), e.g. `payout.insufficient_funds`. */
@@ -49,8 +55,23 @@ class OblodaiException extends RuntimeException implements JsonSerializable
         mixed $raw = null,
         ?Throwable $previous = null,
     ) {
-        parent::__construct($message, 0, $previous);
+        parent::__construct(self::render($errorCode, $message, $requestId), 0, $previous);
+        $this->detail = $message;
         $this->raw = $raw;
+    }
+
+    /** `[code] text (request_id=…)`; without a request id, just `[code] text`. */
+    public static function render(string $errorCode, string $message, ?string $requestId): string
+    {
+        $out = '[' . $errorCode . '] ' . $message;
+
+        return $requestId !== null && $requestId !== '' ? $out . ' (request_id=' . $requestId . ')' : $out;
+    }
+
+    /** The rendered line, like `getMessage()` — not PHP's default dump with the stack trace. */
+    public function __toString(): string
+    {
+        return $this->getMessage();
     }
 
     /** Code family (`payout` in `payout.insufficient_funds`). */
@@ -77,7 +98,7 @@ class OblodaiException extends RuntimeException implements JsonSerializable
         return [
             'name' => static::class,
             'code' => $this->errorCode,
-            'message' => $this->getMessage(),
+            'message' => $this->detail,
             'httpStatus' => $this->httpStatus,
             'retryable' => $this->retryable,
             'retryAfter' => $this->retryAfter,

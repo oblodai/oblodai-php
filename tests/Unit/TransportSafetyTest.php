@@ -37,7 +37,7 @@ final class TransportSafetyTest extends TestCase
 
         for ($i = 0; $i < 2; ++$i) {
             try {
-                $ob->payouts->approve('p1', new RequestOptions(idempotencyKey: 'k1'));
+                $ob->payouts->approve(['uuid' => 'p1'], new RequestOptions(idempotencyKey: 'k1'));
                 self::fail('expected a ConfigException');
             } catch (ConfigException $e) {
                 self::assertSame(ConfigException::IDEMPOTENCY_UNSUPPORTED, $e->errorCode);
@@ -52,7 +52,7 @@ final class TransportSafetyTest extends TestCase
         $ob = new Oblodai(...self::CREDS, http: $fake, retry: self::fastRetry(), env: []);
 
         try {
-            $ob->payouts->approve('p1');
+            $ob->payouts->approve(['uuid' => 'p1']);
             self::fail('expected an OblodaiException');
         } catch (OblodaiException $e) {
             self::assertSame(503, $e->httpStatus);
@@ -71,7 +71,7 @@ final class TransportSafetyTest extends TestCase
         ]);
         $ob = new Oblodai(...self::CREDS, http: $fake, retry: self::fastRetry(), env: []);
 
-        $ob->account->balance();
+        $ob->account->getBalance();
         self::assertSame(3, $fake->count());
 
         $fake2 = new FakeHttpClient([
@@ -80,7 +80,7 @@ final class TransportSafetyTest extends TestCase
         $ob2 = new Oblodai(...self::CREDS, http: $fake2, retry: new Retry(maxRetries: 0), env: []);
 
         try {
-            $ob2->account->balance();
+            $ob2->account->getBalance();
             self::fail('expected an OblodaiException');
         } catch (OblodaiException $e) {
             self::assertSame(120, $e->retryAfter);
@@ -91,11 +91,11 @@ final class TransportSafetyTest extends TestCase
     {
         $fake = new FakeHttpClient([
             FakeHttpClient::error(409, ['code' => 'payout.funds_maturing', 'retryable' => true, 'retry_after' => 0]),
-            FakeHttpClient::ok(['uuid' => 'p', 'status' => 'pending', 'fee_bearer' => 'gateway']),
+            FakeHttpClient::sample('approvePayout', ['uuid' => 'p']),
         ]);
         $ob = new Oblodai(...self::CREDS, http: $fake, retry: self::fastRetry(), env: []);
 
-        $ob->payouts->approve('p1');
+        $ob->payouts->approve(['uuid' => 'p1']);
 
         self::assertSame(2, $fake->count());
     }
@@ -109,7 +109,7 @@ final class TransportSafetyTest extends TestCase
         $ob = new Oblodai(...self::CREDS, http: $fake, retry: new Retry(maxRetries: 0), env: []);
 
         try {
-            $ob->account->balance();
+            $ob->account->getBalance();
             self::fail('expected an OblodaiException');
         } catch (OblodaiException $e) {
             self::assertSame('auth.ip_not_allowed', $e->errorCode);
@@ -128,14 +128,14 @@ final class TransportSafetyTest extends TestCase
         $ob = new Oblodai(...self::CREDS, http: $fake, retry: new Retry(maxRetries: 0), env: []);
 
         try {
-            $ob->account->balance();
+            $ob->account->getBalance();
             self::fail('expected an OblodaiException');
         } catch (OblodaiException $e) {
             self::assertSame('merchant.bad_signature', $e->errorCode);
         }
 
         // One bad Date cannot wedge the client: the next call signs with local time again.
-        $ob->account->balance();
+        $ob->account->getBalance();
         $ts = (int) $fake->header(2, 'X-Timestamp');
         self::assertLessThan(5, abs($ts - time()));
     }
@@ -146,10 +146,10 @@ final class TransportSafetyTest extends TestCase
             FakeHttpClient::error(503, ['code' => 'db.unavailable', 'retryable' => true, 'retry_after' => 2]),
             FakeHttpClient::ok([]),
         ]);
-        $ob = new Oblodai(...self::CREDS, http: $fake, deadlineMs: 100, env: []);
+        $ob = new Oblodai(...self::CREDS, http: $fake, deadline: 0.1, env: []);
 
         try {
-            $ob->account->balance();
+            $ob->account->getBalance();
             self::fail('expected a TransportException');
         } catch (TransportException $e) {
             self::assertSame(TransportException::DEADLINE, $e->errorCode);
@@ -163,7 +163,7 @@ final class TransportSafetyTest extends TestCase
         $ob = new Oblodai(...self::CREDS, http: $fake, retry: new Retry(maxRetries: 0), env: []);
 
         try {
-            $ob->account->balance();
+            $ob->account->getBalance();
             self::fail('expected an OblodaiException');
         } catch (OblodaiException $e) {
             self::assertSame(301, $e->httpStatus);

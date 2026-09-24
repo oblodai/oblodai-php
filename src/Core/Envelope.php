@@ -30,6 +30,8 @@ final class Envelope
         string $text,
         ?string $retryAfterHeader = null,
         ?string $locationHeader = null,
+        /** `X-Request-ID` of the call, for errors whose envelope names none. */
+        ?string $requestId = null,
     ): array {
         $retryAfter = self::parseRetryAfter($retryAfterHeader);
 
@@ -44,6 +46,8 @@ final class Envelope
                 ],
                 $text,
                 true,
+                null,
+                $requestId,
             )];
         }
 
@@ -67,13 +71,15 @@ final class Envelope
                     $text,
                     true,
                     $retryAfter,
+                    $requestId,
                 )];
             }
 
             throw new ContractException(
                 sprintf('expected a JSON envelope, got %s', self::describe($text)),
                 $httpStatus,
-                $text
+                $text,
+                requestId: $requestId,
             );
         }
 
@@ -81,7 +87,7 @@ final class Envelope
             /** @var array<string, mixed> $detail */
             $detail = $body['error'];
 
-            return ['ok' => false, 'error' => ApiException::from($httpStatus, $detail, $body, false, $retryAfter)];
+            return ['ok' => false, 'error' => ApiException::from($httpStatus, $detail, $body, false, $retryAfter, $requestId)];
         }
         if ($httpStatus >= 400) {
             return ['ok' => false, 'error' => ApiException::from(
@@ -90,6 +96,7 @@ final class Envelope
                 $body,
                 true,
                 $retryAfter,
+                $requestId,
             )];
         }
         if (is_array($body) && ($body['state'] ?? null) === 0 && array_key_exists('result', $body)) {
@@ -99,7 +106,8 @@ final class Envelope
         throw new ContractException(
             sprintf('response is not a {state:0,result} envelope: %s', self::describe($text)),
             $httpStatus,
-            $body
+            $body,
+            requestId: $requestId,
         );
     }
 

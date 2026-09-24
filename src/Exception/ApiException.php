@@ -28,6 +28,7 @@ class ApiException extends OblodaiException
         mixed $raw = null,
         bool $synthetic = false,
         ?int $retryAfterHeader = null,
+        ?string $fallbackRequestId = null,
     ): self {
         $code = self::stringOrNull($detail['code'] ?? null);
         if ($code === null || $code === '') {
@@ -63,7 +64,7 @@ class ApiException extends OblodaiException
             httpStatus: $httpStatus,
             retryable: $retryable,
             retryAfter: $retryAfter,
-            requestId: self::stringOrNull($detail['request_id'] ?? null),
+            requestId: self::stringOrNull($detail['request_id'] ?? null) ?? $fallbackRequestId,
             field: self::stringOrNull($detail['field'] ?? null),
             synthetic: $synthetic,
             raw: $raw,

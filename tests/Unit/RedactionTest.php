@@ -5,20 +5,20 @@ declare(strict_types=1);
 namespace Oblodai\Tests\Unit;
 
 use Oblodai\Config;
-use Oblodai\Contract\Model\ApiKeyPair;
-use Oblodai\Contract\Model\BatchElement;
-use Oblodai\Contract\Model\MerchantOnboarded;
-use Oblodai\Contract\Model\PayoutLink;
-use Oblodai\Contract\Model\WebhookEndpoint;
-use Oblodai\Contract\Model\WebhookSecretRotated;
 use Oblodai\Core\Credentials;
+use Oblodai\Core\Model;
 use Oblodai\Core\Secret;
+use Oblodai\Generated\Model\PayoutLinkCreated;
+use Oblodai\Generated\Model\RegisterWebhookResult;
+use Oblodai\Generated\Model\RotateWebhookSecretResult;
+use Oblodai\Generated\Model\SandboxOnboardResult;
 use Oblodai\Log\ConsoleLogger;
 use Oblodai\Log\Logger;
 use Oblodai\Log\NullLogger;
 use Oblodai\Log\RedactingLogger;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\FakeHttpClient;
+use Oblodai\Tests\Support\Samples;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -93,48 +93,42 @@ final class RedactionTest extends TestCase
         );
     }
 
-    /** @return iterable<string, array{object}> */
+    /** @return iterable<string, array{Model}> */
     public static function secretBearingModels(): iterable
     {
-        yield 'webhook endpoint' => [WebhookEndpoint::fromArray([
-            'endpoint_id' => 'e1', 'url' => 'https://shop.example/hook', 'secret' => self::SECRET,
-        ])];
-        yield 'rotated secret' => [WebhookSecretRotated::fromArray([
-            'endpoint_id' => 'e1', 'url' => 'https://shop.example/hook', 'secret' => self::SECRET,
-            'previous_secret_valid_until' => '2026-01-02T00:00:00Z',
-        ])];
-        yield 'api key pair' => [ApiKeyPair::fromArray([
-            'public_id' => 'pk', 'secret' => self::SECRET,
-        ])];
-        yield 'payout link' => [PayoutLink::fromArray([
-            'link_id' => 'l1', 'status' => 'funded', 'claim_token' => self::SECRET, 'passcode' => self::SECRET,
+        yield 'registered webhook' => [RegisterWebhookResult::fromArray(
+            Samples::of(RegisterWebhookResult::class, ['secret' => self::SECRET])
+        )];
+        yield 'rotated secret' => [RotateWebhookSecretResult::fromArray(
+            Samples::of(RotateWebhookSecretResult::class, ['secret' => self::SECRET])
+        )];
+        yield 'payout link' => [PayoutLinkCreated::fromArray(Samples::of(PayoutLinkCreated::class, [
+            'claim_token' => self::SECRET,
+            'passcode' => self::SECRET,
             'claim_url' => 'https://pay.test/claim/' . self::SECRET,
-        ])];
-        yield 'batch element carrying a payout link' => [BatchElement::fromArray([
-            'idx' => 0, 'ok' => true,
-            'result' => [
-                'link_id' => 'l1', 'status' => 'funded', 'claim_token' => self::SECRET,
-                'claim_url' => 'https://pay.test/claim/' . self::SECRET,
-            ],
-        ], static fn (array $raw): PayoutLink => PayoutLink::fromArray($raw))];
-        yield 'merchant onboarded' => [MerchantOnboarded::fromArray([
-            'merchant_id' => 'm1', 'project_id' => 'p1',
-            'api_key' => ['public_id' => 'pk', 'secret' => self::SECRET],
-        ])];
+        ]))];
+        yield 'sandbox store key, nested' => [SandboxOnboardResult::fromArray(
+            Samples::of(SandboxOnboardResult::class, ['api_key' => ['public_id' => 'pk', 'secret' => self::SECRET]])
+        )];
+        yield 'secret among fields newer than the SDK' => [RegisterWebhookResult::fromArray(
+            Samples::of(RegisterWebhookResult::class, ['brand_new' => ['secret' => self::SECRET]])
+        )];
     }
 
     /**
      * Models keep the secret readable as a property — that is what the caller asked the API for —
-     * but every wholesale rendering masks it, including the copy sitting in the raw wire body.
+     * but every wholesale rendering the class can intercept masks it, nested models too.
      */
     #[DataProvider('secretBearingModels')]
-    public function testASecretBearingModelMasksItselfInJsonDumpAndSerialize(object $model): void
+    public function testASecretBearingModelMasksItselfInJsonDumpAndSerialize(Model $model): void
     {
         $json = (string) json_encode($model);
         self::assertStringNotContainsString(self::SECRET, $json);
         self::assertStringContainsString('[redacted]', $json);
         self::assertStringNotContainsString(self::SECRET, self::dump($model));
         self::assertStringNotContainsString(self::SECRET, serialize($model));
+        self::assertStringNotContainsString(self::SECRET, (string) $model);
+        self::assertStringContainsString(self::SECRET, (string) json_encode($model->toArray()), 'toArray() is the escape hatch');
     }
 
     /**
@@ -144,32 +138,23 @@ final class RedactionTest extends TestCase
     public function testAClaimUrlIsRedactedBecauseItEmbedsTheClaimToken(): void
     {
         $url = 'https://pay.test/claim/' . self::SECRET;
-        $link = PayoutLink::fromArray([
-            'link_id' => 'l1', 'status' => 'funded', 'claim_token' => self::SECRET, 'claim_url' => $url,
-        ]);
+        $link = PayoutLinkCreated::fromArray(Samples::of(PayoutLinkCreated::class, [
+            'link_id' => 'l1', 'claim_token' => self::SECRET, 'claim_url' => $url,
+        ]));
 
         self::assertSame($url, $link->claim_url, 'the property is what the caller asked the API for');
         self::assertSame($url, $link->toArray()['claim_url'] ?? null, 'toArray() is the escape hatch');
-        // Same three renderings as every other secret-bearing model: `print_r`/`var_export` read
-        // public properties directly and cannot be intercepted, which is why they are documented
-        // as unsafe rather than asserted here.
-        self::assertStringNotContainsString($url, (string) json_encode($link));
-        self::assertStringNotContainsString($url, self::dump($link));
-        self::assertStringNotContainsString($url, serialize($link));
         $decoded = json_decode((string) json_encode($link), true);
         self::assertIsArray($decoded);
         self::assertSame('[redacted]', $decoded['claim_url']);
-        $raw = $decoded['raw'];
-        self::assertIsArray($raw);
-        self::assertSame('[redacted]', $raw['claim_url'], 'the copy in the wire body too');
         self::assertSame('l1', $decoded['link_id'], 'the safe half of the model is still loggable');
     }
 
     public function testTheSecretIsStillReadableWhereTheCallerNeedsIt(): void
     {
-        $endpoint = WebhookEndpoint::fromArray([
-            'endpoint_id' => 'e1', 'url' => 'https://shop.example/hook', 'secret' => self::SECRET,
-        ]);
+        $endpoint = RotateWebhookSecretResult::fromArray(
+            Samples::of(RotateWebhookSecretResult::class, ['secret' => self::SECRET])
+        );
 
         self::assertSame(self::SECRET, $endpoint->secret);
         self::assertSame(self::SECRET, $endpoint->toArray()['secret'] ?? null);

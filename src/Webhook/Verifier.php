@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Oblodai\Webhook;
 
-use Oblodai\Contract\Model\UnknownEvent;
-use Oblodai\Contract\Model\WebhookEvent;
-use Oblodai\Contract\Model\WebhookEventFactory;
 use Oblodai\Core\Signer;
 use Oblodai\Core\Util;
 use Oblodai\Exception\ConfigException;
+use Oblodai\Exception\ContractException;
 use Oblodai\Exception\SignatureException;
 use Oblodai\Exception\WebhookPayloadException;
+use Oblodai\Generated\Model\ConversionWebhook;
+use Oblodai\Generated\Model\PaymentWebhook;
+use Oblodai\Generated\Model\PayoutWebhook;
+use Oblodai\Generated\Model\WalletWebhook;
 
 /**
  * Webhook verification — usable on its own, no client and no API key required. Deliveries are
@@ -21,7 +23,9 @@ use Oblodai\Exception\WebhookPayloadException;
  *   X-Webhook-Signature: hex(HMAC-SHA256(secret, "<ts>." + rawBody))
  *   X-Webhook-Signature-Prev: same, with the previous secret — only during a rotation overlap
  *   X-Webhook-Event: invoice.<status> | payout.<status> | wallet.paid
- *   X-Webhook-Id: stable per delivery (identical across retries) — use it as your idempotency key
+ *   X-Webhook-Id: stable per delivery (identical across retries of THAT delivery)
+ *   X-Webhook-Event-Id: stable per STATE — the same for a resend of a state you already handled,
+ *     different as soon as the state differs; this is the idempotency key to keep
  *   X-Webhook-Event-Time: unix seconds when the state change committed (order events by it)
  *   X-Webhook-Test: "true" on a rehearsal delivery (`webhooks.test`, sandbox) — see `Delivery::$isTest`
  *
@@ -30,6 +34,7 @@ use Oblodai\Exception\WebhookPayloadException;
  *
  * ```php
  * $delivery = Verifier::verify(file_get_contents('php://input'), getallheaders(), $secret);
+ * $event = Verifier::model($delivery->event);   // PaymentWebhook, PayoutWebhook, … or null
  * ```
  */
 final class Verifier
@@ -39,8 +44,21 @@ final class Verifier
     public const HEADER_SIGNATURE_PREV = 'X-Webhook-Signature-Prev';
     public const HEADER_EVENT = 'X-Webhook-Event';
     public const HEADER_ID = 'X-Webhook-Id';
+    public const HEADER_EVENT_ID = 'X-Webhook-Event-Id';
     public const HEADER_EVENT_TIME = 'X-Webhook-Event-Time';
     public const HEADER_TEST = 'X-Webhook-Test';
+
+    /**
+     * The `type` discriminators this SDK models, with the generated model of each. A delivery naming
+     * anything else is still returned — a newer gateway may add a kind, and dropping it would lose
+     * a real event.
+     */
+    public const EVENT_MODELS = [
+        'payment' => PaymentWebhook::class,
+        'payout' => PayoutWebhook::class,
+        'wallet' => WalletWebhook::class,
+        'conversion' => ConversionWebhook::class,
+    ];
 
     /** Reject deliveries whose timestamp is further away than this, seconds. */
     public const DEFAULT_TOLERANCE_SECONDS = 300;
@@ -161,10 +179,11 @@ final class Verifier
         return new Delivery(
             event: $event,
             id: Util::header($headers, self::HEADER_ID),
+            eventId: Util::header($headers, self::HEADER_EVENT_ID),
             eventType: Util::header($headers, self::HEADER_EVENT),
             eventTime: $eventTime !== null && preg_match('/^\d+$/', trim($eventTime)) === 1 ? (int) trim($eventTime) : null,
             sentAt: $ts,
-            isTest: strtolower(trim((string) Util::header($headers, self::HEADER_TEST))) === 'true' || $event->isTest(),
+            isTest: strtolower(trim((string) Util::header($headers, self::HEADER_TEST))) === 'true' || self::isTestEvent($event),
         );
     }
 
@@ -184,47 +203,70 @@ final class Verifier
     }
 
     /**
-     * Parse a (previously verified) delivery body into a typed event, discriminated by `type`.
+     * Parse a (previously verified) delivery body: a JSON object that carries a string `type`.
      *
      * An unreadable body here is `webhook.bad_payload`, NOT a signature failure: the MAC already
      * proved the delivery is ours. An unknown `type` is not a failure at all — see
-     * {@see \Oblodai\Contract\Model\UnknownEvent}.
+     * {@see Verifier::isKnownEvent()}.
+     *
+     * @return array<string, mixed>
      */
-    public static function parse(string $rawBody): WebhookEvent
+    public static function parse(string $rawBody): array
     {
         $body = json_decode($rawBody, true, 512, JSON_BIGINT_AS_STRING);
-        if (!is_array($body) || !self::isJsonObject($body)) {
+        if (!is_array($body) || ($body !== [] && array_is_list($body))) {
             throw new WebhookPayloadException('webhook body is not a JSON object', $rawBody);
+        }
+        if (!is_string($body['type'] ?? null) || $body['type'] === '') {
+            throw new WebhookPayloadException('webhook body has no `type` discriminant', $body);
         }
 
         /** @var array<string, mixed> $body */
-        return WebhookEventFactory::fromArray($body);
-    }
-
-    /** @param array<mixed> $body */
-    private static function isJsonObject(array $body): bool
-    {
-        return $body === [] || !array_is_list($body);
+        return $body;
     }
 
     /**
-     * True when the event's `type` is one this SDK models (`payment`, `payout`, `wallet`).
+     * The event as the generated model of its `type`; null for a type this SDK does not model.
      *
-     * A false answer is not a failure: the gateway sent a kind of event newer than this release, the
-     * body is intact in `toArray()`, and a receiver can log it and move on.
+     * @param array<string, mixed> $event
+     *
+     * @throws WebhookPayloadException when the body does not have the documented fields of its type
      */
-    public static function isKnownEvent(WebhookEvent $event): bool
+    public static function model(array $event): PaymentWebhook|PayoutWebhook|WalletWebhook|ConversionWebhook|null
     {
-        return !$event instanceof UnknownEvent;
+        $type = is_string($event['type'] ?? null) ? $event['type'] : '';
+        $class = self::EVENT_MODELS[$type] ?? null;
+        if ($class === null) {
+            return null;
+        }
+        try {
+            return $class::fromArray($event);
+        } catch (ContractException $err) {
+            throw new WebhookPayloadException(sprintf('webhook %s: %s', $type, $err->detail), $event);
+        }
     }
 
     /**
-     * True for a rehearsal delivery (`webhooks.test`, sandbox). Such a body is signed like a live
-     * one, so a handler must branch on it and never act on it as if money moved.
+     * True when the event's `type` is one this SDK models (`payment`, `payout`, `wallet`,
+     * `conversion`). A false answer is not a failure: the gateway sent a kind of event newer than
+     * this release; log it and move on.
+     *
+     * @param array<string, mixed> $event
      */
-    public static function isTestEvent(WebhookEvent $event): bool
+    public static function isKnownEvent(array $event): bool
     {
-        return $event->isTest();
+        return is_string($event['type'] ?? null) && isset(self::EVENT_MODELS[$event['type']]);
+    }
+
+    /**
+     * True for a rehearsal delivery (`webhooks->sendTest*`, sandbox). Such a body is signed like a
+     * live one, so a handler must branch on it and never act on it as if money moved.
+     *
+     * @param array<string, mixed> $event
+     */
+    public static function isTestEvent(array $event): bool
+    {
+        return ($event['test'] ?? false) === true;
     }
 
     /**
@@ -233,11 +275,13 @@ final class Verifier
      *
      * An event without a usable `sequence` is never stale: dropping it would silently lose a real
      * state change just because the body was newer or older than this SDK expects.
+     *
+     * @param array<string, mixed> $event
      */
-    public static function isStale(WebhookEvent $event, ?int $lastProcessedSequence): bool
+    public static function isStale(array $event, ?int $lastProcessedSequence): bool
     {
-        $sequence = $event->sequence();
+        $sequence = $event['sequence'] ?? null;
 
-        return $sequence !== null && $lastProcessedSequence !== null && $sequence <= $lastProcessedSequence;
+        return is_int($sequence) && $lastProcessedSequence !== null && $sequence <= $lastProcessedSequence;
     }
 }

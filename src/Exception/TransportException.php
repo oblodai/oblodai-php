@@ -20,14 +20,26 @@ class TransportException extends OblodaiException
      */
     public const RESPONSE_TOO_LARGE = 'sdk.response_too_large';
 
-    public function __construct(string $errorCode, string $message, ?Throwable $previous = null)
-    {
+    public function __construct(
+        string $errorCode,
+        string $message,
+        ?Throwable $previous = null,
+        /** `X-Request-ID` of the call the failure belongs to. */
+        ?string $requestId = null,
+    ) {
         parent::__construct(
             errorCode: $errorCode,
             message: $message,
             httpStatus: 0,
             retryable: $errorCode === self::TIMEOUT || $errorCode === self::NETWORK,
+            requestId: $requestId,
             previous: $previous,
         );
+    }
+
+    /** The same failure, tagged with the call's request id (an HTTP stack does not know it). */
+    public function withRequestId(string $requestId): self
+    {
+        return new self($this->errorCode, $this->detail, $this, $requestId);
     }
 }

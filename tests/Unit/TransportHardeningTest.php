@@ -12,6 +12,7 @@ use Oblodai\Exception\OblodaiException;
 use Oblodai\Http\HttpRequest;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\FakeHttpClient;
+use Oblodai\Tests\Support\Operations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -31,7 +32,7 @@ final class TransportHardeningTest extends TestCase
 
     public function testABodyThatCannotBeEncodedIsRefusedInsteadOfSignedAsAnEmptyString(): void
     {
-        $fake = new FakeHttpClient([FakeHttpClient::ok(['uuid' => 'p'])]);
+        $fake = new FakeHttpClient([FakeHttpClient::sample('createPayment', ['uuid' => 'p'])]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
         try {
@@ -60,18 +61,21 @@ final class TransportHardeningTest extends TestCase
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
         $this->expectException(ConfigException::class);
+        // @phpstan-ignore argument.type (a non-finite number is the mistake under test)
         $ob->payments->create(['amount' => '1', 'currency' => 'USDT', 'accuracy_payment_percent' => $value]);
     }
 
     public function testAFloatAmountIsRefusedWithTheDecimalStringSpelledOut(): void
     {
-        $fake = new FakeHttpClient([FakeHttpClient::ok(['uuid' => 'p'])]);
+        $fake = new FakeHttpClient([FakeHttpClient::sample('createPayment', ['uuid' => 'p'])]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
         try {
+            // @phpstan-ignore argument.type (the float amount is the mistake under test)
             $ob->payments->create(['amount' => 0.1 + 0.2, 'currency' => 'USDT']);
             self::fail('expected a ConfigException');
         } catch (ConfigException $e) {
+            self::assertSame(ConfigException::FLOAT_AMOUNT, $e->errorCode);
             self::assertSame('amount', $e->field);
             self::assertStringContainsString('decimal strings', $e->getMessage());
             self::assertStringContainsString('0.30000000000000004', $e->getMessage());
@@ -85,7 +89,7 @@ final class TransportHardeningTest extends TestCase
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
         try {
-            $ob->payments->batch(['payments' => [['order_id' => 'o1', 'amount' => 25.0, 'currency' => 'USDT']]]);
+            $ob->batches->createPayment(['payments' => [['order_id' => 'o1', 'amount' => 25.0, 'currency' => 'USDT']]]);
             self::fail('expected a ConfigException');
         } catch (ConfigException $e) {
             self::assertSame('payments.0.amount', $e->field);
@@ -95,7 +99,7 @@ final class TransportHardeningTest extends TestCase
     /** The one field the contract really declares as a number still goes through. */
     public function testTheContractsOwnNumberFieldIsStillAccepted(): void
     {
-        $fake = new FakeHttpClient([FakeHttpClient::ok(['uuid' => 'p'])]);
+        $fake = new FakeHttpClient([FakeHttpClient::sample('createPayment', ['uuid' => 'p'])]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
         $ob->payments->create(['amount' => '1', 'currency' => 'USDT', 'accuracy_payment_percent' => 1.5]);
@@ -114,7 +118,7 @@ final class TransportHardeningTest extends TestCase
     #[DataProvider('reservedHeaderSpellings')]
     public function testACallerHeaderNeverShadowsASignedOneWhateverItsCase(string $spelling): void
     {
-        $fake = new FakeHttpClient([FakeHttpClient::ok(['uuid' => 'p'])]);
+        $fake = new FakeHttpClient([FakeHttpClient::sample('createPayment', ['uuid' => 'p'])]);
         $ob = new Oblodai(...self::CREDS, http: $fake, headers: [$spelling => 'forged'], env: []);
 
         $ob->payments->create(['amount' => '1', 'currency' => 'USDT']);
@@ -132,11 +136,8 @@ final class TransportHardeningTest extends TestCase
     public function testTheAdminTokenRidesOnlyOnOnboardRoutesAndNeverFromACallerHeader(): void
     {
         $fake = new FakeHttpClient([
-            FakeHttpClient::ok(['uuid' => 'p']),
-            FakeHttpClient::ok([
-                'merchant_id' => 'm', 'project_id' => 'p',
-                'api_key' => ['public_id' => 'a', 'secret' => 'b'],
-            ]),
+            FakeHttpClient::sample('createPayment', ['uuid' => 'p']),
+            FakeHttpClient::sample('onboardSandboxStore'),
         ]);
         $ob = new Oblodai(
             ...self::CREDS,
@@ -149,7 +150,7 @@ final class TransportHardeningTest extends TestCase
         $ob->payments->create(['amount' => '1', 'currency' => 'USDT']);
         self::assertNull($fake->header(0, 'X-Admin-Token'), 'a payment route must not carry the admin token');
 
-        $ob->merchants->create(['email' => 'owner@shop.example']);
+        $ob->sandbox->onboardStore('m-1');
         self::assertSame('adm', $fake->header(1, 'X-Admin-Token'));
     }
 
@@ -165,7 +166,7 @@ final class TransportHardeningTest extends TestCase
     #[DataProvider('unsendableHeaderValues')]
     public function testAHeaderValueWithALineBreakOrNonAsciiIsRefused(string $value): void
     {
-        $fake = new FakeHttpClient([FakeHttpClient::ok(['uuid' => 'p'])]);
+        $fake = new FakeHttpClient([FakeHttpClient::sample('createPayment', ['uuid' => 'p'])]);
         $ob = new Oblodai(...self::CREDS, http: $fake, headers: ['X-Shop' => $value], env: []);
 
         try {
@@ -184,7 +185,7 @@ final class TransportHardeningTest extends TestCase
     public function testABodyThatCameFromAnotherUrlIsRefused(): void
     {
         $fake = new FakeHttpClient([
-            FakeHttpClient::redirected('https://evil.test/v1/payment', ['uuid' => 'p']),
+            FakeHttpClient::redirected('https://evil.test/v1/payment', Operations::sampleResult('createPayment')),
         ]);
         $ob = new Oblodai(...self::CREDS, http: $fake, retry: self::fastRetry(0), env: []);
 
@@ -201,7 +202,7 @@ final class TransportHardeningTest extends TestCase
     public function testAResponseFromTheRequestedUrlIsFine(): void
     {
         $fake = new FakeHttpClient([
-            FakeHttpClient::redirected('https://api.test/v1/payment', ['uuid' => 'p']),
+            FakeHttpClient::redirected('https://api.test/v1/payment', Operations::sampleResult('createPayment', ['uuid' => 'p'])),
         ]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
@@ -211,13 +212,13 @@ final class TransportHardeningTest extends TestCase
     public function testJsonRoutesAndFileRoutesCarryDifferentBodyCeilings(): void
     {
         $fake = new FakeHttpClient([
-            FakeHttpClient::ok(['uuid' => 'p']),
+            FakeHttpClient::sample('createPayment', ['uuid' => 'p']),
             FakeHttpClient::raw(200, '%PDF-1.7', ['content-type' => 'application/pdf']),
         ]);
         $ob = new Oblodai(...self::CREDS, http: $fake, env: []);
 
         $ob->payments->create(['amount' => '1', 'currency' => 'USDT']);
-        $ob->documents->statement(['from' => '2026-01-01', 'to' => '2026-01-31']);
+        $ob->documents->getStatement('2026-01-01', '2026-01-31');
 
         self::assertSame(HttpRequest::MAX_JSON_BYTES, $fake->calls[0]->maxResponseBytes);
         self::assertSame(HttpRequest::MAX_FILE_BYTES, $fake->calls[1]->maxResponseBytes);

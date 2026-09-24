@@ -24,7 +24,7 @@ use Psr\Http\Message\StreamInterface;
  *    Symfony: `'max_redirects' => 0`. The adapter still detects a followed redirect after the fact
  *    (the response's effective URI differs) and the transport turns that into the usual
  *    "unexpected redirect" error — but detecting is not preventing.
- * 2. **Timeouts.** PSR-18 has no per-request timeout, so the SDK's `timeoutMs` cannot be applied
+ * 2. **Timeouts.** PSR-18 has no per-request timeout, so the SDK's `timeout` cannot be applied
  *    here. Set both a connect and a total timeout on the client. Guzzle:
  *    `'connect_timeout' => 10, 'timeout' => 30`. The overall per-call deadline still bounds the
  *    number of attempts, and `CurlHttpClient` (the default) honours everything itself.

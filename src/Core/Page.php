@@ -8,13 +8,16 @@ use Generator;
 use IteratorAggregate;
 
 /**
- * What a list method returns. `items()`/`paginate()` give the FIRST page; iterating the object
- * (`foreach`) walks EVERY page, fetching the next one only when the previous is exhausted.
- * Nothing is requested until the page is consumed, and the first page is fetched once however many
- * ways it is consumed.
+ * What a list method returns — a lazy handle; nothing is requested until it is consumed, and the
+ * first page is fetched once however many ways it is consumed.
  *
- * `paginate.has_pages` is the server's own "there is more" flag; iteration stops on it, or on a
- * short page, whichever comes first.
+ * - `foreach ($page as $item)` walks every item across every page;
+ * - `$page->byPage()` yields every {@see PageResult} in turn, one request each;
+ * - `$page->first()` (or `items()` / `paginate()`) is just the first page;
+ * - `$page->all($max)` collects items into an array.
+ *
+ * `paginate.has_pages` is the gateway's own "there is more" flag; walking stops on it, or on a
+ * page shorter than the limit, whichever comes first.
  *
  * @template T
  *
@@ -24,16 +27,36 @@ final class Page implements IteratorAggregate
 {
     public const DEFAULT_LIMIT = 50;
 
-    /** @var (callable(int, int): array{items: list<T>, paginate: Paginate}) */
+    /** @var callable(int, int): PageResult<T> */
     private $fetchPage;
 
-    /** @var array{items: list<T>, paginate: Paginate}|null */
-    private ?array $first = null;
+    private readonly int $limit;
 
-    /** @param callable(int, int): array{items: list<T>, paginate: Paginate} $fetchPage taking limit and offset */
-    public function __construct(callable $fetchPage, private readonly ?int $limit = null, private readonly ?int $offset = null)
-    {
+    private readonly int $offset;
+
+    /**
+     * @param callable(int, int): PageResult<T> $fetchPage taking limit and offset
+     * @param PageResult<T>|null                $first     the first page when it is already at hand
+     */
+    public function __construct(
+        callable $fetchPage,
+        ?int $limit = null,
+        ?int $offset = null,
+        private ?PageResult $first = null,
+    ) {
         $this->fetchPage = $fetchPage;
+        $this->limit = $limit ?? self::DEFAULT_LIMIT;
+        $this->offset = $offset ?? 0;
+    }
+
+    /**
+     * The first page, fetched once and cached.
+     *
+     * @return PageResult<T>
+     */
+    public function first(): PageResult
+    {
+        return $this->first ??= ($this->fetchPage)($this->limit, $this->offset);
     }
 
     /**
@@ -43,13 +66,36 @@ final class Page implements IteratorAggregate
      */
     public function items(): array
     {
-        return $this->firstPage()['items'];
+        return $this->first()->items;
     }
 
     /** Pagination block of the first page. */
     public function paginate(): Paginate
     {
-        return $this->firstPage()['paginate'];
+        return $this->first()->paginate;
+    }
+
+    /**
+     * Every page in turn, one request each (the first page is reused when already fetched).
+     *
+     * @return Generator<int, PageResult<T>>
+     */
+    public function byPage(): Generator
+    {
+        $offset = $this->offset;
+        $page = $this->first();
+        for (;;) {
+            yield $page;
+            $got = count($page->items);
+            $offset += $got;
+            // Two stops, and both are needed: `has_pages` is the gateway's own answer, and a page
+            // shorter than the limit means the same thing. Without the second one, a server that
+            // always sets `has_pages` (a bug, or a filtered count) would spin forever.
+            if ($got === 0 || $got < $this->limit || !$page->paginate->has_pages) {
+                return;
+            }
+            $page = ($this->fetchPage)($this->limit, $offset);
+        }
     }
 
     /**
@@ -59,22 +105,10 @@ final class Page implements IteratorAggregate
      */
     public function getIterator(): Generator
     {
-        $limit = $this->limit ?? self::DEFAULT_LIMIT;
-        $offset = $this->offset ?? 0;
-        $page = $this->firstPage();
-        for (;;) {
-            foreach ($page['items'] as $item) {
+        foreach ($this->byPage() as $page) {
+            foreach ($page->items as $item) {
                 yield $item;
             }
-            $got = count($page['items']);
-            $offset += $got;
-            // Two stops, and both are needed: `has_pages` is the server's own answer, and a page
-            // shorter than the limit means the same thing. Without the second one, a server that
-            // always sets `has_pages` (a bug, or a filtered count) would spin forever.
-            if ($got === 0 || $got < $limit || !$page['paginate']->has_pages) {
-                return;
-            }
-            $page = ($this->fetchPage)($limit, $offset);
         }
     }
 
@@ -86,19 +120,17 @@ final class Page implements IteratorAggregate
     public function all(?int $maxItems = null): array
     {
         $out = [];
+        if ($maxItems !== null && $maxItems <= 0) {
+            return $out;
+        }
         foreach ($this as $item) {
+            $out[] = $item;
+            // Stop before the iterator resumes, so a cap never costs an extra page request.
             if ($maxItems !== null && count($out) >= $maxItems) {
                 break;
             }
-            $out[] = $item;
         }
 
         return $out;
-    }
-
-    /** @return array{items: list<T>, paginate: Paginate} */
-    private function firstPage(): array
-    {
-        return $this->first ??= ($this->fetchPage)($this->limit ?? self::DEFAULT_LIMIT, $this->offset ?? 0);
     }
 }

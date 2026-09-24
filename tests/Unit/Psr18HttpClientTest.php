@@ -9,6 +9,7 @@ use Oblodai\Exception\TransportException;
 use Oblodai\Http\HttpRequest;
 use Oblodai\Http\Psr18HttpClient;
 use Oblodai\Oblodai;
+use Oblodai\Tests\Support\Operations;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -49,7 +50,7 @@ final class Psr18HttpClientTest extends TestCase
         $factory = new Psr17Factory();
         $psr = new RecordingPsrClient($factory, 200, (string) json_encode([
             'state' => 0,
-            'result' => ['enabled' => true],
+            'result' => Operations::sampleResult('getSplitRecipientOptIn', ['enabled' => true]),
         ]));
 
         $oblodai = new Oblodai(
@@ -59,7 +60,7 @@ final class Psr18HttpClientTest extends TestCase
             http: new Psr18HttpClient($psr, $factory, $factory),
             env: [],
         );
-        self::assertTrue($oblodai->splits->getOptIn()->enabled);
+        self::assertTrue($oblodai->splits->getRecipientOptIn()->enabled);
         self::assertNotNull($psr->last);
         self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $psr->last->getHeaderLine('X-Signature'));
     }
