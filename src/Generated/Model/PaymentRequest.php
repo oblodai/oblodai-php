@@ -36,12 +36,16 @@ final class PaymentRequest extends Model
         'url_success',
     ];
 
+    /** Сумма к оплате в валюте currency. */
+    public readonly string $amount;
+
     /**
+     * @param string|int $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Сумма к оплате в валюте currency. */
-        public readonly string $amount,
+        string|int|float $amount,
         /**
          * Код валюты цены: любой из 23 фиатов (USD, EUR, RUB, …) или любая монета (USDT, BTC, …). У
          * JPY и KRW ноль знаков после запятой.
@@ -93,6 +97,7 @@ final class PaymentRequest extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

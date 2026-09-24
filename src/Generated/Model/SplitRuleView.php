@@ -28,7 +28,11 @@ final class SplitRuleView extends Model
         'rule_id',
     ];
 
+    /** Доля от каждого платежа в процентах. */
+    public readonly string $percent;
+
     /**
+     * @param string|int $percent
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -37,7 +41,7 @@ final class SplitRuleView extends Model
         /** Комментарий из создания. */
         public readonly string $note,
         /** Доля от каждого платежа в процентах. */
-        public readonly string $percent,
+        string|int|float $percent,
         /**
          * true — доля движется по внутреннему учёту и отзывается при возврате; false — уходит в
          * блокчейн необратимо.
@@ -54,6 +58,7 @@ final class SplitRuleView extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->percent = Wire::amount($percent, 'percent');
     }
 
     /** @param array<string, mixed> $data */

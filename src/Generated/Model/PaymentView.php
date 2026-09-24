@@ -110,7 +110,19 @@ final class PaymentView extends Model
         'uuid',
     ];
 
+    /** Сумма к оплате в валюте цены (например, в USD). */
+    public readonly string $amount;
+
     /**
+     * Ставка комиссии этого счёта в процентах — та, что зафиксирована в момент создания (смена
+     * тарифа не меняет уже созданные счета). Уже включает амортизированный фиксированный сбор. В
+     * отличие от commission известна с первой секунды и присутствует всегда.
+     */
+    public readonly string $fee_percent;
+
+    /**
+     * @param string|int $amount
+     * @param string|int $fee_percent
      * @param list<PaymentTx> $tx_list
      * @param array<string, mixed> $extra
      */
@@ -138,7 +150,7 @@ final class PaymentView extends Model
          */
         public readonly string $address_xaddress,
         /** Сумма к оплате в валюте цены (например, в USD). */
-        public readonly string $amount,
+        string|int|float $amount,
         /**
          * Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не
          * пришло). Пусто, пока валюта оплаты не выбрана (счёт без валюты).
@@ -188,7 +200,7 @@ final class PaymentView extends Model
          * тарифа не меняет уже созданные счета). Уже включает амортизированный фиксированный сбор.
          * В отличие от commission известна с первой секунды и присутствует всегда.
          */
-        public readonly string $fee_percent,
+        string|int|float $fee_percent,
         /** true — статус финальный, больше не изменится. */
         public readonly bool $is_final,
         /** true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть. */
@@ -307,6 +319,8 @@ final class PaymentView extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
+        $this->fee_percent = Wire::amount($fee_percent, 'fee_percent');
     }
 
     /** @param array<string, mixed> $data */

@@ -58,7 +58,19 @@ final class ConversionWebhook extends Model
         'type',
     ];
 
+    /** Комиссия конвертации, в процентах. */
+    public readonly string $fee_percent;
+
+    /** Сколько отдано, в валюте from. */
+    public readonly string $sent;
+
+    /** Сколько зачислено, в валюте to. Есть только у completed; у refunded поля нет. */
+    public readonly ?string $received;
+
     /**
+     * @param string|int $fee_percent
+     * @param string|int $sent
+     * @param string|int|null $received
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -73,7 +85,7 @@ final class ConversionWebhook extends Model
         /** Когда событие произошло, UTC с миллисекундами (ISO 8601). */
         public readonly string $event_at,
         /** Комиссия конвертации, в процентах. */
-        public readonly string $fee_percent,
+        string|int|float $fee_percent,
         /** Из какой валюты. */
         public readonly string $from,
         /** Идентификатор конвертации — тот id, что вернул запрос конвертации. */
@@ -85,7 +97,7 @@ final class ConversionWebhook extends Model
         /** Причина возврата (market_below_min | window_expired); пусто у completed. */
         public readonly string $reason,
         /** Сколько отдано, в валюте from. */
-        public readonly string $sent,
+        string|int|float $sent,
         /**
          * Глобальный номер события: в пределах одного объекта больший номер новее, меньший —
          * опоздавшая доставка, её нужно отбросить. У репетиции (test: true) всегда 0.
@@ -98,7 +110,7 @@ final class ConversionWebhook extends Model
         /** Вид события: payment | payout | wallet | conversion — какое тело пришло. */
         public readonly string $type,
         /** Сколько зачислено, в валюте to. Есть только у completed; у refunded поля нет. */
-        public readonly ?string $received = null,
+        string|int|float|null $received = null,
         /**
          * Есть только у репетиции (/v1/test-webhook/*, /v1/payment/testing-webhook) и всегда true —
          * внутри подписи. Боевое событие этого поля не несёт никогда: тело с test: true обработчик
@@ -108,6 +120,9 @@ final class ConversionWebhook extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->fee_percent = Wire::amount($fee_percent, 'fee_percent');
+        $this->sent = Wire::amount($sent, 'sent');
+        $this->received = $received === null ? null : Wire::amount($received, 'received');
     }
 
     /** @param array<string, mixed> $data */

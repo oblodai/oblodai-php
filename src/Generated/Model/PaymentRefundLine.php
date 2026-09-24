@@ -28,14 +28,18 @@ final class PaymentRefundLine extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['address', 'amount', 'created_at', 'is_final', 'status', 'txid', 'uuid'];
 
+    /** Сумма возврата в монете платежа. */
+    public readonly string $amount;
+
     /**
+     * @param string|int $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Куда возвращено. */
         public readonly string $address,
         /** Сумма возврата в монете платежа. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Когда создан (RFC 3339). */
         public readonly string $created_at,
         /** Статус возврата окончательный. */
@@ -49,6 +53,7 @@ final class PaymentRefundLine extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

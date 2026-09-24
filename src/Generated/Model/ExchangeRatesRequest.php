@@ -20,6 +20,13 @@ final class ExchangeRatesRequest extends Model
     public const FIELDS = ['amount', 'currency_from', 'currency_to', 'limit', 'offset'];
 
     /**
+     * Сумма в currency_from. Вместе с currency_from и currency_to добавляет в ответ блок modes: обе
+     * цены конвертации (instant/economy) с доступностью каждого режима
+     */
+    public readonly ?string $amount;
+
+    /**
+     * @param string|int|null $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -27,7 +34,7 @@ final class ExchangeRatesRequest extends Model
          * Сумма в currency_from. Вместе с currency_from и currency_to добавляет в ответ блок modes:
          * обе цены конвертации (instant/economy) с доступностью каждого режима
          */
-        public readonly ?string $amount = null,
+        string|int|float|null $amount = null,
         /**
          * Код валюты. Если задан — вернётся курс только по нему. Если пусто или тело {} — по всем
          * валютам
@@ -45,6 +52,7 @@ final class ExchangeRatesRequest extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = $amount === null ? null : Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

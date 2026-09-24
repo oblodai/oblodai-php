@@ -20,6 +20,13 @@ final class MerchantBalanceEntry extends Model
     public const FIELDS = ['balance', 'converting', 'currency'];
 
     /**
+     * Сколько этой монеты сейчас едет через очередь автоконверта (economy); нет ключа — очереди
+     * нет.
+     */
+    public readonly ?string $converting;
+
+    /**
+     * @param string|int|null $converting
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -31,10 +38,11 @@ final class MerchantBalanceEntry extends Model
          * Сколько этой монеты сейчас едет через очередь автоконверта (economy); нет ключа — очереди
          * нет.
          */
-        public readonly ?string $converting = null,
+        string|int|float|null $converting = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->converting = $converting === null ? null : Wire::amount($converting, 'converting');
     }
 
     /** @param array<string, mixed> $data */

@@ -20,7 +20,11 @@ final class PayServiceCommission extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['currency', 'fee_amount', 'fee_type', 'percent'];
 
+    /** Фиксированная часть комиссии в валюте currency; null — не определилась. */
+    public readonly ?string $fee_amount;
+
     /**
+     * @param string|int|null $fee_amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -29,12 +33,13 @@ final class PayServiceCommission extends Model
         /** Единица fee_amount: USD у приёма, валюта выплаты у выплаты. */
         public readonly ?string $currency = null,
         /** Фиксированная часть комиссии в валюте currency; null — не определилась. */
-        public readonly ?string $fee_amount = null,
+        string|int|float|null $fee_amount = null,
         /** Процент комиссии; null — не определился. */
         public readonly ?string $percent = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->fee_amount = $fee_amount === null ? null : Wire::amount($fee_amount, 'fee_amount');
     }
 
     /** @param array<string, mixed> $data */

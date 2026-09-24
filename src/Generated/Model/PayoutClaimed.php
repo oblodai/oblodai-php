@@ -44,14 +44,26 @@ final class PayoutClaimed extends Model
         'status',
     ];
 
+    /** Сумма ссылки — обещание получателю. */
+    public readonly string $amount;
+
+    /** Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение). */
+    public readonly ?string $commission;
+
+    /** Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму). */
+    public readonly ?string $payer_amount;
+
     /**
+     * @param string|int $amount
+     * @param string|int|null $commission
+     * @param string|int|null $payer_amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Адрес получателя. */
         public readonly string $address,
         /** Сумма ссылки — обещание получателю. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Актив выплаты. */
         public readonly string $currency,
         /** Кто платит сетевую комиссию. */
@@ -67,14 +79,17 @@ final class PayoutClaimed extends Model
         /**
          * Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение).
          */
-        public readonly ?string $commission = null,
+        string|int|float|null $commission = null,
         /**
          * Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму).
          */
-        public readonly ?string $payer_amount = null,
+        string|int|float|null $payer_amount = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
+        $this->commission = $commission === null ? null : Wire::amount($commission, 'commission');
+        $this->payer_amount = $payer_amount === null ? null : Wire::amount($payer_amount, 'payer_amount');
     }
 
     /** @param array<string, mixed> $data */

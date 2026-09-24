@@ -31,7 +31,15 @@ final class PaymentLinkCreateRequest extends Model
         'title',
     ];
 
+    /** Верхняя граница — для range; обязательна в этом режиме */
+    public readonly ?string $max_amount;
+
+    /** Нижняя граница: необязательный «пол» для open, обязательный минимум для range */
+    public readonly ?string $min_amount;
+
     /**
+     * @param string|int|null $max_amount
+     * @param string|int|null $min_amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -49,9 +57,9 @@ final class PaymentLinkCreateRequest extends Model
         /** Срок жизни ссылки, секунд от момента создания; 0 (по умолчанию) — ссылка бессрочная */
         public readonly ?int $expires_in_seconds = null,
         /** Верхняя граница — для range; обязательна в этом режиме */
-        public readonly ?string $max_amount = null,
+        string|int|float|null $max_amount = null,
         /** Нижняя граница: необязательный «пол» для open, обязательный минимум для range */
-        public readonly ?string $min_amount = null,
+        string|int|float|null $min_amount = null,
         /** Валюта расчёта (монета), закреплённая за ссылкой; пусто — монету выбирает покупатель */
         public readonly ?string $pinned_currency = null,
         /** Сеть расчёта, закреплённая за ссылкой; пусто — сеть выбирает покупатель */
@@ -61,6 +69,8 @@ final class PaymentLinkCreateRequest extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->max_amount = $max_amount === null ? null : Wire::amount($max_amount, 'max_amount');
+        $this->min_amount = $min_amount === null ? null : Wire::amount($min_amount, 'min_amount');
     }
 
     /** @param array<string, mixed> $data */

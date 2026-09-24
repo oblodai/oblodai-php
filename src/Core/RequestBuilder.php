@@ -281,17 +281,7 @@ final class RequestBuilder
                 continue;
             }
             if (is_float($value) && !in_array((string) $key, self::NON_MONEY_NUMBERS, true)) {
-                throw new ConfigException(
-                    ConfigException::FLOAT_AMOUNT,
-                    sprintf(
-                        '"%s" was given as a float (%s); amounts and rates travel as decimal strings '
-                            . "— pass '%s' instead",
-                        $path,
-                        var_export($value, true),
-                        rtrim(rtrim(sprintf('%.18F', $value), '0'), '.')
-                    ),
-                    $path
-                );
+                throw ConfigException::floatAmount($path, $value);
             }
         }
     }

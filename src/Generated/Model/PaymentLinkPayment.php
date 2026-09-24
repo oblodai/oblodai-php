@@ -20,12 +20,16 @@ final class PaymentLinkPayment extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'created_at', 'currency', 'order_id', 'status', 'uuid'];
 
+    /** Цена счёта в валюте цены ссылки. */
+    public readonly string $amount;
+
     /**
+     * @param string|int $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Цена счёта в валюте цены ссылки. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Когда создан (UTC). */
         public readonly string $created_at,
         /** Валюта цены. */
@@ -39,6 +43,7 @@ final class PaymentLinkPayment extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

@@ -39,14 +39,26 @@ final class PayoutValidateResult extends Model
         'valid',
     ];
 
+    /** Сколько спишется с баланса. */
+    public readonly string $amount;
+
+    /** Сетевая комиссия. */
+    public readonly string $commission;
+
+    /** Сколько дойдёт получателю. */
+    public readonly string $payer_amount;
+
     /**
+     * @param string|int $amount
+     * @param string|int $commission
+     * @param string|int $payer_amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Сколько спишется с баланса. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Сетевая комиссия. */
-        public readonly string $commission,
+        string|int|float $commission,
         /** Валюта выплаты. */
         public readonly string $currency,
         /** Кто платит сетевую комиссию. */
@@ -56,7 +68,7 @@ final class PayoutValidateResult extends Model
         /** Сеть выплаты в каноническом написании. */
         public readonly string $network,
         /** Сколько дойдёт получателю. */
-        public readonly string $payer_amount,
+        string|int|float $payer_amount,
         /** Всегда true: не прошедшая проверка отвечает ошибкой с кодом причины. */
         public readonly bool $valid,
         /**
@@ -67,6 +79,9 @@ final class PayoutValidateResult extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
+        $this->commission = Wire::amount($commission, 'commission');
+        $this->payer_amount = Wire::amount($payer_amount, 'payer_amount');
     }
 
     /** @param array<string, mixed> $data */

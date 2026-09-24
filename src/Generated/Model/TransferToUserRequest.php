@@ -19,12 +19,16 @@ final class TransferToUserRequest extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'currency', 'order_id', 'to_user_id'];
 
+    /** Сумма перевода в currency. */
+    public readonly string $amount;
+
     /**
+     * @param string|int $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Сумма перевода в currency. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Код валюты (криптовалюта). */
         public readonly string $currency,
         /**
@@ -37,6 +41,7 @@ final class TransferToUserRequest extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

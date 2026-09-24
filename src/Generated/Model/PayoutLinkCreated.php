@@ -62,12 +62,24 @@ final class PayoutLinkCreated extends Model
         'title',
     ];
 
+    /** Сумма ссылки — обещание получателю. */
+    public readonly string $amount;
+
+    /** Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение). */
+    public readonly ?string $commission;
+
+    /** Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму). */
+    public readonly ?string $payer_amount;
+
     /**
+     * @param string|int $amount
+     * @param string|int|null $commission
+     * @param string|int|null $payer_amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Сумма ссылки — обещание получателю. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Секрет ссылки получения; выдаётся один раз и хранится только хешем. */
         public readonly string $claim_token,
         /** Страница получения; пусто, если публичный адрес не настроен. */
@@ -101,7 +113,7 @@ final class PayoutLinkCreated extends Model
         /**
          * Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение).
          */
-        public readonly ?string $commission = null,
+        string|int|float|null $commission = null,
         /** Адрес, на который ушло письмо получателю. */
         public readonly ?string $email = null,
         /** Сгенерированный код получения (passcode=auto); выдаётся один раз. */
@@ -109,7 +121,7 @@ final class PayoutLinkCreated extends Model
         /**
          * Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму).
          */
-        public readonly ?string $payer_amount = null,
+        string|int|float|null $payer_amount = null,
         /** Выплата, порождённая получением; есть у полученной ссылки. */
         public readonly ?string $payout_id = null,
         /** Ваш ключ дедупликации. */
@@ -117,6 +129,9 @@ final class PayoutLinkCreated extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
+        $this->commission = $commission === null ? null : Wire::amount($commission, 'commission');
+        $this->payer_amount = $payer_amount === null ? null : Wire::amount($payer_amount, 'payer_amount');
     }
 
     /** @param array<string, mixed> $data */

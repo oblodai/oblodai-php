@@ -19,12 +19,16 @@ final class TransferResult extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'currency', 'document_url', 'to_user_id', 'uuid'];
 
+    /** Сумма перевода. */
+    public readonly string $amount;
+
     /**
+     * @param string|int $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Сумма перевода. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Актив перевода. */
         public readonly string $currency,
         /** Ссылка на PDF-документ перевода; пусто, если документы выключены. */
@@ -36,6 +40,7 @@ final class TransferResult extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

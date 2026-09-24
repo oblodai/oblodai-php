@@ -86,7 +86,11 @@ final class PublicPaymentView extends Model
         'uuid',
     ];
 
+    /** Сумма к оплате в валюте цены (например, в USD). */
+    public readonly string $amount;
+
     /**
+     * @param string|int $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -111,7 +115,7 @@ final class PublicPaymentView extends Model
          */
         public readonly string $address_xaddress,
         /** Сумма к оплате в валюте цены (например, в USD). */
-        public readonly string $amount,
+        string|int|float $amount,
         /**
          * Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не
          * пришло). Пусто, пока валюта оплаты не выбрана (счёт без валюты).
@@ -216,6 +220,7 @@ final class PublicPaymentView extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 $finder = PhpCsFixer\Finder::create()
     ->in([__DIR__ . '/src', __DIR__ . '/tests', __DIR__ . '/examples', __DIR__ . '/scripts'])
-    ->name('*.php');
+    ->name('*.php')
+    // Deliberately without declare(strict_types=1): merchant code in PHP's coercive mode.
+    ->notName('coercive-caller.php');
 
 return (new PhpCsFixer\Config())
     ->setRiskyAllowed(true)

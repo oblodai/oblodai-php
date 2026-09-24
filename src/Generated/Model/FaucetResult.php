@@ -19,12 +19,16 @@ final class FaucetResult extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'asset', 'journal_id'];
 
+    /** Зачисленная сумма в точности актива. */
+    public readonly string $amount;
+
     /**
+     * @param string|int $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Зачисленная сумма в точности актива. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Актив пополнения. */
         public readonly string $asset,
         /** Журнальная запись пополнения; повтор с тем же idempotency_key возвращает ту же. */
@@ -32,6 +36,7 @@ final class FaucetResult extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

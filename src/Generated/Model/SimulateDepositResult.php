@@ -19,12 +19,16 @@ final class SimulateDepositResult extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'confirmations', 'invoice_id', 'txid'];
 
+    /** Сумма депозита в валюте счёта. */
+    public readonly string $amount;
+
     /**
+     * @param string|int $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Сумма депозита в валюте счёта. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** С каким числом подтверждений депозит отдан конвейеру. */
         public readonly int $confirmations,
         /** Оплачиваемый тестовый счёт. */
@@ -37,6 +41,7 @@ final class SimulateDepositResult extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

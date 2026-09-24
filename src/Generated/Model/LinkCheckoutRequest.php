@@ -20,6 +20,13 @@ final class LinkCheckoutRequest extends Model
     public const FIELDS = ['amount', 'currency', 'network', 'order_id', 'payer_email'];
 
     /**
+     * Сумма, которую ввёл покупатель, в валюте цены ссылки; обязательна для open и range, для fixed
+     * игнорируется
+     */
+    public readonly ?string $amount;
+
+    /**
+     * @param string|int|null $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -27,7 +34,7 @@ final class LinkCheckoutRequest extends Model
          * Сумма, которую ввёл покупатель, в валюте цены ссылки; обязательна для open и range, для
          * fixed игнорируется
          */
-        public readonly ?string $amount = null,
+        string|int|float|null $amount = null,
         /**
          * Валюта расчёта — монета, которой платит покупатель; нужна, только если ссылка не
          * закрепила pinned_currency
@@ -45,6 +52,7 @@ final class LinkCheckoutRequest extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = $amount === null ? null : Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

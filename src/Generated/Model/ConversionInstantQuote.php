@@ -19,21 +19,31 @@ final class ConversionInstantQuote extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['available', 'estimated_out', 'fee_percent', 'reason'];
 
+    /** Сколько придёт, в валюте котировки. */
+    public readonly string $estimated_out;
+
+    /** Комиссия режима в процентах. */
+    public readonly string $fee_percent;
+
     /**
+     * @param string|int $estimated_out
+     * @param string|int $fee_percent
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Доступен ли режим сейчас. */
         public readonly bool $available,
         /** Сколько придёт, в валюте котировки. */
-        public readonly string $estimated_out,
+        string|int|float $estimated_out,
         /** Комиссия режима в процентах. */
-        public readonly string $fee_percent,
+        string|int|float $fee_percent,
         /** Почему недоступен: frozen, position_cap; пусто — доступен. */
         public readonly string $reason,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->estimated_out = Wire::amount($estimated_out, 'estimated_out');
+        $this->fee_percent = Wire::amount($fee_percent, 'fee_percent');
     }
 
     /** @param array<string, mixed> $data */

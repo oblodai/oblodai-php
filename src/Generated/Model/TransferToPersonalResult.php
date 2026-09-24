@@ -33,12 +33,16 @@ final class TransferToPersonalResult extends Model
         'uuid',
     ];
 
+    /** Сумма перевода. */
+    public readonly string $amount;
+
     /**
+     * @param string|int $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Сумма перевода. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Актив перевода. */
         public readonly string $currency,
         /** Направление: to_personal. */
@@ -52,6 +56,7 @@ final class TransferToPersonalResult extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

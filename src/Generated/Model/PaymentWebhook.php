@@ -63,14 +63,26 @@ final class PaymentWebhook extends Model
         'uuid',
     ];
 
+    /** Сумма счёта в валюте currency. */
+    public readonly string $amount;
+
+    /** Сколько плательщик должен был заплатить в валюте payer_currency. */
+    public readonly string $payer_amount;
+
+    /** Сколько фактически получено (подтверждено), в валюте payer_currency. */
+    public readonly string $payment_amount;
+
     /**
+     * @param string|int $amount
+     * @param string|int $payer_amount
+     * @param string|int $payment_amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Ваши данные, переданные при создании платежа, как есть. */
         public readonly string $additional_data,
         /** Сумма счёта в валюте currency. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Валюта счёта. */
         public readonly string $currency,
         /** Когда событие произошло, UTC с миллисекундами (ISO 8601). */
@@ -92,11 +104,11 @@ final class PaymentWebhook extends Model
          */
         public readonly bool $payer_address_is_refundable,
         /** Сколько плательщик должен был заплатить в валюте payer_currency. */
-        public readonly string $payer_amount,
+        string|int|float $payer_amount,
         /** Валюта, в которой платит плательщик. */
         public readonly string $payer_currency,
         /** Сколько фактически получено (подтверждено), в валюте payer_currency. */
-        public readonly string $payment_amount,
+        string|int|float $payment_amount,
         /**
          * Глобальный номер события: в пределах одного объекта больший номер новее, меньший —
          * опоздавшая доставка, её нужно отбросить. У репетиции (test: true) всегда 0.
@@ -119,6 +131,9 @@ final class PaymentWebhook extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
+        $this->payer_amount = Wire::amount($payer_amount, 'payer_amount');
+        $this->payment_amount = Wire::amount($payment_amount, 'payment_amount');
     }
 
     /** @param array<string, mixed> $data */

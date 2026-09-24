@@ -31,12 +31,16 @@ final class PayoutLinkItem extends Model
         'title',
     ];
 
+    /** Сумма в currency, строкой; больше нуля */
+    public readonly string $amount;
+
     /**
+     * @param string|int $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Сумма в currency, строкой; больше нуля */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Крипто-актив выплаты (USDT, BTC, …); фиат невозможен */
         public readonly string $currency,
         /** Сеть выплаты получателю (tron, bitcoin, …) */
@@ -78,6 +82,7 @@ final class PayoutLinkItem extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

@@ -37,7 +37,19 @@ final class PayoutCalculation extends Model
         'payer_amount',
     ];
 
+    /** Сколько спишется с баланса; null — неизвестно (комиссию не оценить). */
+    public readonly ?string $amount;
+
+    /** Сетевая комиссия; null — не оценить сейчас. */
+    public readonly ?string $commission;
+
+    /** Сколько получит адрес; null — неизвестно. */
+    public readonly ?string $payer_amount;
+
     /**
+     * @param string|int|null $amount
+     * @param string|int|null $commission
+     * @param string|int|null $payer_amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -50,14 +62,17 @@ final class PayoutCalculation extends Model
         /** Сеть — как пришла в запросе. */
         public readonly string $network,
         /** Сколько спишется с баланса; null — неизвестно (комиссию не оценить). */
-        public readonly ?string $amount = null,
+        string|int|float|null $amount = null,
         /** Сетевая комиссия; null — не оценить сейчас. */
-        public readonly ?string $commission = null,
+        string|int|float|null $commission = null,
         /** Сколько получит адрес; null — неизвестно. */
-        public readonly ?string $payer_amount = null,
+        string|int|float|null $payer_amount = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = $amount === null ? null : Wire::amount($amount, 'amount');
+        $this->commission = $commission === null ? null : Wire::amount($commission, 'commission');
+        $this->payer_amount = $payer_amount === null ? null : Wire::amount($payer_amount, 'payer_amount');
     }
 
     /** @param array<string, mixed> $data */

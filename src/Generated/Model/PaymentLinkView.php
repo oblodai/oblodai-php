@@ -46,7 +46,19 @@ final class PaymentLinkView extends Model
         'url',
     ];
 
+    /** Сумма для режима fixed. */
+    public readonly ?string $amount_fixed;
+
+    /** Верхняя граница для range. */
+    public readonly ?string $max_amount;
+
+    /** Нижняя граница для open/range. */
+    public readonly ?string $min_amount;
+
     /**
+     * @param string|int|null $amount_fixed
+     * @param string|int|null $max_amount
+     * @param string|int|null $min_amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -71,13 +83,13 @@ final class PaymentLinkView extends Model
         /** Публичный URL страницы оплаты; пусто, если публичный адрес не настроен. */
         public readonly string $url,
         /** Сумма для режима fixed. */
-        public readonly ?string $amount_fixed = null,
+        string|int|float|null $amount_fixed = null,
         /** Когда ссылка истекает (UTC); нет — бессрочная. */
         public readonly ?string $expires_at = null,
         /** Верхняя граница для range. */
-        public readonly ?string $max_amount = null,
+        string|int|float|null $max_amount = null,
         /** Нижняя граница для open/range. */
-        public readonly ?string $min_amount = null,
+        string|int|float|null $min_amount = null,
         /** Закреплённая валюта оплаты. */
         public readonly ?string $pinned_currency = null,
         /** Закреплённая сеть оплаты. */
@@ -85,6 +97,9 @@ final class PaymentLinkView extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount_fixed = $amount_fixed === null ? null : Wire::amount($amount_fixed, 'amount_fixed');
+        $this->max_amount = $max_amount === null ? null : Wire::amount($max_amount, 'max_amount');
+        $this->min_amount = $min_amount === null ? null : Wire::amount($min_amount, 'min_amount');
     }
 
     /** @param array<string, mixed> $data */

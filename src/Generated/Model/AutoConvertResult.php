@@ -20,7 +20,11 @@ final class AutoConvertResult extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['configured', 'enabled', 'min_amount', 'mode', 'sources', 'target'];
 
+    /** Пол одной конвертации в долларах, десятичной строкой (с умолчанием процесса). */
+    public readonly string $min_amount;
+
     /**
+     * @param string|int $min_amount
      * @param list<string> $sources
      * @param array<string, mixed> $extra
      */
@@ -30,7 +34,7 @@ final class AutoConvertResult extends Model
         /** Включён ли приказ. */
         public readonly bool $enabled,
         /** Пол одной конвертации в долларах, десятичной строкой (с умолчанием процесса). */
-        public readonly string $min_amount,
+        string|int|float $min_amount,
         /** Режим зачисления: economy или instant. */
         public readonly AutoConvertMode|string $mode,
         /** Монеты, которые сводятся; пусто — [], не null. */
@@ -40,6 +44,7 @@ final class AutoConvertResult extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->min_amount = Wire::amount($min_amount, 'min_amount');
     }
 
     /** @param array<string, mixed> $data */

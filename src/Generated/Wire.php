@@ -8,6 +8,7 @@ namespace Oblodai\Generated;
 
 // --- runtime imports: the only names taken from the hand-written runtime; adjust here ---
 use Oblodai\Core\Model;
+use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\ContractException;
 
 /**
@@ -55,6 +56,20 @@ final class Wire
         }
 
         throw self::mismatch('a decimal string', $value);
+    }
+
+    /**
+     * A decimal amount given to a model's constructor: a string as is, an integer as the same
+     * string, and a float refused (`sdk.float_amount`) — also in a caller's coercive mode, where
+     * PHP would have silently turned it into a string. `0.1 + 0.2` is not `0.3`.
+     */
+    public static function amount(string|int|float $value, string $field): string
+    {
+        if (is_float($value)) {
+            throw ConfigException::floatAmount($field, $value);
+        }
+
+        return (string) $value;
     }
 
     public static function int(mixed $value): int

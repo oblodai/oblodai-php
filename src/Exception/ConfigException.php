@@ -19,6 +19,26 @@ class ConfigException extends OblodaiException
     /** A long-running operation could not be followed (no route or id to poll). */
     public const LRO_UNRESOLVED = 'sdk.lro_unresolved';
 
+    /**
+     * The `sdk.float_amount` error for a float found at `$field` (a wire name or a body path):
+     * amounts and rates travel as decimal strings, and the message says which string to pass.
+     * One wording for the request-body scan and the generated models' constructors.
+     */
+    public static function floatAmount(string $field, float $value): self
+    {
+        return new self(
+            self::FLOAT_AMOUNT,
+            sprintf(
+                '"%s" was given as a float (%s); amounts and rates travel as decimal strings '
+                    . "— pass '%s' instead",
+                $field,
+                var_export($value, true),
+                rtrim(rtrim(sprintf('%.18F', $value), '0'), '.')
+            ),
+            $field
+        );
+    }
+
     public function __construct(string $errorCode, string $message, ?string $field = null)
     {
         parent::__construct(

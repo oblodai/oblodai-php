@@ -19,7 +19,11 @@ final class AutoWithdrawRule extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['address', 'currency', 'min_amount', 'network'];
 
+    /** Порог срабатывания в единицах актива. */
+    public readonly string $min_amount;
+
     /**
+     * @param string|int $min_amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -28,12 +32,13 @@ final class AutoWithdrawRule extends Model
         /** Актив. */
         public readonly string $currency,
         /** Порог срабатывания в единицах актива. */
-        public readonly string $min_amount,
+        string|int|float $min_amount,
         /** Сеть адреса назначения. */
         public readonly string $network,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->min_amount = Wire::amount($min_amount, 'min_amount');
     }
 
     /** @param array<string, mixed> $data */

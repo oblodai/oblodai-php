@@ -27,7 +27,11 @@ final class RefundBatchItem extends Model
         'uuid',
     ];
 
+    /** Частичная сумма. По умолчанию — вся полученная. */
+    public readonly ?string $amount;
+
     /**
+     * @param string|int|null $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -42,7 +46,7 @@ final class RefundBatchItem extends Model
          */
         public readonly ?string $address = null,
         /** Частичная сумма. По умолчанию — вся полученная. */
-        public readonly ?string $amount = null,
+        string|int|float|null $amount = null,
         /**
          * Профинансировать возврат конвертацией баланса: только USDT → валюта платежа. Нужен, когда
          * монета платежа уже сведена автообменом.
@@ -57,6 +61,7 @@ final class RefundBatchItem extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = $amount === null ? null : Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

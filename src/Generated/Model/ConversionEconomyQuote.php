@@ -19,16 +19,24 @@ final class ConversionEconomyQuote extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['available', 'fee_percent', 'min_out', 'reason', 'window_minutes'];
 
+    /** Комиссия режима в процентах. */
+    public readonly string $fee_percent;
+
+    /** Гарантированный минимум к получению, в валюте котировки. */
+    public readonly string $min_out;
+
     /**
+     * @param string|int $fee_percent
+     * @param string|int $min_out
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Доступен ли режим сейчас. */
         public readonly bool $available,
         /** Комиссия режима в процентах. */
-        public readonly string $fee_percent,
+        string|int|float $fee_percent,
         /** Гарантированный минимум к получению, в валюте котировки. */
-        public readonly string $min_out,
+        string|int|float $min_out,
         /** Почему недоступен: no_route; пусто — доступен. */
         public readonly string $reason,
         /** За сколько минут исполняется заявка. */
@@ -36,6 +44,8 @@ final class ConversionEconomyQuote extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->fee_percent = Wire::amount($fee_percent, 'fee_percent');
+        $this->min_out = Wire::amount($min_out, 'min_out');
     }
 
     /** @param array<string, mixed> $data */

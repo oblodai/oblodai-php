@@ -24,7 +24,10 @@ timeouts in seconds, PHP 8.2 — see [MIGRATION-2.0.md](MIGRATION-2.0.md).
 - **Error messages read in a log line**: `getMessage()` and `(string) $err` are
   `[code] text (request_id=…)`; the text alone is `$err->detail`.
 - **A float in a request body is `sdk.float_amount`** (was `sdk.bad_config`); the one non-money
-  number field (`accuracy_payment_percent`) is kept equal to the contract by a test.
+  number field (`accuracy_payment_percent`) is kept equal to the contract by a test. A model's
+  decimal argument (`new PaymentRequest(amount: …)`) takes `string|int` and refuses a float with
+  the same code, also from code without `declare(strict_types=1)`, where PHP would otherwise have
+  turned the float into a string silently.
 - **Statuses are enum cases or plain strings** (`PaymentStatus|string`) instead of `OpenEnum`; an
   unknown value still never throws, and fields newer than the SDK are kept in `->extra`.
 - **Webhooks**: `Delivery::$event` is the verified body; `Verifier::model()` reads it into the

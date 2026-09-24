@@ -37,6 +37,32 @@ final class MoneyFloatTest extends TestCase
         self::assertSame(0, $fake->count());
     }
 
+    /**
+     * The same mistake through a model, from a caller file without strict_types: PHP's coercive
+     * mode would have made the float a string ("0.3") and sent it.
+     */
+    public function testAFloatAmountInAModelFailsEvenInCoerciveMode(): void
+    {
+        require_once dirname(__DIR__) . '/Support/coercive-caller.php';
+        $fake = new FakeHttpClient([FakeHttpClient::sample('createPayment')]);
+        $ob = new Oblodai(publicId: 'pk', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
+
+        try {
+            $ob->payments->create(\Oblodai\Tests\Support\paymentRequestWithFloatAmount(0.1 + 0.2));
+            self::fail('expected a ConfigException');
+        } catch (ConfigException $e) {
+            self::assertSame('sdk.float_amount', $e->errorCode);
+            self::assertSame('amount', $e->field);
+            self::assertStringContainsString('0.30000000000000004', $e->getMessage());
+        }
+        self::assertSame(0, $fake->count());
+    }
+
+    public function testAnIntegerAmountBecomesTheSameDecimalString(): void
+    {
+        self::assertSame('25', (new PaymentRequest(amount: 25, currency: 'USDT'))->amount);
+    }
+
     public function testADecimalStringGoesToTheWireVerbatim(): void
     {
         $fake = new FakeHttpClient([FakeHttpClient::sample('createPayment')]);

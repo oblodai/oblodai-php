@@ -70,18 +70,30 @@ final class PayoutInfoResult extends Model
         'uuid',
     ];
 
+    /** Сумма выплаты в валюте currency, списанная с вашего баланса. */
+    public readonly string $amount;
+
+    /** Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз. */
+    public readonly string $commission;
+
+    /** Сколько реально уходит получателю на адрес: amount − commission. */
+    public readonly string $payer_amount;
+
     /**
+     * @param string|int $amount
+     * @param string|int $commission
+     * @param string|int $payer_amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Адрес получателя. */
         public readonly string $address,
         /** Сумма выплаты в валюте currency, списанная с вашего баланса. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false). */
         public readonly bool $approval_required,
         /** Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз. */
-        public readonly string $commission,
+        string|int|float $commission,
         /** Время создания (ISO 8601). */
         public readonly string $created_at,
         /** Код валюты выплаты. */
@@ -109,7 +121,7 @@ final class PayoutInfoResult extends Model
         /** Сеть блокчейна. */
         public readonly string $network,
         /** Сколько реально уходит получателю на адрес: amount − commission. */
-        public readonly string $payer_amount,
+        string|int|float $payer_amount,
         /** api (через интеграцию) | manual (из кабинета). */
         public readonly PayoutSource|string $source,
         /**
@@ -145,6 +157,9 @@ final class PayoutInfoResult extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
+        $this->commission = Wire::amount($commission, 'commission');
+        $this->payer_amount = Wire::amount($payer_amount, 'payer_amount');
     }
 
     /** @param array<string, mixed> $data */

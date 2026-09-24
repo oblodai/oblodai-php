@@ -30,14 +30,18 @@ final class PayoutValidateRequest extends Model
         'url_callback',
     ];
 
+    /** Сумма выплаты в валюте currency. */
+    public readonly string $amount;
+
     /**
+     * @param string|int $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Адрес получателя. */
         public readonly string $address,
         /** Сумма выплаты в валюте currency. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Код валюты (например USDT). */
         public readonly string $currency,
         /** Профинансировать выплату конвертацией баланса. Только USDT → currency. */
@@ -63,6 +67,7 @@ final class PayoutValidateRequest extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

@@ -31,7 +31,15 @@ final class PaymentLinkPublicView extends Model
         'title',
     ];
 
+    /** Верхняя граница для range. */
+    public readonly ?string $max_amount;
+
+    /** Нижняя граница для open/range. */
+    public readonly ?string $min_amount;
+
     /**
+     * @param string|int|null $max_amount
+     * @param string|int|null $min_amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -48,9 +56,9 @@ final class PaymentLinkPublicView extends Model
         /** Сумма для fixed. */
         public readonly ?string $amount_fixed = null,
         /** Верхняя граница для range. */
-        public readonly ?string $max_amount = null,
+        string|int|float|null $max_amount = null,
         /** Нижняя граница для open/range. */
-        public readonly ?string $min_amount = null,
+        string|int|float|null $min_amount = null,
         /** Закреплённая валюта оплаты. */
         public readonly ?string $pinned_currency = null,
         /** Закреплённая сеть оплаты. */
@@ -58,6 +66,8 @@ final class PaymentLinkPublicView extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->max_amount = $max_amount === null ? null : Wire::amount($max_amount, 'max_amount');
+        $this->min_amount = $min_amount === null ? null : Wire::amount($min_amount, 'min_amount');
     }
 
     /** @param array<string, mixed> $data */

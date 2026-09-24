@@ -19,12 +19,16 @@ final class PaymentTx extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'created_at', 'height', 'network', 'txid'];
 
+    /** Сумма перевода в валюте оплаты. */
+    public readonly string $amount;
+
     /**
+     * @param string|int $amount
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /** Сумма перевода в валюте оплаты. */
-        public readonly string $amount,
+        string|int|float $amount,
         /** Когда перевод зачислен (ISO 8601). */
         public readonly string $created_at,
         /** Высота блока, в котором перевод подтверждён. */
@@ -39,6 +43,7 @@ final class PaymentTx extends Model
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->amount = Wire::amount($amount, 'amount');
     }
 
     /** @param array<string, mixed> $data */

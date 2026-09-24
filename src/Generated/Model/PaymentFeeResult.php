@@ -26,7 +26,15 @@ final class PaymentFeeResult extends Model
         'payer_pays_percent',
     ];
 
+    /** Фиксированная часть комиссии на платёж, USD десятичной строкой. */
+    public readonly ?string $fee_fixed_usd;
+
+    /** Процент комиссии мерчанта. */
+    public readonly ?string $fee_percent;
+
     /**
+     * @param string|int|null $fee_fixed_usd
+     * @param string|int|null $fee_percent
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -35,7 +43,7 @@ final class PaymentFeeResult extends Model
         /** Доля, которую применит следующий счёт; 0, если оператор выключил перенос комиссии. */
         public readonly int $payer_pays_percent,
         /** Фиксированная часть комиссии на платёж, USD десятичной строкой. */
-        public readonly ?string $fee_fixed_usd = null,
+        string|int|float|null $fee_fixed_usd = null,
         /**
          * Устарело: та же фиксированная часть целыми центами США числом — читайте fee_fixed_usd.
          */
@@ -43,10 +51,12 @@ final class PaymentFeeResult extends Model
         /** true — персональный тариф; false — умолчание платформы. */
         public readonly ?bool $fee_individual = null,
         /** Процент комиссии мерчанта. */
-        public readonly ?string $fee_percent = null,
+        string|int|float|null $fee_percent = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
+        $this->fee_fixed_usd = $fee_fixed_usd === null ? null : Wire::amount($fee_fixed_usd, 'fee_fixed_usd');
+        $this->fee_percent = $fee_percent === null ? null : Wire::amount($fee_percent, 'fee_percent');
     }
 
     /** @param array<string, mixed> $data */
