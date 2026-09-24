@@ -49,8 +49,8 @@
         }
     },
     "scripts": {
-        "lint": "PHP_CS_FIXER_IGNORE_ENV=1 php-cs-fixer fix --dry-run --diff",
-        "fmt": "PHP_CS_FIXER_IGNORE_ENV=1 php-cs-fixer fix",
+        "lint": "php-cs-fixer fix --dry-run --diff",
+        "fmt": "php-cs-fixer fix",
         "stan": "phpstan analyse --memory-limit=1G",
         "test": "phpunit --testsuite unit,contract,conformance",
         "test-live": "phpunit --testsuite live"

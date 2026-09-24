@@ -10,6 +10,8 @@ $finder = PhpCsFixer\Finder::create()
 
 return (new PhpCsFixer\Config())
     ->setRiskyAllowed(true)
+    // `make lint` runs on the minimum PHP (8.2); a newer local PHP (composer lint) is allowed too.
+    ->setUnsupportedPhpVersionAllowed(true)
     ->setRules([
         '@PSR12' => true,
         '@PHP81Migration' => true,

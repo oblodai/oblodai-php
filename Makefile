@@ -1,5 +1,7 @@
 # Every gate of the SDK, run locally in docker (label oblodai.sdkcheck=1; nothing else is touched).
 # The PHP tools run in php:8.3-cli, composer in composer:2; caches live in the git-ignored .cache/.
+# php-cs-fixer runs on the minimum PHP of composer.json (8.2): the rules then cover exactly the
+# syntax every supported PHP accepts, and the fixer supports that PHP without an override.
 # The drift check runs the backend's generator with the host's Go.
 #
 #   make ci                                   # vendor, drift, lint, stan, test, package
@@ -12,6 +14,7 @@ export OBLODAI_BACKEND
 UID_GID := $(shell id -u):$(shell id -g)
 DOCKER := docker run --rm --label oblodai.sdkcheck=1 --memory 2g -u $(UID_GID) -v $(CURDIR):/src -w /src
 PHP := $(DOCKER) -v $(OBLODAI_BACKEND):/backend:ro -e OBLODAI_BACKEND=/backend php:8.3-cli
+PHP_MIN := $(DOCKER) php:8.2-cli
 COMPOSER := $(DOCKER) -e COMPOSER_HOME=/src/.cache/composer composer:2
 
 .PHONY: ci backend vendor drift lint stan test package live
@@ -30,7 +33,7 @@ drift:         ## src/Generated and names.lock match the backend's contract
 	sh scripts/check-generated.sh --require
 
 lint:
-	$(PHP) sh -c 'PHP_CS_FIXER_IGNORE_ENV=1 vendor/bin/php-cs-fixer fix --dry-run --diff --using-cache=no --show-progress=none'
+	$(PHP_MIN) vendor/bin/php-cs-fixer fix --dry-run --diff --using-cache=no --show-progress=none
 
 stan:
 	$(PHP) php vendor/bin/phpstan analyse --no-progress --memory-limit=1G

@@ -534,7 +534,7 @@ make ci OBLODAI_BACKEND=/path/to/oblodai-backend # клон бэкенда (по
 make live OBLODAI_LIVE_URL=http://127.0.0.1:8095 # живой уровень против работающего шлюза
 ```
 
-Всё идёт в docker (`php:8.3-cli`, `composer:2`); проверке дрейфа нужен Go для генератора бэкенда.
+Всё идёт в docker (`php:8.3-cli`, php-cs-fixer — на `php:8.2-cli`, `composer:2`); проверке дрейфа нужен Go для генератора бэкенда.
 Тесты — unit (runtime), contract (сгенерированный код, README, примеры) и общий набор conformance
 всех SDK Oblodai (`tools/sdkgen/conformance` бэкенда: векторы подписи, повторы, ключи
 идемпотентности, деньги, совместимость вперёд). Живой уровень пропускается, пока `OBLODAI_LIVE_URL`

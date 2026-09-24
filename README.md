@@ -531,8 +531,8 @@ make ci OBLODAI_BACKEND=/path/to/oblodai-backend # the backend checkout (default
 make live OBLODAI_LIVE_URL=http://127.0.0.1:8095 # the live tier against a running gateway
 ```
 
-Everything runs in docker (`php:8.3-cli`, `composer:2`); the drift check needs Go for the backend's
-generator. The tests are unit (runtime), contract (generated code, README, examples) and the shared
+Everything runs in docker (`php:8.3-cli`, php-cs-fixer on `php:8.2-cli`, `composer:2`); the drift
+check needs Go for the backend's generator. The tests are unit (runtime), contract (generated code, README, examples) and the shared
 conformance suite of every Oblodai SDK (`tools/sdkgen/conformance` of the backend: signing vectors,
 retries, idempotency keys, money, forward compatibility). The live tier is skipped unless
 `OBLODAI_LIVE_URL` points at a running gateway; it provisions its own merchant and spends only fake
