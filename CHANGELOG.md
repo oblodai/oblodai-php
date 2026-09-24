@@ -4,6 +4,51 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] — 2026-09-25
+
+The SDK regenerated from the gateway's OpenAPI contract. Breaking: method names, model classes,
+timeouts in seconds, PHP 8.2 — see [MIGRATION-2.0.md](MIGRATION-2.0.md).
+
+### Changed
+
+- **Resources, methods, models and enums are generated** (`src/Generated`, namespace
+  `Oblodai\Generated`) by the gateway's `tools/sdkgen` from its `openapi.json`: 16 namespaces, 120
+  methods named after the contract's `operationId`s, a model for every request and response body
+  (property names as on the wire, amounts as decimal strings), an enum for every closed vocabulary.
+  `names.lock` pins the public names — a vanished or renamed one fails generation as a breaking
+  change. `contract/`, `src/Contract` and the old PHP generator are removed.
+- **PHP 8.2** is the minimum (was 8.1).
+- **Timeouts are seconds**: the client takes `timeout` and `deadline` (were `timeoutMs`,
+  `deadlineMs`), and `RequestOptions` is `idempotencyKey`, `timeout`, `maxRetries`, `extraHeaders`,
+  `requestId` (was `idempotencyKey`, `timeoutMs`, `deadlineMs`, `headers`).
+- **Error messages read in a log line**: `getMessage()` and `(string) $err` are
+  `[code] text (request_id=…)`; the text alone is `$err->detail`.
+- **A float in a request body is `sdk.float_amount`** (was `sdk.bad_config`); the one non-money
+  number field (`accuracy_payment_percent`) is kept equal to the contract by a test.
+- **Statuses are enum cases or plain strings** (`PaymentStatus|string`) instead of `OpenEnum`; an
+  unknown value still never throws, and fields newer than the SDK are kept in `->extra`.
+- **Webhooks**: `Delivery::$event` is the verified body; `Verifier::model()` reads it into the
+  generated `PaymentWebhook`, `PayoutWebhook`, `WalletWebhook` or `ConversionWebhook`.
+
+### Added
+
+- **`X-Request-ID` on every call** (the caller's `requestId`, else a fresh UUID), the same on every
+  retry; an error carries it when the gateway's envelope names none.
+- **`withRawResponse(fn ($r) => …)`** on every resource: status, headers, request id and body of a
+  successful answer, `parse()` for the usual value.
+- **`$oblodai->withOptions(timeout:, maxRetries:, extraHeaders:)`** — a client copy that shares the
+  HTTP client, clock and hooks.
+- **Hooks** — `new Hooks(onRequest:, onResponse:)`, called per attempt with the signature redacted.
+- **`Page::byPage()` and `Page::first()`** — page by page (`PageResult`), one request each.
+- **Long-running operations** — `asJob(fn ($r) => $r->createPayout(…))->wait()` for batches and
+  document exports, `->download()` for an export's file; the table is `Oblodai\Lro`.
+- **Retry-safe routes from the contract** (`x-retry-safe`) and `maxRetries` per call.
+- **Webhook event id** — `Delivery::$eventId` (`X-Webhook-Event-Id`), the key to deduplicate on.
+- **Conformance** — the shared behaviour suite of every Oblodai SDK (signing vectors from
+  `x-oblodai-signing`, retries, idempotency keys, money, forward compatibility) runs in the tests.
+- **`make ci`** — drift check, php-cs-fixer, PHPStan (max), tests, the README's code and the
+  examples run against a mock gateway, and the package contents — all in docker.
+
 ## [1.3.0] — 2026-08-26
 
 Rewrite generated from the gateway's contract snapshot (`contract/`). See

@@ -12,36 +12,38 @@ declare(strict_types=1);
 
 require __DIR__ . '/_bootstrap.php';
 
-use Oblodai\Contract\Enum\Network;
 use Oblodai\Core\RequestOptions;
 use Oblodai\Exception\OblodaiException;
 use Oblodai\Helper\Money;
+use Oblodai\Helper\Status;
 
 $oblodai = example_client();
 
 $address = 'TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx';
 $amount = '10';
 
-// What will it cost, and does the balance cover it?
 try {
+    // What will it cost, and does the balance cover it?
     $quote = $oblodai->payouts->calculate(['amount' => $amount, 'currency' => 'USDT', 'network' => 'tron']);
-} catch (OblodaiException $err) {
-    example_fail('could not price the payout', $err);
-}
-printf("commission %s, total debited %s (%s pays the network fee)\n", $quote->commission ?? '-', $quote->payer_amount ?? '-', $quote->fee_bearer->value);
+    printf(
+        "commission %s, total debited %s (%s pays the network fee)\n",
+        $quote->commission ?? '-',
+        $quote->payer_amount ?? '-',
+        Status::value($quote->fee_bearer)
+    );
 
-try {
-    foreach ($oblodai->account->balance()->merchant as $entry) {
+    $usdt = null;
+    foreach ($oblodai->account->getBalance()->balance->merchant as $entry) {
         if ($entry->currency === 'USDT') {
-            printf("balance    %s USDT\n", $entry->balance);
-            if (Money::compare($entry->balance, $quote->payer_amount ?? $amount) < 0) {
-                example_die('balance is short — top up first');
-            }
+            $usdt = $entry->balance;
         }
     }
+    printf("balance    %s USDT\n", $usdt ?? '0');
+    if ($usdt === null || Money::compare($usdt, $quote->payer_amount ?? $amount) < 0) {
+        example_die('balance is short - top up first');
+    }
 
-    // Every check the real call makes, without reserving or sending anything. `order_id` is
-    // optional here: a dry run needs no reference.
+    // Every check the real call makes, without reserving or sending anything.
     $check = $oblodai->payouts->validate([
         'amount' => $amount, 'currency' => 'USDT', 'network' => 'tron', 'address' => $address,
     ]);
@@ -59,19 +61,20 @@ try {
         [
             'amount' => $amount,
             'currency' => 'USDT',
-            'network' => Network::Tron->value,
+            'network' => 'tron',
             'address' => $address,
             'order_id' => 'payout-' . time(),
         ],
-        new RequestOptions(idempotencyKey: 'payout-' . date('Y-m-d') . '-batch-7')
+        new RequestOptions(idempotencyKey: 'payout-' . date('Y-m-d') . '-batch-7', timeout: 20)
     );
 } catch (OblodaiException $err) {
     // `retryable` is the gateway's own classification — the SDK already retried what it could.
     // Codes worth branching on here: payout.insufficient_funds, payout.funds_maturing (both
-    // retryable), payout.bad_address, payout.memo_required.
+    // retryable), payout.bad_address, payout.memo_required. The message reads
+    // "[code] text (request_id=…)" — quote the request id to support.
     example_fail('payout refused', $err);
 }
 
-printf("payout %s → %s\n", $payout->uuid, $payout->status->value);
+printf("payout %s -> %s\n", $payout->uuid, Status::value($payout->status));
 printf("debited %s %s, commission %s\n", $payout->payer_amount, $payout->currency, $payout->commission);
 printf("txid    %s\n", $payout->txid !== '' ? $payout->txid : '(not broadcast yet)');

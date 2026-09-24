@@ -4,17 +4,24 @@ declare(strict_types=1);
 
 namespace Oblodai\Tests\Live;
 
+use Oblodai\Core\RouteSpec;
+use Oblodai\Exception\ContractException;
 use Oblodai\Exception\OblodaiException;
+use Oblodai\Exception\ValidationException;
 use Oblodai\Oblodai;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 /**
- * Base for the live tier: the SDK against a REAL core (`OBLODAI_LIVE_URL`, e.g. a local stack).
- * Onboarding is open on such a stack: `POST /v1/merchants` then `POST /v1/merchants/{id}/sandbox`
- * mints a `test_oblodai_…` key, and everything below runs on fake money.
+ * Base for the live tier: the SDK against a REAL gateway (`OBLODAI_LIVE_URL`, e.g. a local stack).
+ * Onboarding is open on such a stack: `POST /v1/merchants` (not part of the merchant contract, so
+ * sent through the transport) then `sandbox->onboardStore($merchantId)` mints a `test_oblodai_…`
+ * key, and everything below runs on fake money.
  */
 abstract class LiveTestCase extends TestCase
 {
+    protected const ADDRESS = 'TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx';
+
     protected static string $baseUrl = '';
 
     public static function setUpBeforeClass(): void
@@ -29,16 +36,19 @@ abstract class LiveTestCase extends TestCase
     /** A client signed with a freshly provisioned sandbox key. */
     protected static function onboardSandbox(string $label): Oblodai
     {
-        $anonymous = new Oblodai(baseUrl: self::$baseUrl, allowInsecureBaseUrl: true);
-        $merchant = $anonymous->merchants->create([
-            'email' => sprintf('%s-%d@example.com', $label, (int) (microtime(true) * 1000)),
-            'name' => 'SDK live',
-        ]);
-        $sandbox = $anonymous->merchants->createSandbox($merchant->merchant_id);
+        $anonymous = self::anonymous();
+        $merchant = $anonymous->transport->call(
+            new RouteSpec('createMerchant', 'POST', '/v1/merchants', 'onboard', false, false, false),
+            ['email' => sprintf('%s-%d@example.com', $label, (int) (microtime(true) * 1000)), 'name' => 'SDK live'],
+        );
+        $merchantId = is_array($merchant) && is_string($merchant['merchant_id'] ?? null)
+            ? $merchant['merchant_id']
+            : throw new RuntimeException('onboarding answered without merchant_id');
+        $store = $anonymous->sandbox->onboardStore($merchantId);
 
         return new Oblodai(
-            publicId: $sandbox->api_key->public_id,
-            secret: $sandbox->api_key->secret,
+            publicId: $store->api_key->public_id,
+            secret: $store->api_key->secret,
             baseUrl: self::$baseUrl,
             allowInsecureBaseUrl: true,
         );
@@ -63,11 +73,9 @@ abstract class LiveTestCase extends TestCase
     {
         try {
             return $call();
-        } catch (OblodaiException $err) {
-            if ($err->errorCode === 'sdk.bad_envelope' || $err->httpStatus === 400) {
-                throw $err; // our own request/response shape is wrong — that is a real failure
-            }
-
+        } catch (ContractException|ValidationException $err) {
+            throw $err; // our own request/response shape is wrong — that is a real failure
+        } catch (OblodaiException) {
             return null;
         }
     }
@@ -75,5 +83,12 @@ abstract class LiveTestCase extends TestCase
     protected static function uniqueId(string $prefix): string
     {
         return sprintf('%s-%d', $prefix, (int) (microtime(true) * 1000000));
+    }
+
+    protected static function hookUrl(): string
+    {
+        $hook = getenv('OBLODAI_LIVE_HOOK_URL');
+
+        return is_string($hook) && $hook !== '' ? $hook : 'http://127.0.0.1:8096/hook';
     }
 }

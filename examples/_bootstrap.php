@@ -34,7 +34,7 @@ function example_client(array $required = ['OBLODAI_PUBLIC_ID', 'OBLODAI_SECRET'
     try {
         return new Oblodai(baseUrl: getenv('OBLODAI_BASE_URL') ?: null);
     } catch (OblodaiException $err) {
-        example_die($err->getMessage() . ' (' . $err->errorCode . ')');
+        example_die($err->getMessage());
     }
 }
 
@@ -46,15 +46,11 @@ function example_die(string $message): never
     exit(1);
 }
 
-/** Report an API failure the way a caller should read it: code first, then the gateway's words. */
+/**
+ * Report an API failure the way a caller should read it: the message is already
+ * `[code] text (request_id=…)`.
+ */
 function example_fail(string $what, OblodaiException $err): never
 {
-    example_die(sprintf(
-        '%s: %s (%s%s%s)',
-        $what,
-        $err->getMessage(),
-        $err->errorCode,
-        $err->retryable ? ', retryable' : '',
-        $err->requestId !== null ? ', request ' . $err->requestId : ''
-    ));
+    example_die(sprintf('%s: %s%s', $what, $err->getMessage(), $err->retryable ? ' (retryable)' : ''));
 }

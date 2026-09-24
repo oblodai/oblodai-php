@@ -1,0 +1,132 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Oblodai\Tests\Contract;
+
+use Oblodai\Core\Signer;
+use Oblodai\Generated\Model\PaymentWebhook;
+use Oblodai\Tests\Support\MockGateway;
+use Oblodai\Tests\Support\Samples;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * The examples run (spec §3 item 10): each `examples/*.php` executes against the mock gateway,
+ * and the webhook receiver is served and sent signed deliveries. The scripts are what a merchant
+ * copies first, so a renamed method or a changed result shape must break a test, not the merchant.
+ */
+final class ExamplesTest extends TestCase
+{
+    /** @var resource|null */
+    private static $gateway = null;
+
+    private static string $baseUrl = '';
+
+    public static function setUpBeforeClass(): void
+    {
+        [self::$gateway, self::$baseUrl] = MockGateway::start('tests/Support/mock-gateway.php');
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        if (self::$gateway !== null) {
+            MockGateway::stop(self::$gateway);
+            self::$gateway = null;
+        }
+    }
+
+    public function testEveryExampleIsCovered(): void
+    {
+        $scripts = array_map('basename', glob(dirname(__DIR__, 2) . '/examples/*.php') ?: []);
+        sort($scripts);
+
+        self::assertSame(
+            ['_bootstrap.php', 'accept-payment.php', 'sandbox-journey.php', 'send-payout.php', 'webhook-receiver.php'],
+            $scripts
+        );
+    }
+
+    /** @return iterable<string, array{string, string}> example => the line its main path ends on */
+    public static function scripts(): iterable
+    {
+        yield 'accept-payment' => ['accept-payment.php', 'paid - release the goods'];
+        yield 'send-payout' => ['send-payout.php', 'txid '];
+        yield 'sandbox-journey' => ['sandbox-journey.php', 'reset: 0 invoices cancelled'];
+    }
+
+    #[DataProvider('scripts')]
+    public function testTheExampleRunsToTheEnd(string $script, string $reaches): void
+    {
+        [$code, $out, $err] = MockGateway::run(['examples/' . $script], [
+            'OBLODAI_PUBLIC_ID' => 'test_oblodai_example',
+            'OBLODAI_SECRET' => str_repeat('s', 32),
+            'OBLODAI_BASE_URL' => self::$baseUrl,
+        ]);
+
+        self::assertSame(0, $code, $script . " failed:\n" . $out . $err);
+        self::assertStringContainsString($reaches, $out);
+    }
+
+    public function testAnExampleWithoutKeysStopsWithOneLine(): void
+    {
+        [$code, $out, $err] = MockGateway::run(['examples/accept-payment.php'], ['OBLODAI_BASE_URL' => self::$baseUrl]);
+
+        self::assertSame(1, $code);
+        self::assertSame('', $out);
+        self::assertStringStartsWith('set OBLODAI_PUBLIC_ID, OBLODAI_SECRET', $err);
+    }
+
+    public function testTheWebhookReceiverAnswersEachDeliveryTheRightWay(): void
+    {
+        [$receiver, $url] = MockGateway::start('examples/webhook-receiver.php', ['OBLODAI_WEBHOOK_SECRET' => 'whsec-example']);
+
+        try {
+            $body = (string) json_encode(Samples::of(PaymentWebhook::class, ['type' => 'payment', 'status' => 'paid', 'order_id' => 'o-7', 'uuid' => 'u-7']));
+            $now = time();
+            $signed = ['X-Webhook-Timestamp' => (string) $now, 'X-Webhook-Signature' => Signer::signWebhook('whsec-example', $now, $body), 'X-Webhook-Event-Id' => 'e-1'];
+
+            self::assertSame([200, 'ok: order o-7 paid with x x'], self::post($url, $body, $signed));
+            self::assertSame([401, 'rejected: [webhook.bad_signature] signature does not match the body'], self::post($url, $body . ' ', $signed));
+            $rehearsal = (string) json_encode(['type' => 'payment', 'uuid' => 'u-8', 'test' => true]);
+            self::assertSame([200, 'rehearsal - not applied'], self::post($url, $rehearsal, [
+                'X-Webhook-Timestamp' => (string) $now, 'X-Webhook-Signature' => Signer::signWebhook('whsec-example', $now, $rehearsal),
+            ]));
+            $alien = (string) json_encode(['type' => 'teleport', 'uuid' => 'u-9']);
+            self::assertSame([200, 'ok: unmodelled type teleport'], self::post($url, $alien, [
+                'X-Webhook-Timestamp' => (string) $now, 'X-Webhook-Signature' => Signer::signWebhook('whsec-example', $now, $alien),
+            ]));
+        } finally {
+            MockGateway::stop($receiver);
+        }
+    }
+
+    /**
+     * @param array<string, string> $headers
+     *
+     * @return array{0: int, 1: string}
+     */
+    private static function post(string $url, string $body, array $headers): array
+    {
+        $lines = ['Content-Type: application/json'];
+        foreach ($headers as $name => $value) {
+            $lines[] = $name . ': ' . $value;
+        }
+        $context = stream_context_create(['http' => [
+            'method' => 'POST',
+            'header' => implode("\r\n", $lines),
+            'content' => $body,
+            'ignore_errors' => true,
+            'timeout' => 10,
+        ]]);
+        $answer = (string) file_get_contents($url . '/', false, $context);
+        $status = 0;
+        foreach ($http_response_header as $line) {
+            if (preg_match('#^HTTP/\S+ (\d{3})#', $line, $m) === 1) {
+                $status = (int) $m[1];
+            }
+        }
+
+        return [$status, trim($answer)];
+    }
+}

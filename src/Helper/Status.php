@@ -78,6 +78,15 @@ final class Status
         return self::payout($status) === PayoutStatus::Confirmed;
     }
 
+    /**
+     * The wire string of any status a model carries — a known case or a newer plain string:
+     * `Status::value($invoice->status)` is `"paid"` either way.
+     */
+    public static function value(\BackedEnum|string $status): string
+    {
+        return $status instanceof \BackedEnum ? (string) $status->value : $status;
+    }
+
     /** @param PaymentStatus|string $status */
     private static function payment(PaymentStatus|string $status): ?PaymentStatus
     {
