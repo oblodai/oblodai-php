@@ -76,7 +76,7 @@ final class SigningSourceTest extends TestCase
         self::assertNotSame([], $values);
         // The skew is not scanned for: its value is also an HTTP status class (`< 300`); the alias
         // assertions above hold it.
-        $limits = [Signing::MAX_BODY, Signing::MAX_IDEMPOTENCY_KEY_LENGTH];
+        $limits = self::limitPatterns(Signing::MAX_BODY, Signing::MAX_IDEMPOTENCY_KEY_LENGTH);
 
         $root = dirname(__DIR__, 2);
         $offenders = [];
@@ -96,13 +96,33 @@ final class SigningSourceTest extends TestCase
                         $offenders[] = $path . ': ' . $header;
                     }
                 }
+                $digits = (string) preg_replace('/(?<=\d)_(?=\d)/', '', $text);
                 foreach ($limits as $limit) {
-                    if (preg_match('/(?<![\w.])' . $limit . '(?![\w.])/', $text) === 1) {
+                    if (preg_match($limit, $digits) === 1) {
                         $offenders[] = $path . ': ' . $limit;
                     }
                 }
             }
         }
         self::assertSame([], $offenders, 'take these from Oblodai\Generated\Signing');
+    }
+
+    /**
+     * The limits as source literals: decimal, or `1 << n` for a power-of-two body limit; the scan
+     * drops digit separators (1_048_576) first, so they do not hide one.
+     *
+     * @return list<string>
+     */
+    private static function limitPatterns(int $maxBody, int $maxKey): array
+    {
+        $patterns = [];
+        foreach ([$maxBody, $maxKey] as $limit) {
+            $patterns[] = '/(?<![\w.])' . $limit . '(?![\w.])/';
+        }
+        if ($maxBody > 0 && ($maxBody & ($maxBody - 1)) === 0) {
+            $patterns[] = '/\b1\s*<<\s*' . (strlen(decbin($maxBody)) - 1) . '\b/';
+        }
+
+        return $patterns;
     }
 }
