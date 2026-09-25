@@ -270,17 +270,20 @@ final class Wire
     }
 
     /**
-     * The body with one more field; the same field given twice (in the body and as a call option)
-     * is refused rather than silently picking one.
+     * The body with one more field, given as a call option. The same field also set in the body (not
+     * null, not empty) is `sdk.bad_config` before anything is sent, as in every SDK: which of two
+     * values the caller meant is a guess, and a wrong guess re-credits or refuses a retry.
      *
      * @param array<string, mixed> $body
      *
      * @return array<string, mixed>
+     *
+     * @throws ConfigException when the body already holds a value for the field
      */
     public static function withField(array $body, string $key, mixed $value): array
     {
-        if (array_key_exists($key, $body)) {
-            throw new \InvalidArgumentException(sprintf('"%s" is given twice: in the body and as a call option', $key));
+        if (($body[$key] ?? null) !== null && $body[$key] !== '') {
+            throw new ConfigException('sdk.bad_config', sprintf('"%s" is given twice: in the body and as a call option; keep one', $key), $key);
         }
         $body[$key] = $value;
 

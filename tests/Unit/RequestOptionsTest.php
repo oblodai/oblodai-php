@@ -205,15 +205,18 @@ final class RequestOptionsTest extends TestCase
         foreach ($both as $params) {
             try {
                 $ob->sandbox->faucet($params, new RequestOptions(idempotencyKey: 'tap-2'));
-                self::fail('expected an InvalidArgumentException');
-            } catch (\InvalidArgumentException $e) {
-                self::assertStringContainsString('idempotency_key', $e->getMessage());
+                self::fail('expected a ConfigException');
+            } catch (ConfigException $e) {
+                self::assertSame('sdk.bad_config', $e->errorCode);
+                self::assertSame('idempotency_key', $e->field);
             }
         }
         self::assertSame(0, $fake->count());
 
-        // A model without its own key takes the option.
+        // A model without its own key, or a body whose key is null, takes the option.
         $ob->sandbox->faucet(new FaucetRequest(amount: '5', asset: 'USDT'), new RequestOptions(idempotencyKey: 'tap-3'));
         self::assertSame('tap-3', $fake->body(0)['idempotency_key'] ?? null);
+        $ob->sandbox->faucet(['asset' => 'USDT', 'amount' => '5', 'idempotency_key' => null], new RequestOptions(idempotencyKey: 'tap-4'));
+        self::assertSame('tap-4', $fake->body(1)['idempotency_key'] ?? null);
     }
 }
