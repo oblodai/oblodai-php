@@ -142,13 +142,13 @@ final class WebhookTest extends TestCase
     public function testRejectsStaleDeliveriesUnlessToleranceIsDisabled(): void
     {
         try {
-            Verifier::verify(self::body(), self::headers(), 'whsec', now: self::TS + 600);
+            Verifier::verify(self::body(), self::headers(), 'whsec', now: self::TS + 2 * Signing::SKEW_SECONDS);
             self::fail('expected a SignatureException');
         } catch (SignatureException $e) {
             self::assertMatchesRegularExpression('/outside/', $e->getMessage());
         }
 
-        $event = Verifier::verify(self::body(), self::headers(), 'whsec', toleranceSec: 0, now: self::TS + 600);
+        $event = Verifier::verify(self::body(), self::headers(), 'whsec', toleranceSec: 0, now: self::TS + 2 * Signing::SKEW_SECONDS);
         self::assertSame('u1', $event->event['uuid']);
     }
 
