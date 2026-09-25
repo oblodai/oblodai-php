@@ -216,4 +216,17 @@ final class WebhookTest extends TestCase
         $headers['x-webhook-signature'] = Signer::signWebhook('whsec', self::TS, self::body());
         self::assertTrue(Verifier::verify(self::body(), $headers, 'whsec', now: self::TS)->isTest);
     }
+
+    public function testObjectIdIsTheFieldTheContractNamesForTheKind(): void
+    {
+        self::assertSame(Facts::WEBHOOK_KINDS, array_keys(Facts::WEBHOOK_ID_FIELDS));
+        foreach (Facts::WEBHOOK_ID_FIELDS as $kind => $field) {
+            self::assertSame('obj-1', Verifier::objectId(Verifier::parse((string) json_encode(['type' => $kind, $field => 'obj-1']))), $kind);
+        }
+        // A conversion names its object by `id`; a `uuid` beside it is not the object's id.
+        self::assertSame('c1', Verifier::objectId(['type' => 'conversion', 'id' => 'c1', 'uuid' => 'x']));
+        self::assertNull(Verifier::objectId(['type' => 'payment']));
+        // Which field identifies a kind this SDK does not know is not guessed.
+        self::assertNull(Verifier::objectId(Verifier::parse('{"type":"refund","refund_id":"r1","uuid":"x"}')));
+    }
 }

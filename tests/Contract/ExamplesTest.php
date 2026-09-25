@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Oblodai\Tests\Contract;
 
 use Oblodai\Core\Signer;
+use Oblodai\Generated\Model\ConversionWebhook;
 use Oblodai\Generated\Model\PaymentWebhook;
 use Oblodai\Tests\Support\MockGateway;
 use Oblodai\Tests\Support\Samples;
@@ -79,7 +80,8 @@ final class ExamplesTest extends TestCase
 
     public function testTheWebhookReceiverAnswersEachDeliveryTheRightWay(): void
     {
-        [$receiver, $url] = MockGateway::start('examples/webhook-receiver.php', ['OBLODAI_WEBHOOK_SECRET' => 'whsec-example']);
+        $log = self::freshLog();
+        [$receiver, $url] = MockGateway::start('examples/webhook-receiver.php', ['OBLODAI_WEBHOOK_SECRET' => 'whsec-example', 'OBLODAI_WEBHOOK_LOG' => $log]);
 
         try {
             $body = (string) json_encode(Samples::of(PaymentWebhook::class, ['type' => 'payment', 'status' => 'paid', 'order_id' => 'o-7', 'uuid' => 'u-7']));
@@ -96,9 +98,49 @@ final class ExamplesTest extends TestCase
             self::assertSame([200, 'ok: unmodelled type teleport'], self::post($url, $alien, [
                 'X-Webhook-Timestamp' => (string) $now, 'X-Webhook-Signature' => Signer::signWebhook('whsec-example', $now, $alien),
             ]));
+            self::assertSame([200, 'duplicate'], self::post($url, $body, $signed));
         } finally {
             MockGateway::stop($receiver);
+            @unlink($log);
         }
+    }
+
+    /**
+     * Ordering is per object, and a conversion's object is its `id`: conversion B arriving after
+     * conversion A with a lower sequence is B's first state and is applied; an older state of A
+     * arriving late is stale.
+     */
+    public function testTheWebhookReceiverOrdersEachConversionOnItsOwn(): void
+    {
+        $log = self::freshLog();
+        [$receiver, $url] = MockGateway::start('examples/webhook-receiver.php', ['OBLODAI_WEBHOOK_SECRET' => 'whsec-example', 'OBLODAI_WEBHOOK_LOG' => $log]);
+
+        try {
+            $now = time();
+            $deliver = static function (string $id, string $status, int $sequence, string $eventId) use ($url, $now): array {
+                $body = (string) json_encode(Samples::of(ConversionWebhook::class, ['type' => 'conversion', 'id' => $id, 'status' => $status, 'sequence' => $sequence]));
+
+                return self::post($url, $body, [
+                    'X-Webhook-Timestamp' => (string) $now, 'X-Webhook-Signature' => Signer::signWebhook('whsec-example', $now, $body), 'X-Webhook-Event-Id' => $eventId,
+                ]);
+            };
+            self::assertSame([200, 'ok: conversion completed'], $deliver('A', 'completed', 5, 'e-a5'));
+            self::assertSame([200, 'ok: conversion completed'], $deliver('B', 'completed', 3, 'e-b3'));
+            self::assertSame([200, 'stale'], $deliver('A', 'refunded', 4, 'e-a4'));
+        } finally {
+            MockGateway::stop($receiver);
+            @unlink($log);
+        }
+    }
+
+    /** A path for the example's delivery log that no earlier run has written. */
+    private static function freshLog(): string
+    {
+        $log = tempnam(sys_get_temp_dir(), 'oblodai-webhook-log-');
+        self::assertIsString($log);
+        unlink($log);
+
+        return $log;
     }
 
     /**

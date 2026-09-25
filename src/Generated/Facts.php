@@ -97,6 +97,17 @@ final class Facts
     /** Every webhook event kind this SDK models, sorted. */
     public const WEBHOOK_KINDS = ['conversion', 'payment', 'payout', 'wallet'];
 
+    /**
+     * Webhook event kinds => the body field holding the id of the object the event is about, as the
+     * contract declares it. A kind whose body has no such field is not listed.
+     */
+    public const WEBHOOK_ID_FIELDS = [
+        'conversion' => 'id',
+        'payment' => 'uuid',
+        'payout' => 'uuid',
+        'wallet' => 'uuid',
+    ];
+
     /** Webhook event names (`X-Webhook-Event`) => the kind of their body. */
     public const WEBHOOK_EVENTS = [
         'conversion.completed' => 'conversion',

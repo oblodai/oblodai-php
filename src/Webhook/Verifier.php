@@ -252,6 +252,25 @@ final class Verifier
     }
 
     /**
+     * The id of the object the event is about: the body field {@see Facts::WEBHOOK_ID_FIELDS} names
+     * for its kind, as the contract declares it. Key the last `sequence` you processed on it,
+     * together with the `type`.
+     *
+     * Null for a kind this SDK does not know (which field identifies that object is not guessed),
+     * or for a body without a string there.
+     *
+     * @param array<string, mixed> $event
+     */
+    public static function objectId(array $event): ?string
+    {
+        $type = $event['type'] ?? null;
+        $field = is_string($type) ? (Facts::WEBHOOK_ID_FIELDS[$type] ?? null) : null;
+        $id = $field === null ? null : ($event[$field] ?? null);
+
+        return is_string($id) && $id !== '' ? $id : null;
+    }
+
+    /**
      * True for a rehearsal delivery (`webhooks->sendTest*`, sandbox). Such a body is signed like a
      * live one, so a handler must branch on it and never act on it as if money moved.
      *
@@ -264,7 +283,7 @@ final class Verifier
 
     /**
      * Deliveries can arrive out of order (a retried `paid` after a `refund`). Keep the last
-     * `sequence` you processed per object and skip anything not newer.
+     * `sequence` you processed per object ({@see Verifier::objectId()}) and skip anything not newer.
      *
      * An event without a usable `sequence` is never stale: dropping it would silently lose a real
      * state change just because the body was newer or older than this SDK expects.

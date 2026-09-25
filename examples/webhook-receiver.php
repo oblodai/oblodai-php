@@ -10,7 +10,9 @@ declare(strict_types=1);
  * Three rules:
  *  1. verify over the RAW request bytes — a re-encoded parse will not match the signature;
  *  2. deduplicate on `$delivery->eventId` (`X-Webhook-Event-Id`), stable per state;
- *  3. drop out-of-order deliveries with `Verifier::isStale($event, $lastSequence)`.
+ *  3. drop out-of-order deliveries with `Verifier::isStale($event, $lastSequence)`, keeping the
+ *     last sequence per object: its `type` and `Verifier::objectId($event)` (a payment's `uuid`,
+ *     a conversion's `id` — whatever the contract names for the kind).
  *
  * Answer 2xx quickly; the gateway retries anything else for about 26 hours. Which is exactly why
  * the three failure shapes below get three different answers.
@@ -52,8 +54,11 @@ if (DeliveryLog::seen($eventId)) {
 if ($delivery->isTest) {
     answer(200, 'rehearsal - not applied');                // signed like a live one; no money moved
 }
-$object = is_string($delivery->event['uuid'] ?? null) ? $delivery->event['uuid'] : '';
-if (Verifier::isStale($delivery->event, DeliveryLog::lastSequence($object))) {
+// A kind this SDK does not know has no known object id: its deliveries are not ordered.
+$type = is_string($delivery->event['type'] ?? null) ? $delivery->event['type'] : '';   // parse() checked it
+$objectId = Verifier::objectId($delivery->event);
+$object = $objectId === null ? null : $type . ':' . $objectId;
+if ($object !== null && Verifier::isStale($delivery->event, DeliveryLog::lastSequence($object))) {
     answer(200, 'stale');
 }
 
@@ -70,7 +75,7 @@ $applied = match (true) {
     $event instanceof PayoutWebhook => 'payout ' . Status::value($event->status) . ' ' . $event->txid,
     $event instanceof WalletWebhook => 'wallet deposit ' . $event->payment_amount . ' ' . $event->payer_currency,
     $event instanceof ConversionWebhook => 'conversion ' . Status::value($event->status),
-    default => 'unmodelled type ' . (is_string($delivery->event['type'] ?? null) ? $delivery->event['type'] : '?'),
+    default => 'unmodelled type ' . $type,
 };
 $sequence = $delivery->event['sequence'] ?? null;
 DeliveryLog::remember($eventId, $object, is_int($sequence) ? $sequence : null);
@@ -108,35 +113,54 @@ function fulfilOrder(string $orderId, string $amount, string $currency): string
 }
 
 /**
- * Stands in for your database. In production this is a row per event id (unique index) and the
- * last applied `sequence` per object — both must survive a restart, which a process-local array
- * obviously does not.
+ * Stands in for your database: the handled event ids and the last applied `sequence` per object.
+ * PHP forgets everything between requests, so this keeps them in a JSON file
+ * (`OBLODAI_WEBHOOK_LOG`, else one in the temp directory). In production it is a row per event id
+ * (unique index) and one per object, updated in the transaction that applies the event.
  */
 final class DeliveryLog
 {
-    /** @var array<string, true> */
-    private static array $events = [];
-
-    /** @var array<string, int> */
-    private static array $sequences = [];
+    /** @var array{events: array<string, true>, sequences: array<string, int>}|null */
+    private static ?array $state = null;
 
     public static function seen(?string $eventId): bool
     {
-        return $eventId !== null && isset(self::$events[$eventId]);
+        return $eventId !== null && isset(self::state()['events'][$eventId]);
     }
 
-    public static function lastSequence(string $objectUuid): ?int
+    public static function lastSequence(string $object): ?int
     {
-        return self::$sequences[$objectUuid] ?? null;
+        return self::state()['sequences'][$object] ?? null;
     }
 
-    public static function remember(?string $eventId, string $objectUuid, ?int $sequence): void
+    public static function remember(?string $eventId, ?string $object, ?int $sequence): void
     {
+        $state = self::state();
         if ($eventId !== null) {
-            self::$events[$eventId] = true;
+            $state['events'][$eventId] = true;
         }
-        if ($sequence !== null && $objectUuid !== '') {
-            self::$sequences[$objectUuid] = $sequence;
+        if ($sequence !== null && $object !== null) {
+            $state['sequences'][$object] = $sequence;
         }
+        self::$state = $state;
+        file_put_contents(self::path(), (string) json_encode($state), LOCK_EX);
+    }
+
+    /** @return array{events: array<string, true>, sequences: array<string, int>} */
+    private static function state(): array
+    {
+        if (self::$state === null) {
+            $saved = is_file(self::path()) ? json_decode((string) file_get_contents(self::path()), true) : null;
+            /** @var array{events: array<string, true>, sequences: array<string, int>} $state */
+            $state = is_array($saved) ? $saved + ['events' => [], 'sequences' => []] : ['events' => [], 'sequences' => []];
+            self::$state = $state;
+        }
+
+        return self::$state;
+    }
+
+    private static function path(): string
+    {
+        return getenv('OBLODAI_WEBHOOK_LOG') ?: sys_get_temp_dir() . '/oblodai-webhook-log.json';
     }
 }

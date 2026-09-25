@@ -146,6 +146,16 @@ final class ConformanceTest extends TestCase
         }
     }
 
+    /** @return iterable<string, array{array<string, mixed>}> */
+    public static function webhookBodies(): iterable
+    {
+        /** @var list<array<string, mixed>> $bodies */
+        $bodies = self::suite('forward_compat')['webhooks'] ?? [];
+        foreach ($bodies as $case) {
+            yield self::str($case, 'name') => [$case];
+        }
+    }
+
     public function testTheSuiteIsThere(): void
     {
         if (!is_dir(Backend::conformance())) {
@@ -154,6 +164,22 @@ final class ConformanceTest extends TestCase
         self::assertNotSame([], iterator_to_array(self::callScenarios()));
         self::assertNotSame([], iterator_to_array(self::signingCases()));
         self::assertNotSame([], iterator_to_array(self::webhookCases()));
+        self::assertNotSame([], iterator_to_array(self::webhookBodies()));
+    }
+
+    /**
+     * forward_compat webhooks: the body parses, keeps its raw `type`, and is known exactly as said.
+     *
+     * @param array<string, mixed> $case
+     */
+    #[DataProvider('webhookBodies')]
+    public function testWebhookParse(array $case): void
+    {
+        /** @var array{known: bool, type: string} $expect */
+        $expect = $case['expect'];
+        $event = Verifier::parse((string) json_encode($case['body']));
+        self::assertSame($expect['type'], $event['type']);
+        self::assertSame($expect['known'], Verifier::isKnownEvent($event));
     }
 
     /**
