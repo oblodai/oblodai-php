@@ -122,6 +122,27 @@ final class ConformanceTest extends TestCase
     }
 
     /**
+     * The rehearsal header name the spec gives (`header_names.test_pointer`) — again the spec's
+     * name, not the SDK's constant.
+     */
+    private static function testHeader(string $name): string
+    {
+        $suite = self::suite($name);
+        $at = $suite['header_names'] ?? null;
+        $pointer = is_array($at) ? ($at['test_pointer'] ?? null) : null;
+        $src = $suite['source'] ?? null;
+        if (!is_string($pointer) || !is_array($src) || !is_string($src['spec'] ?? null)) {
+            throw new RuntimeException(sprintf('%s: no header_names.test_pointer', $name));
+        }
+        $header = self::resolve(Backend::json(Backend::conformance() . '/' . $src['spec']), $pointer);
+        if (!is_string($header) || $header === '') {
+            throw new RuntimeException(sprintf('%s: no rehearsal header name at %s', $name, $pointer));
+        }
+
+        return $header;
+    }
+
+    /**
      * The value of a header, compared by name case-insensitively; null when absent.
      *
      * @param array<string, string> $headers
@@ -401,7 +422,13 @@ final class ConformanceTest extends TestCase
         };
         /** @var array<string, string> $headers */
         $headers = $delivery['headers'];
-        $got = Verifier::verify(self::str($delivery, 'payload'), $headers, $secret, now: self::int($delivery, 'ts'));
+        $rehearsal = ($check['test'] ?? false) === true;
+        $sent = $headers;
+        if ($rehearsal) {
+            $sent[self::testHeader('webhook_delivery')] = 'true';
+        }
+        $got = Verifier::verify(self::str($delivery, 'payload'), $sent, $secret, now: self::int($delivery, 'ts'));
+        self::assertSame($rehearsal, $got->isTest, 'isTest (the rehearsal header of the spec)');
         $kind = self::str($delivery, 'kind');
         self::assertTrue(Verifier::isKnownEvent($got->event), $kind);
         self::assertSame($kind, $got->event['type']);
