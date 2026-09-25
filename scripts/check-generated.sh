@@ -3,8 +3,9 @@
 #
 # Regenerates into a temporary directory with the backend's tools/sdkgen (from
 # services/core/api/openapi.json, checked against names.lock: a vanished or renamed public name is a
-# breaking change and fails) and compares file by file — src/Generated, names.lock and the method
-# tables the generator writes into README.md and README.ru.md. The backend checkout is $OBLODAI_BACKEND,
+# breaking change and fails, and so does a new name the lock lacks: -frozen-lock never writes it)
+# and compares file by file — src/Generated and the method tables the generator writes into
+# README.md and README.ru.md. The backend checkout is $OBLODAI_BACKEND,
 # else ../oblodai-backend next to this repository. Without it the check is skipped, loudly; with
 # --require it fails instead. Fix drift by regenerating (`make sdk` in the backend), never by hand.
 set -eu
@@ -25,23 +26,18 @@ fi
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/oblodai-php-generated.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
-cp "$root/names.lock" "$tmp/names.lock"
 mkdir -p "$tmp/out"
 cp "$root/README.md" "$root/README.ru.md" "$tmp/out/"
 (
     cd "$sdkgen"
-    GOTOOLCHAIN=${GOTOOLCHAIN:-go1.26.6} go run ./cmd/sdkgen -spec "$spec" -lang php -out "$tmp/out" -lock "$tmp/names.lock"
+    GOTOOLCHAIN=${GOTOOLCHAIN:-go1.26.6} go run ./cmd/sdkgen -spec "$spec" -lang php -out "$tmp/out" -lock "$root/names.lock" -frozen-lock
 ) || {
-    echo "check-generated: sdkgen failed (a breaking name change fails against names.lock)" >&2
+    echo "check-generated: sdkgen failed (a breaking name change, or a new name names.lock lacks — regenerate with \`make sdk\` in the backend)" >&2
     exit 1
 }
 if ! diff -r "$tmp/out/src/Generated" "$root/src/Generated" > "$tmp/diff"; then
     head -n 40 "$tmp/diff" >&2
     echo "check-generated: src/Generated is stale; regenerate with \`make sdk\` in the backend" >&2
-    exit 1
-fi
-if ! cmp -s "$tmp/names.lock" "$root/names.lock"; then
-    echo "check-generated: names.lock is behind the contract; regenerate with `make sdk` in the backend" >&2
     exit 1
 fi
 for readme in README.md README.ru.md; do
