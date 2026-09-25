@@ -108,7 +108,7 @@ final class Facts
         'wallet' => 'uuid',
     ];
 
-    /** Webhook event names (`X-Webhook-Event`) => the kind of their body. */
+    /** Webhook event names (the value of {@see Signing::HEADER_WEBHOOK_EVENT}) => the kind of their body. */
     public const WEBHOOK_EVENTS = [
         'conversion.completed' => 'conversion',
         'conversion.refunded' => 'conversion',

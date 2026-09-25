@@ -21,7 +21,7 @@ final class RequestBuilder
      * Headers the SDK owns. A caller-supplied header with one of these names is dropped, compared
      * case-insensitively — HTTP header names are case-insensitive, so letting `x-admin-token` sit
      * next to the SDK's `X-Admin-Token` would leave which one the server reads up to the transport.
-     * The signed request's own headers are the contract's ({@see Signing::REQUEST_HEADERS}).
+     * The signed request's own headers are the contract's ({@see Signing}), one per role.
      */
     private const RESERVED_HEADERS = [
         'Accept',
@@ -31,7 +31,10 @@ final class RequestBuilder
         'User-Agent',
         self::HEADER_ADMIN_TOKEN,
         Transport::HEADER_REQUEST_ID,
-        ...Signing::REQUEST_HEADERS,
+        Signing::HEADER_PUBLIC_ID,
+        Signing::HEADER_SIGNATURE,
+        Signing::HEADER_TIMESTAMP,
+        Signing::HEADER_IDEMPOTENCY_KEY,
     ];
 
     public const HEADER_ADMIN_TOKEN = 'X-Admin-Token';

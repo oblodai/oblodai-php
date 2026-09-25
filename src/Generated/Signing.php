@@ -26,14 +26,6 @@ final class Signing
     public const HEADER_TIMESTAMP = 'X-Timestamp';
     public const HEADER_IDEMPOTENCY_KEY = 'Idempotency-Key';
 
-    /** The signed request's headers, in the contract's order. */
-    public const REQUEST_HEADERS = [
-        self::HEADER_PUBLIC_ID,
-        self::HEADER_SIGNATURE,
-        self::HEADER_TIMESTAMP,
-        self::HEADER_IDEMPOTENCY_KEY,
-    ];
-
     /** Parts of the request's canonical string, in order (`METHOD` upper-cased). */
     public const REQUEST_CANONICAL_ORDER = [
         'ts',
@@ -52,7 +44,7 @@ final class Signing
     /** Largest request body the core reads, bytes. */
     public const MAX_BODY = 1048576;
 
-    /** Longest `Idempotency-Key` the core accepts, characters. */
+    /** Longest {@see self::HEADER_IDEMPOTENCY_KEY} value the core accepts, characters. */
     public const MAX_IDEMPOTENCY_KEY_LENGTH = 255;
 
     // --- webhook delivery ---
