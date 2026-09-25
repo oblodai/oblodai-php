@@ -4,7 +4,7 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [2.0.0] — Unreleased
+## [2.0.0] — 2026-09-25
 
 The SDK regenerated from the gateway's OpenAPI contract. Breaking: method names, model classes,
 timeouts in seconds, PHP 8.2 — see [MIGRATION-2.0.md](MIGRATION-2.0.md).
