@@ -31,13 +31,14 @@ final class SigningSourceTest extends TestCase
         self::assertSame(Signing::SKEW_SECONDS, Signer::SKEW_SECONDS);
         self::assertSame(Signing::MAX_IDEMPOTENCY_KEY_LENGTH, Idempotency::MAX_KEY_LENGTH);
         self::assertSame(Signing::SKEW_SECONDS, Verifier::DEFAULT_TOLERANCE_SECONDS);
-        self::assertSame(Signing::WEBHOOK_HEADER_TIMESTAMP, Verifier::HEADER_TIMESTAMP);
-        self::assertSame(Signing::WEBHOOK_HEADER_SIGNATURE, Verifier::HEADER_SIGNATURE);
-        self::assertSame(Signing::WEBHOOK_HEADER_SIGNATURE_PREV, Verifier::HEADER_SIGNATURE_PREV);
-        self::assertSame(Signing::WEBHOOK_HEADER_EVENT, Verifier::HEADER_EVENT);
-        self::assertSame(Signing::WEBHOOK_HEADER_ID, Verifier::HEADER_ID);
-        self::assertSame(Signing::WEBHOOK_HEADER_EVENT_ID, Verifier::HEADER_EVENT_ID);
-        self::assertSame(Signing::WEBHOOK_HEADER_EVENT_TIME, Verifier::HEADER_EVENT_TIME);
+        self::assertSame(Signing::HEADER_WEBHOOK_TIMESTAMP, Verifier::HEADER_TIMESTAMP);
+        self::assertSame(Signing::HEADER_WEBHOOK_SIGNATURE, Verifier::HEADER_SIGNATURE);
+        self::assertSame(Signing::HEADER_WEBHOOK_SIGNATURE_PREV, Verifier::HEADER_SIGNATURE_PREV);
+        self::assertSame(Signing::HEADER_WEBHOOK_EVENT, Verifier::HEADER_EVENT);
+        self::assertSame(Signing::HEADER_WEBHOOK_ID, Verifier::HEADER_ID);
+        self::assertSame(Signing::HEADER_WEBHOOK_EVENT_ID, Verifier::HEADER_EVENT_ID);
+        self::assertSame(Signing::HEADER_WEBHOOK_EVENT_TIME, Verifier::HEADER_EVENT_TIME);
+        self::assertSame(Signing::HEADER_WEBHOOK_TEST, Verifier::HEADER_TEST);
     }
 
     /** The canonical strings follow the generated order and separators. */
@@ -46,14 +47,14 @@ final class SigningSourceTest extends TestCase
         $parts = ['ts' => '7', 'METHOD' => 'POST', 'request_uri' => '/v1/x?a=1', 'idempotency_key' => 'k', 'body' => '{}'];
         $want = implode(
             Signing::REQUEST_CANONICAL_SEPARATOR,
-            array_map(static fn (string $p): string => $parts[$p], Signing::REQUEST_CANONICAL)
+            array_map(static fn (string $p): string => $parts[$p], Signing::REQUEST_CANONICAL_ORDER)
         );
         self::assertSame($want, Signer::canonical(7, 'post', '/v1/x?a=1', 'k', '{}'));
 
         $hook = ['ts' => '7', 'payload' => '{"a":1}'];
         $wantHook = implode(
             Signing::WEBHOOK_CANONICAL_SEPARATOR,
-            array_map(static fn (string $p): string => $hook[$p], Signing::WEBHOOK_CANONICAL)
+            array_map(static fn (string $p): string => $hook[$p], Signing::WEBHOOK_CANONICAL_ORDER)
         );
         self::assertSame(hash_hmac('sha256', $wantHook, 's'), Signer::signWebhook('s', 7, '{"a":1}'));
     }
@@ -68,7 +69,7 @@ final class SigningSourceTest extends TestCase
     {
         $values = [];
         foreach ((new ReflectionClass(Signing::class))->getConstants() as $name => $value) {
-            if (is_string($value) && (str_starts_with($name, 'HEADER_') || str_starts_with($name, 'WEBHOOK_HEADER_'))) {
+            if (is_string($value) && str_starts_with($name, 'HEADER_')) {
                 $values[] = strtolower($value);
             }
         }

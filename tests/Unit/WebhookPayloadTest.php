@@ -46,8 +46,8 @@ final class WebhookPayloadTest extends TestCase
     private static function headers(array $overrides = []): array
     {
         return array_merge([
-            Signing::WEBHOOK_HEADER_TIMESTAMP => (string) self::TS,
-            strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => Signer::signWebhook('whsec', self::TS, self::body()),
+            Signing::HEADER_WEBHOOK_TIMESTAMP => (string) self::TS,
+            strtolower(Signing::HEADER_WEBHOOK_SIGNATURE) => Signer::signWebhook('whsec', self::TS, self::body()),
         ], $overrides);
     }
 
@@ -89,8 +89,8 @@ final class WebhookPayloadTest extends TestCase
     {
         $raw = 'not json at all';
         $headers = [
-            Signing::WEBHOOK_HEADER_TIMESTAMP => (string) self::TS,
-            strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => Signer::signWebhook('whsec', self::TS, $raw),
+            Signing::HEADER_WEBHOOK_TIMESTAMP => (string) self::TS,
+            strtolower(Signing::HEADER_WEBHOOK_SIGNATURE) => Signer::signWebhook('whsec', self::TS, $raw),
         ];
 
         try {
@@ -129,8 +129,8 @@ final class WebhookPayloadTest extends TestCase
         // HMAC('', body) is computable by anybody, so verifying with an empty key accepts forgeries.
         $forged = (string) json_encode(['type' => 'payment', 'uuid' => 'forged', 'status' => 'paid']);
         $headers = [
-            Signing::WEBHOOK_HEADER_TIMESTAMP => (string) self::TS,
-            strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => Signer::signWebhook('', self::TS, $forged),
+            Signing::HEADER_WEBHOOK_TIMESTAMP => (string) self::TS,
+            strtolower(Signing::HEADER_WEBHOOK_SIGNATURE) => Signer::signWebhook('', self::TS, $forged),
         ];
 
         foreach (['', '   '] as $empty) {
@@ -171,7 +171,7 @@ final class WebhookPayloadTest extends TestCase
      */
     public function testTheSignatureIsCheckedBeforeTheFreshnessWindow(): void
     {
-        $headers = self::headers([Signing::WEBHOOK_HEADER_TIMESTAMP => (string) (self::TS - 100_000)]);
+        $headers = self::headers([Signing::HEADER_WEBHOOK_TIMESTAMP => (string) (self::TS - 100_000)]);
 
         try {
             Verifier::verify(self::body(), $headers, 'whsec', now: self::TS);
@@ -189,7 +189,7 @@ final class WebhookPayloadTest extends TestCase
         foreach ([" {$signature} ", strtoupper($signature), "\t" . $signature . "\n"] as $variant) {
             $delivery = Verifier::verify(
                 self::body(),
-                self::headers([strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => $variant]),
+                self::headers([strtolower(Signing::HEADER_WEBHOOK_SIGNATURE) => $variant]),
                 'whsec',
                 now: self::TS
             );
@@ -199,7 +199,7 @@ final class WebhookPayloadTest extends TestCase
         try {
             Verifier::verify(
                 self::body(),
-                self::headers([strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => '0x' . $signature]),
+                self::headers([strtolower(Signing::HEADER_WEBHOOK_SIGNATURE) => '0x' . $signature]),
                 'whsec',
                 now: self::TS
             );

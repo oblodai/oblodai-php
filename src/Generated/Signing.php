@@ -16,6 +16,9 @@ namespace Oblodai\Generated;
  */
 final class Signing
 {
+    /** The MAC every signature is. */
+    public const SIGNATURE_ALGORITHM = 'HMAC-SHA256, lowercase hex';
+
     // --- signed request ---
 
     public const HEADER_PUBLIC_ID = 'X-Public-Id';
@@ -32,9 +35,15 @@ final class Signing
     ];
 
     /** Parts of the request's canonical string, in order (`METHOD` upper-cased). */
-    public const REQUEST_CANONICAL = ['ts', 'METHOD', 'request_uri', 'idempotency_key', 'body'];
+    public const REQUEST_CANONICAL_ORDER = [
+        'ts',
+        'METHOD',
+        'request_uri',
+        'idempotency_key',
+        'body',
+    ];
 
-    /** Joins the parts of {@see self::REQUEST_CANONICAL}. */
+    /** Joins the parts of {@see self::REQUEST_CANONICAL_ORDER}. */
     public const REQUEST_CANONICAL_SEPARATOR = "\n";
 
     /** Accepted clock skew, seconds: a signed request at the core, a delivery at the receiver. */
@@ -48,18 +57,19 @@ final class Signing
 
     // --- webhook delivery ---
 
-    public const WEBHOOK_HEADER_TIMESTAMP = 'X-Webhook-Timestamp';
-    public const WEBHOOK_HEADER_SIGNATURE = 'X-Webhook-Signature';
-    public const WEBHOOK_HEADER_SIGNATURE_PREV = 'X-Webhook-Signature-Prev';
-    public const WEBHOOK_HEADER_EVENT = 'X-Webhook-Event';
-    public const WEBHOOK_HEADER_ID = 'X-Webhook-Id';
-    public const WEBHOOK_HEADER_EVENT_ID = 'X-Webhook-Event-Id';
-    public const WEBHOOK_HEADER_EVENT_TIME = 'X-Webhook-Event-Time';
+    public const HEADER_WEBHOOK_TIMESTAMP = 'X-Webhook-Timestamp';
+    public const HEADER_WEBHOOK_SIGNATURE = 'X-Webhook-Signature';
+    public const HEADER_WEBHOOK_SIGNATURE_PREV = 'X-Webhook-Signature-Prev';
+    public const HEADER_WEBHOOK_EVENT = 'X-Webhook-Event';
+    public const HEADER_WEBHOOK_ID = 'X-Webhook-Id';
+    public const HEADER_WEBHOOK_EVENT_ID = 'X-Webhook-Event-Id';
+    public const HEADER_WEBHOOK_EVENT_TIME = 'X-Webhook-Event-Time';
+    public const HEADER_WEBHOOK_TEST = 'X-Webhook-Test';
 
     /** Parts of the delivery's canonical string, in order. */
-    public const WEBHOOK_CANONICAL = ['ts', 'payload'];
+    public const WEBHOOK_CANONICAL_ORDER = ['ts', 'payload'];
 
-    /** Joins the parts of {@see self::WEBHOOK_CANONICAL}. */
+    /** Joins the parts of {@see self::WEBHOOK_CANONICAL_ORDER}. */
     public const WEBHOOK_CANONICAL_SEPARATOR = '.';
 
     private function __construct()

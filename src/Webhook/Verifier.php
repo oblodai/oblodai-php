@@ -16,7 +16,7 @@ use Oblodai\Generated\Signing;
 
 /**
  * Webhook verification — usable on its own, no client and no API key required. Deliveries carry
- * these headers (names are the contract's, {@see Signing}::WEBHOOK_HEADER_*, aliased below):
+ * these headers (names are the contract's, {@see Signing}::HEADER_WEBHOOK_*, aliased below):
  *
  *   HEADER_TIMESTAMP: <unix seconds>
  *   HEADER_SIGNATURE: hex(HMAC-SHA256(secret, canonical)) — {@see Signer::signWebhook()}
@@ -40,15 +40,15 @@ use Oblodai\Generated\Signing;
  */
 final class Verifier
 {
-    public const HEADER_TIMESTAMP = Signing::WEBHOOK_HEADER_TIMESTAMP;
-    public const HEADER_SIGNATURE = Signing::WEBHOOK_HEADER_SIGNATURE;
-    public const HEADER_SIGNATURE_PREV = Signing::WEBHOOK_HEADER_SIGNATURE_PREV;
-    public const HEADER_EVENT = Signing::WEBHOOK_HEADER_EVENT;
-    public const HEADER_ID = Signing::WEBHOOK_HEADER_ID;
-    public const HEADER_EVENT_ID = Signing::WEBHOOK_HEADER_EVENT_ID;
-    public const HEADER_EVENT_TIME = Signing::WEBHOOK_HEADER_EVENT_TIME;
-    /** Not part of the signing protocol (`x-oblodai-signing` does not list it): advisory only. */
-    public const HEADER_TEST = 'X-Webhook-Test';
+    public const HEADER_TIMESTAMP = Signing::HEADER_WEBHOOK_TIMESTAMP;
+    public const HEADER_SIGNATURE = Signing::HEADER_WEBHOOK_SIGNATURE;
+    public const HEADER_SIGNATURE_PREV = Signing::HEADER_WEBHOOK_SIGNATURE_PREV;
+    public const HEADER_EVENT = Signing::HEADER_WEBHOOK_EVENT;
+    public const HEADER_ID = Signing::HEADER_WEBHOOK_ID;
+    public const HEADER_EVENT_ID = Signing::HEADER_WEBHOOK_EVENT_ID;
+    public const HEADER_EVENT_TIME = Signing::HEADER_WEBHOOK_EVENT_TIME;
+    /** The rehearsal header (`x-oblodai-signing.webhook.test_header`): "true" on a test delivery. */
+    public const HEADER_TEST = Signing::HEADER_WEBHOOK_TEST;
 
     /**
      * The `type` discriminators this SDK models, with the generated model of each (the contract's

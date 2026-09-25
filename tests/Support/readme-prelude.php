@@ -16,8 +16,8 @@ $rawBody = (string) json_encode(Oblodai\Tests\Support\Samples::of(
     ['type' => 'payment', 'status' => 'paid', 'order_id' => 'order-1001'],
 ));
 $headers = [
-    Oblodai\Generated\Signing::WEBHOOK_HEADER_TIMESTAMP => (string) time(),
-    Oblodai\Generated\Signing::WEBHOOK_HEADER_SIGNATURE => Oblodai\Core\Signer::signWebhook((string) getenv('OBLODAI_WEBHOOK_SECRET'), time(), $rawBody),
+    Oblodai\Generated\Signing::HEADER_WEBHOOK_TIMESTAMP => (string) time(),
+    Oblodai\Generated\Signing::HEADER_WEBHOOK_SIGNATURE => Oblodai\Core\Signer::signWebhook((string) getenv('OBLODAI_WEBHOOK_SECRET'), time(), $rawBody),
 ];
 
 // A PSR-18 client and PSR-17 factories, for the HTTP stack section.

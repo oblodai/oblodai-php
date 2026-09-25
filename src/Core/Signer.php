@@ -10,7 +10,7 @@ use Oblodai\Generated\Signing;
  * Request signing — the exact recipe the core verifies (`crypto.SignRequest`), as the contract's
  * `x-oblodai-signing` states it (generated into {@see Signing}):
  *
- *   canonical = the parts of Signing::REQUEST_CANONICAL (ts, METHOD, request_uri,
+ *   canonical = the parts of Signing::REQUEST_CANONICAL_ORDER (ts, METHOD, request_uri,
  *               idempotency_key, body) joined by Signing::REQUEST_CANONICAL_SEPARATOR
  *   signature = hex(HMAC-SHA256(secret, canonical))
  *
@@ -40,7 +40,7 @@ final class Signer
         ?string $idempotencyKey,
         string $body,
     ): string {
-        return self::join(Signing::REQUEST_CANONICAL, Signing::REQUEST_CANONICAL_SEPARATOR, [
+        return self::join(Signing::REQUEST_CANONICAL_ORDER, Signing::REQUEST_CANONICAL_SEPARATOR, [
             'ts' => (string) $ts,
             'METHOD' => strtoupper($method),
             'request_uri' => $requestUri,
@@ -63,7 +63,7 @@ final class Signer
     /**
      * Webhook signature — `webhook.Sign` on the core side:
      *
-     *   signature = hex(HMAC-SHA256(secret, the parts of Signing::WEBHOOK_CANONICAL (ts, payload)
+     *   signature = hex(HMAC-SHA256(secret, the parts of Signing::WEBHOOK_CANONICAL_ORDER (ts, payload)
      *               joined by Signing::WEBHOOK_CANONICAL_SEPARATOR))
      *
      * The payload is signed verbatim, so verifiers must use the raw request bytes, never a
@@ -71,7 +71,7 @@ final class Signer
      */
     public static function signWebhook(string $secret, int $ts, string $payload): string
     {
-        $canonical = self::join(Signing::WEBHOOK_CANONICAL, Signing::WEBHOOK_CANONICAL_SEPARATOR, [
+        $canonical = self::join(Signing::WEBHOOK_CANONICAL_ORDER, Signing::WEBHOOK_CANONICAL_SEPARATOR, [
             'ts' => (string) $ts,
             'payload' => $payload,
         ]);

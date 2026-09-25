@@ -30,7 +30,10 @@ timeouts in seconds, PHP 8.2 — see [MIGRATION-2.0.md](MIGRATION-2.0.md).
   `x-oblodai-signing`, retries, idempotency keys, money, forward compatibility) runs in the tests.
 - **Signing protocol from the contract** — `Oblodai\Generated\Signing` (from `x-oblodai-signing`):
   request and webhook header names, the order and separator of the canonical strings, clock skew,
-  the idempotency key limit. `Signer::HEADER_*`, `Signer::SKEW_SECONDS`, `Verifier::HEADER_*`,
+  the idempotency key limit (`HEADER_*`, `HEADER_WEBHOOK_*`, `REQUEST_CANONICAL_ORDER`,
+  `WEBHOOK_CANONICAL_ORDER`, `SIGNATURE_ALGORITHM`, `SKEW_SECONDS`, `MAX_BODY`,
+  `MAX_IDEMPOTENCY_KEY_LENGTH`). `Signer::HEADER_*`, `Signer::SKEW_SECONDS`, `Verifier::HEADER_*`
+  (the rehearsal header `Verifier::HEADER_TEST` too, from `webhook.test_header`),
   `Verifier::DEFAULT_TOLERANCE_SECONDS` and `Idempotency::MAX_KEY_LENGTH` are now aliases of it;
   conformance checks that a signed request carries the contract's header names.
 - **`make ci`** — drift check, php-cs-fixer, PHPStan (max), tests, the README's code and the
