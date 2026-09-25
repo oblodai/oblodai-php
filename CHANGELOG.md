@@ -55,6 +55,10 @@ timeouts in seconds, PHP 8.2 — see [MIGRATION-2.0.md](MIGRATION-2.0.md).
 - **Webhooks**: `Delivery::$event` is the verified body; `Verifier::model()` reads it into the
   generated `PaymentWebhook`, `PayoutWebhook`, `WalletWebhook` or `ConversionWebhook` — the kinds
   and their models come from the contract's webhooks (`Facts::WEBHOOK_MODELS`).
+  `Verifier::objectId()` is the id of the object an event is about — the body field the contract
+  names for its kind (`Facts::WEBHOOK_ID_FIELDS`): key the last `sequence` on it.
+- **A faucet key given both in the body and in `RequestOptions` is `sdk.bad_config`**
+  (`ConfigException`, field `idempotency_key`) before sending, as in every Oblodai SDK.
 
 ## [1.3.0] — 2026-08-26
 
