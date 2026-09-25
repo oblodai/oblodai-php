@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Oblodai\Exception;
 
+use Oblodai\Generated\Enum\ErrorCode;
+
 /**
  * The core (or something in front of it) answered with an error status.
  *
@@ -46,7 +48,7 @@ class ApiException extends OblodaiException
         $retryAfter = self::retryAfterSeconds($detail['retry_after'] ?? null) ?? $retryAfterHeader;
 
         $class = match (true) {
-            $code === 'idempotency.key_reused' => IdempotencyConflictException::class,
+            $code === ErrorCode::IdempotencyKeyReused->value => IdempotencyConflictException::class,
             $httpStatus === 400 => ValidationException::class,
             $httpStatus === 401 => AuthenticationException::class,
             $httpStatus === 403 => PermissionException::class,

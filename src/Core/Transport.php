@@ -9,6 +9,7 @@ use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\ContractException;
 use Oblodai\Exception\OblodaiException;
 use Oblodai\Exception\TransportException;
+use Oblodai\Generated\Enum\ErrorCode;
 use Oblodai\Http\HttpClient;
 use Oblodai\Http\HttpRequest;
 use Oblodai\Http\HttpResponse;
@@ -28,8 +29,14 @@ final class Transport
 {
     public const HEADER_REQUEST_ID = 'X-Request-ID';
 
-    /** Codes that mean the core rejected the signature because of the timestamp or the MAC. */
-    private const SIGNATURE_FAILURE_CODES = ['merchant.bad_signature', 'auth.bad_timestamp'];
+    /**
+     * Codes that mean the core rejected the signature because of the timestamp or the MAC: cases of
+     * the generated ErrorCode, so a code renamed in the contract fails instead of drifting.
+     */
+    private const SIGNATURE_FAILURE_CODES = [
+        ErrorCode::MerchantBadSignature->value,
+        ErrorCode::AuthBadTimestamp->value,
+    ];
 
     private readonly Retry $retry;
     private readonly Clock $clock;
