@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Oblodai\Tests\Conformance;
 
 use Oblodai\Exception\TransportException;
+use Oblodai\Generated\Signing;
 use Oblodai\Http\HttpClient;
 use Oblodai\Http\HttpRequest;
 use Oblodai\Http\HttpResponse;
@@ -48,7 +49,7 @@ final class ScriptedHttpClient implements HttpClient
     }
 
     /**
-     * `Idempotency-Key` of every request, null where none was sent.
+     * The idempotency key header ({@see Signing::HEADER_IDEMPOTENCY_KEY}) of every request, null where none was sent.
      *
      * @return list<string|null>
      */
@@ -56,7 +57,7 @@ final class ScriptedHttpClient implements HttpClient
     {
         return array_map(static function (HttpRequest $r): ?string {
             foreach ($r->headers as $name => $value) {
-                if (strtolower($name) === 'idempotency-key') {
+                if (strcasecmp($name, Signing::HEADER_IDEMPOTENCY_KEY) === 0) {
                     return $value;
                 }
             }

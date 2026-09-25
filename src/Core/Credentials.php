@@ -7,7 +7,8 @@ namespace Oblodai\Core;
 use JsonSerializable;
 
 /**
- * An API key pair: the public id travels in `X-Public-Id`, the secret only ever signs.
+ * An API key pair: the public id travels in its header ({@see \Oblodai\Generated\Signing::HEADER_PUBLIC_ID}),
+ * the secret only ever signs.
  *
  * The secret is held as a {@see Secret}, so no dump of the client, the config or the transport —
  * `var_dump`, `print_r`, `json_encode`, `serialize`, or a logger that renders its context — can

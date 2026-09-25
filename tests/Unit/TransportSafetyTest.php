@@ -9,6 +9,7 @@ use Oblodai\Core\Retry;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\OblodaiException;
 use Oblodai\Exception\TransportException;
+use Oblodai\Generated\Signing;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\FakeHttpClient;
 use PHPUnit\Framework\TestCase;
@@ -136,7 +137,7 @@ final class TransportSafetyTest extends TestCase
 
         // One bad Date cannot wedge the client: the next call signs with local time again.
         $ob->account->getBalance();
-        $ts = (int) $fake->header(2, 'X-Timestamp');
+        $ts = (int) $fake->header(2, Signing::HEADER_TIMESTAMP);
         self::assertLessThan(5, abs($ts - time()));
     }
 

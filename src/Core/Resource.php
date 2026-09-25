@@ -8,6 +8,7 @@ use LogicException;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\ContractException;
 use Oblodai\Generated\Routes;
+use Oblodai\Generated\Signing;
 use Oblodai\Lro;
 
 /**
@@ -175,7 +176,11 @@ abstract class Resource
             // One key reused across pages would make the gateway replay page 1 forever.
             throw new ConfigException(
                 ConfigException::IDEMPOTENCY_UNSUPPORTED,
-                sprintf('%s does not deduplicate by Idempotency-Key; remove idempotencyKey from this call', $route->key()),
+                sprintf(
+                    '%s does not deduplicate by %s; remove idempotencyKey from this call',
+                    $route->key(),
+                    Signing::HEADER_IDEMPOTENCY_KEY
+                ),
                 'idempotencyKey'
             );
         }

@@ -10,6 +10,7 @@ use Oblodai\Exception\ContractException;
 use Oblodai\Exception\SignatureException;
 use Oblodai\Exception\WebhookPayloadException;
 use Oblodai\Generated\Model\PaymentWebhook;
+use Oblodai\Generated\Signing;
 use Oblodai\Tests\Support\Samples;
 use Oblodai\Webhook\Verifier;
 use PHPUnit\Framework\TestCase;
@@ -45,8 +46,8 @@ final class WebhookPayloadTest extends TestCase
     private static function headers(array $overrides = []): array
     {
         return array_merge([
-            'X-Webhook-Timestamp' => (string) self::TS,
-            'x-webhook-signature' => Signer::signWebhook('whsec', self::TS, self::body()),
+            Signing::WEBHOOK_HEADER_TIMESTAMP => (string) self::TS,
+            strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => Signer::signWebhook('whsec', self::TS, self::body()),
         ], $overrides);
     }
 
@@ -88,8 +89,8 @@ final class WebhookPayloadTest extends TestCase
     {
         $raw = 'not json at all';
         $headers = [
-            'X-Webhook-Timestamp' => (string) self::TS,
-            'x-webhook-signature' => Signer::signWebhook('whsec', self::TS, $raw),
+            Signing::WEBHOOK_HEADER_TIMESTAMP => (string) self::TS,
+            strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => Signer::signWebhook('whsec', self::TS, $raw),
         ];
 
         try {
@@ -128,8 +129,8 @@ final class WebhookPayloadTest extends TestCase
         // HMAC('', body) is computable by anybody, so verifying with an empty key accepts forgeries.
         $forged = (string) json_encode(['type' => 'payment', 'uuid' => 'forged', 'status' => 'paid']);
         $headers = [
-            'X-Webhook-Timestamp' => (string) self::TS,
-            'x-webhook-signature' => Signer::signWebhook('', self::TS, $forged),
+            Signing::WEBHOOK_HEADER_TIMESTAMP => (string) self::TS,
+            strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => Signer::signWebhook('', self::TS, $forged),
         ];
 
         foreach (['', '   '] as $empty) {
@@ -170,7 +171,7 @@ final class WebhookPayloadTest extends TestCase
      */
     public function testTheSignatureIsCheckedBeforeTheFreshnessWindow(): void
     {
-        $headers = self::headers(['X-Webhook-Timestamp' => (string) (self::TS - 100_000)]);
+        $headers = self::headers([Signing::WEBHOOK_HEADER_TIMESTAMP => (string) (self::TS - 100_000)]);
 
         try {
             Verifier::verify(self::body(), $headers, 'whsec', now: self::TS);
@@ -188,7 +189,7 @@ final class WebhookPayloadTest extends TestCase
         foreach ([" {$signature} ", strtoupper($signature), "\t" . $signature . "\n"] as $variant) {
             $delivery = Verifier::verify(
                 self::body(),
-                self::headers(['x-webhook-signature' => $variant]),
+                self::headers([strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => $variant]),
                 'whsec',
                 now: self::TS
             );
@@ -198,7 +199,7 @@ final class WebhookPayloadTest extends TestCase
         try {
             Verifier::verify(
                 self::body(),
-                self::headers(['x-webhook-signature' => '0x' . $signature]),
+                self::headers([strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => '0x' . $signature]),
                 'whsec',
                 now: self::TS
             );

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Oblodai\Tests\Conformance;
 
 use BackedEnum;
+use Oblodai\Core\Clock;
 use Oblodai\Core\Credentials;
+use Oblodai\Core\RequestOptions;
 use Oblodai\Core\Signer;
 use Oblodai\Core\Transport;
 use Oblodai\Exception\OblodaiException;
@@ -15,6 +17,7 @@ use Oblodai\Generated\Facts;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\Backend;
 use Oblodai\Tests\Support\Operations;
+use Oblodai\Tests\Support\ProbeResource;
 use Oblodai\Webhook\Verifier;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -69,6 +72,72 @@ final class ConformanceTest extends TestCase
     }
 
     /**
+     * A JSON pointer into a decoded document.
+     *
+     * @param array<mixed> $doc
+     */
+    private static function resolve(array $doc, string $pointer): mixed
+    {
+        $cur = $doc;
+        foreach (explode('/', ltrim($pointer, '/')) as $part) {
+            $part = str_replace(['~1', '~0'], ['/', '~'], $part);
+            if (!is_array($cur) || !array_key_exists($part, $cur)) {
+                throw new RuntimeException(sprintf('pointer %s not found in the spec', $pointer));
+            }
+            $cur = $cur[$part];
+        }
+
+        return $cur;
+    }
+
+    /**
+     * The header names of a suite, by role (`header_names`: a pointer to the spec's list and the
+     * role of each position). The suite files name no header: the spec does.
+     *
+     * @return array<string, string>
+     */
+    private static function headerNames(string $name): array
+    {
+        $suite = self::suite($name);
+        $at = $suite['header_names'] ?? null;
+        $src = $suite['source'] ?? null;
+        if (!is_array($at) || !is_string($at['pointer'] ?? null) || !is_array($at['roles'] ?? null)
+            || !is_array($src) || !is_string($src['spec'] ?? null)) {
+            throw new RuntimeException(sprintf('%s: no header_names', $name));
+        }
+        $names = self::resolve(Backend::json(Backend::conformance() . '/' . $src['spec']), $at['pointer']);
+        if (!is_array($names) || count($names) !== count($at['roles'])) {
+            throw new RuntimeException(sprintf('%s: %s does not match the roles', $name, $at['pointer']));
+        }
+        $out = [];
+        foreach (array_values($at['roles']) as $i => $role) {
+            $header = $names[$i] ?? null;
+            if (!is_string($role) || !is_string($header)) {
+                throw new RuntimeException(sprintf('%s: role or header #%d is not a string', $name, $i));
+            }
+            $out[$role] = $header;
+        }
+
+        return $out;
+    }
+
+    /**
+     * The value of a header, compared by name case-insensitively; null when absent.
+     *
+     * @param array<string, string> $headers
+     */
+    private static function headerOf(array $headers, string $name): ?string
+    {
+        foreach ($headers as $key => $value) {
+            if (strcasecmp((string) $key, $name) === 0) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * The spec's `x-oblodai-signing` and the vectors a suite points at.
      *
      * @param  array<string, mixed> $suite
@@ -81,14 +150,7 @@ final class ConformanceTest extends TestCase
             throw new RuntimeException('conformance suite without a source');
         }
         $spec = Backend::json(Backend::conformance() . '/' . $src['spec']);
-        $cur = $spec;
-        foreach (explode('/', ltrim($src['pointer'], '/')) as $part) {
-            $part = str_replace(['~1', '~0'], ['/', '~'], $part);
-            if (!is_array($cur) || !array_key_exists($part, $cur)) {
-                throw new RuntimeException(sprintf('pointer %s not found in %s', $src['pointer'], $src['spec']));
-            }
-            $cur = $cur[$part];
-        }
+        $cur = self::resolve($spec, $src['pointer']);
         /** @var array<string, mixed> $signing */
         $signing = $spec['x-oblodai-signing'];
         /** @var list<array<string, mixed>> $cur */
@@ -200,8 +262,58 @@ final class ConformanceTest extends TestCase
 
             return;
         }
+        if ($check['kind'] === 'request_headers') {
+            $this->requestHeaders(self::str($check, 'public_id'), $vector);
+
+            return;
+        }
         self::assertSame('request_signature', $check['kind']);
         self::assertSame($vector['signature'], Signer::sign(self::str($vector, 'secret'), $ts, $method, $uri, $key, $body));
+    }
+
+    /**
+     * The vector's request, sent through the signing transport client methods use (the vector's
+     * key pair, a clock stopped at its `ts`), carries the spec's headers with the vector's values;
+     * without an idempotency key, no key header at all.
+     *
+     * @param array<string, mixed> $vector
+     */
+    private function requestHeaders(string $publicId, array $vector): void
+    {
+        $key = self::str($vector, 'idempotency_key');
+        $ts = self::int($vector, 'ts');
+        $body = self::str($vector, 'body');
+        $uri = self::str($vector, 'request_uri');
+        $path = (string) parse_url($uri, PHP_URL_PATH);
+        parse_str((string) parse_url($uri, PHP_URL_QUERY), $query);
+        $http = new ScriptedHttpClient([['status' => 200, 'json' => ['state' => 0, 'result' => []]]]);
+        $transport = new Transport(
+            baseUrl: 'https://api.test',
+            http: $http,
+            userAgent: Oblodai::userAgent(),
+            credentials: new Credentials($publicId, self::str($vector, 'secret')),
+            clock: new Clock(static fn (): int => $ts),
+        );
+        $decoded = $body === '' ? null : json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($decoded === null || is_array($decoded));
+        /** @var array<string, mixed>|null $decoded */
+        /** @var array<string, mixed> $query */
+        (new ProbeResource($transport))->call(
+            ProbeResource::route(self::str($vector, 'method'), $path, idempotent: $key !== ''),
+            $decoded,
+            new RequestOptions(idempotencyKey: $key !== '' ? $key : null),
+            query: $query,
+        );
+
+        self::assertCount(1, $http->requests);
+        $sent = $http->requests[0];
+        self::assertSame('https://api.test' . $uri, $sent->url, 'the vector\'s request_uri');
+        self::assertSame($body, $sent->body ?? '', 'the vector\'s body bytes');
+        $names = self::headerNames('signing');
+        self::assertSame($publicId, self::headerOf($sent->headers, $names['public_id']));
+        self::assertSame(self::str($vector, 'signature'), self::headerOf($sent->headers, $names['signature']));
+        self::assertSame((string) $ts, self::headerOf($sent->headers, $names['timestamp']));
+        self::assertSame($key !== '' ? $key : null, self::headerOf($sent->headers, $names['idempotency_key']));
     }
 
     /**
@@ -233,7 +345,8 @@ final class ConformanceTest extends TestCase
         } elseif ($check['mutate'] === 'signature') {
             $signature = ($signature[0] !== '0' ? '0' : '1') . substr($signature, 1);
         }
-        $headers = ['X-Webhook-Timestamp' => (string) $ts, 'X-Webhook-Signature' => $signature];
+        $names = self::headerNames('webhook');
+        $headers = [$names['timestamp'] => (string) $ts, $names['signature'] => $signature];
         if ($check['expect'] === 'ok') {
             try {
                 Verifier::verify($payload, $headers, $secret, toleranceSec: $skew, now: $ts + $offset);
@@ -293,9 +406,12 @@ final class ConformanceTest extends TestCase
         self::assertTrue(Verifier::isKnownEvent($got->event), $kind);
         self::assertSame($kind, $got->event['type']);
         self::assertInstanceOf(Facts::WEBHOOK_MODELS[$kind], Verifier::model($got->event));
+        $names = self::headerNames('webhook_delivery');
         /** @var array<string, string> $fields */
-        $fields = self::suite('webhook_delivery')['headers'];
-        foreach ($fields as $header => $field) {
+        $fields = self::suite('webhook_delivery')['fields'];
+        self::assertSame(array_keys($names), array_keys($fields), 'a delivery field for every header role');
+        foreach ($fields as $role => $field) {
+            $header = $names[$role];
             $value = match ($field) {
                 '' => $headers[$header],
                 'id' => $got->id,

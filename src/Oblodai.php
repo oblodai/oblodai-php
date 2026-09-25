@@ -69,7 +69,7 @@ final class Oblodai
     public readonly Config $config;
 
     /**
-     * @param string|null           $publicId   public id of the API key (`X-Public-Id`)
+     * @param string|null           $publicId   public id of the API key (its header: `Signing::HEADER_PUBLIC_ID`)
      * @param string|null           $secret     secret of the API key; only ever signs
      * @param string|null           $baseUrl    API origin; may carry a path prefix
      * @param HttpClient|null       $http       custom HTTP stack (see Psr18HttpClient)

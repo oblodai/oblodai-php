@@ -9,6 +9,7 @@ use Oblodai\Exception\SignatureException;
 use Oblodai\Exception\WebhookPayloadException;
 use Oblodai\Generated\Facts;
 use Oblodai\Generated\Model\ConversionWebhook;
+use Oblodai\Generated\Signing;
 use Oblodai\Tests\Support\Samples;
 use Oblodai\Webhook\Verifier;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -25,12 +26,12 @@ final class WebhookTest extends TestCase
         $body = Samples::of($class, ['type' => $type, 'sequence' => 3]);
         $raw = (string) json_encode($body);
         $headers = [
-            'X-Webhook-Timestamp' => (string) self::TS,
-            'X-Webhook-Signature' => Signer::signWebhook('whsec', self::TS, $raw),
-            'X-Webhook-Id' => 'd-1',
-            'X-Webhook-Event-Id' => 'e-1',
-            'X-Webhook-Event' => $type . '.x',
-            'X-Webhook-Event-Time' => '1755600001',
+            Signing::WEBHOOK_HEADER_TIMESTAMP => (string) self::TS,
+            Signing::WEBHOOK_HEADER_SIGNATURE => Signer::signWebhook('whsec', self::TS, $raw),
+            Signing::WEBHOOK_HEADER_ID => 'd-1',
+            Signing::WEBHOOK_HEADER_EVENT_ID => 'e-1',
+            Signing::WEBHOOK_HEADER_EVENT => $type . '.x',
+            Signing::WEBHOOK_HEADER_EVENT_TIME => '1755600001',
         ];
 
         $delivery = Verifier::verify($raw, $headers, 'whsec', now: self::TS);
@@ -103,8 +104,8 @@ final class WebhookTest extends TestCase
     private static function headers(array $overrides = []): array
     {
         return array_merge([
-            'X-Webhook-Timestamp' => (string) self::TS,
-            'x-webhook-signature' => Signer::signWebhook('whsec', self::TS, self::body()),
+            Signing::WEBHOOK_HEADER_TIMESTAMP => (string) self::TS,
+            strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => Signer::signWebhook('whsec', self::TS, self::body()),
         ], $overrides);
     }
 
@@ -131,7 +132,7 @@ final class WebhookTest extends TestCase
         }
 
         try {
-            Verifier::verify(self::body(), ['x-webhook-signature' => 'aa'], 'whsec');
+            Verifier::verify(self::body(), [strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => 'aa'], 'whsec');
             self::fail('expected a SignatureException');
         } catch (SignatureException $e) {
             self::assertMatchesRegularExpression('/missing/', $e->getMessage());
@@ -154,8 +155,8 @@ final class WebhookTest extends TestCase
     public function testVerifiesDuringASecretRotationViaThePrevHeaderOrThePreviousSecretOption(): void
     {
         $rotated = self::headers([
-            'x-webhook-signature' => Signer::signWebhook('new', self::TS, self::body()),
-            'x-webhook-signature-prev' => Signer::signWebhook('old', self::TS, self::body()),
+            strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => Signer::signWebhook('new', self::TS, self::body()),
+            strtolower(Signing::WEBHOOK_HEADER_SIGNATURE_PREV) => Signer::signWebhook('old', self::TS, self::body()),
         ]);
 
         // Not yet swapped: the stored secret is still "old", verified via the Prev header.
@@ -203,8 +204,8 @@ final class WebhookTest extends TestCase
         // A rehearsal delivery: the flag rides inside the signed body.
         $raw = self::testBody();
         $headers = [
-            'X-Webhook-Timestamp' => (string) self::TS,
-            'x-webhook-signature' => Signer::signWebhook('whsec', self::TS, $raw),
+            Signing::WEBHOOK_HEADER_TIMESTAMP => (string) self::TS,
+            strtolower(Signing::WEBHOOK_HEADER_SIGNATURE) => Signer::signWebhook('whsec', self::TS, $raw),
             'X-Webhook-Test' => 'true',
         ];
         $rehearsal = Verifier::verify($raw, $headers, 'whsec', now: self::TS);
@@ -212,8 +213,8 @@ final class WebhookTest extends TestCase
         self::assertTrue(Verifier::isTestEvent($rehearsal->event));
 
         // The header alone is enough, even if a body somehow omits the flag.
-        unset($headers['x-webhook-signature']);
-        $headers['x-webhook-signature'] = Signer::signWebhook('whsec', self::TS, self::body());
+        unset($headers[strtolower(Signing::WEBHOOK_HEADER_SIGNATURE)]);
+        $headers[strtolower(Signing::WEBHOOK_HEADER_SIGNATURE)] = Signer::signWebhook('whsec', self::TS, self::body());
         self::assertTrue(Verifier::verify(self::body(), $headers, 'whsec', now: self::TS)->isTest);
     }
 

@@ -28,6 +28,11 @@ timeouts in seconds, PHP 8.2 — see [MIGRATION-2.0.md](MIGRATION-2.0.md).
 - **Webhook event id** — `Delivery::$eventId` (`X-Webhook-Event-Id`), the key to deduplicate on.
 - **Conformance** — the shared behaviour suite of every Oblodai SDK (signing vectors from
   `x-oblodai-signing`, retries, idempotency keys, money, forward compatibility) runs in the tests.
+- **Signing protocol from the contract** — `Oblodai\Generated\Signing` (from `x-oblodai-signing`):
+  request and webhook header names, the order and separator of the canonical strings, clock skew,
+  the idempotency key limit. `Signer::HEADER_*`, `Signer::SKEW_SECONDS`, `Verifier::HEADER_*`,
+  `Verifier::DEFAULT_TOLERANCE_SECONDS` and `Idempotency::MAX_KEY_LENGTH` are now aliases of it;
+  conformance checks that a signed request carries the contract's header names.
 - **`make ci`** — drift check, php-cs-fixer, PHPStan (max), tests, the README's code and the
   examples run against a mock gateway, and the package contents — all in docker.
 

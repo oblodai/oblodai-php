@@ -17,6 +17,7 @@ use Oblodai\Exception\TransportException;
 use Oblodai\Generated\Model\PaymentView;
 use Oblodai\Generated\Resource\Documents;
 use Oblodai\Generated\Resource\Payments;
+use Oblodai\Generated\Signing;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\FakeHttpClient;
 use Oblodai\Tests\Support\Operations;
@@ -176,8 +177,8 @@ final class RawOptionsHooksTest extends TestCase
         self::assertSame('POST', $requests[0]->method);
         self::assertSame('https://api.test/v1/balance', $requests[0]->url);
         self::assertSame('rq-h', $requests[1]->requestId);
-        self::assertSame('[redacted]', $requests[0]->headers['X-Signature']);
-        self::assertSame('pk', $requests[0]->headers['X-Public-Id']);
+        self::assertSame('[redacted]', $requests[0]->headers[Signing::HEADER_SIGNATURE]);
+        self::assertSame('pk', $requests[0]->headers[Signing::HEADER_PUBLIC_ID]);
 
         self::assertCount(2, $responses);
         self::assertSame(0, $responses[0]->status);

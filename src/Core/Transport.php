@@ -10,6 +10,7 @@ use Oblodai\Exception\ContractException;
 use Oblodai\Exception\OblodaiException;
 use Oblodai\Exception\TransportException;
 use Oblodai\Generated\Enum\ErrorCode;
+use Oblodai\Generated\Signing;
 use Oblodai\Http\HttpClient;
 use Oblodai\Http\HttpRequest;
 use Oblodai\Http\HttpResponse;
@@ -195,7 +196,7 @@ final class Transport
             throw $decoded['error']; // unreachable: execute() already threw for error statuses
         }
         $result = $decoded['result'];
-        // The core replays a cached response by Idempotency-Key; when the original was too large to
+        // The core replays a cached response by idempotency key; when the original was too large to
         // cache it answers {ok, idempotent_replay: true, detail} instead of the object — surface that.
         if (is_array($result) && ($result['idempotent_replay'] ?? null) === true) {
             throw new ContractException(
@@ -267,8 +268,9 @@ final class Transport
                 throw new ConfigException(
                     ConfigException::IDEMPOTENCY_UNSUPPORTED,
                     sprintf(
-                        '%s does not deduplicate by Idempotency-Key; remove idempotencyKey from this call',
-                        $route->key()
+                        '%s does not deduplicate by %s; remove idempotencyKey from this call',
+                        $route->key(),
+                        Signing::HEADER_IDEMPOTENCY_KEY
                     ),
                     'idempotencyKey'
                 );

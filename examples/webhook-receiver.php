@@ -9,7 +9,7 @@ declare(strict_types=1);
  *
  * Three rules:
  *  1. verify over the RAW request bytes — a re-encoded parse will not match the signature;
- *  2. deduplicate on `$delivery->eventId` (`X-Webhook-Event-Id`), stable per state;
+ *  2. deduplicate on `$delivery->eventId` (the event id header), stable per state;
  *  3. drop out-of-order deliveries with `Verifier::isStale($event, $lastSequence)`, keeping the
  *     last sequence per object: its `type` and `Verifier::objectId($event)` (a payment's `uuid`,
  *     a conversion's `id` — whatever the contract names for the kind).

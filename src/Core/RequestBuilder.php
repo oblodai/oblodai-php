@@ -7,6 +7,7 @@ namespace Oblodai\Core;
 use JsonException;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Generated\Facts;
+use Oblodai\Generated\Signing;
 use Oblodai\Http\HttpRequest;
 
 /**
@@ -20,19 +21,17 @@ final class RequestBuilder
      * Headers the SDK owns. A caller-supplied header with one of these names is dropped, compared
      * case-insensitively — HTTP header names are case-insensitive, so letting `x-admin-token` sit
      * next to the SDK's `X-Admin-Token` would leave which one the server reads up to the transport.
+     * The signed request's own headers are the contract's ({@see Signing::REQUEST_HEADERS}).
      */
     private const RESERVED_HEADERS = [
-        'accept',
-        'content-type',
-        'content-length',
-        'host',
-        'idempotency-key',
-        'user-agent',
-        'x-admin-token',
-        'x-public-id',
-        'x-request-id',
-        'x-signature',
-        'x-timestamp',
+        'Accept',
+        'Content-Type',
+        'Content-Length',
+        'Host',
+        'User-Agent',
+        self::HEADER_ADMIN_TOKEN,
+        Transport::HEADER_REQUEST_ID,
+        ...Signing::REQUEST_HEADERS,
     ];
 
     public const HEADER_ADMIN_TOKEN = 'X-Admin-Token';
@@ -83,7 +82,7 @@ final class RequestBuilder
             $headers['Content-Type'] = 'application/json';
         }
         if ($idempotencyKey !== null && $idempotencyKey !== '') {
-            $headers[Signer::HEADER_IDEMPOTENCY_KEY] = $idempotencyKey;
+            $headers[Signing::HEADER_IDEMPOTENCY_KEY] = $idempotencyKey;
         }
         // The admin token provisions merchants on a self-hosted gateway; it is meaningless — and a
         // secret needlessly exposed — anywhere else, so it rides only on `onboard` routes.
@@ -103,9 +102,9 @@ final class RequestBuilder
                     )
                 );
             }
-            $headers[Signer::HEADER_PUBLIC_ID] = $credentials->publicId;
-            $headers[Signer::HEADER_TIMESTAMP] = (string) $ts;
-            $headers[Signer::HEADER_SIGNATURE] = Signer::sign(
+            $headers[Signing::HEADER_PUBLIC_ID] = $credentials->publicId;
+            $headers[Signing::HEADER_TIMESTAMP] = (string) $ts;
+            $headers[Signing::HEADER_SIGNATURE] = Signer::sign(
                 $credentials->secret(),
                 $ts,
                 $route->method,
@@ -195,6 +194,18 @@ final class RequestBuilder
         return implode('&', $pairs);
     }
 
+    /** A header the SDK owns ({@see self::RESERVED_HEADERS}), by name case-insensitively. */
+    private static function reserved(string $name): bool
+    {
+        foreach (self::RESERVED_HEADERS as $own) {
+            if (strcasecmp($name, $own) === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Caller-supplied headers, minus anything the SDK owns and minus anything unsendable.
      *
@@ -210,7 +221,7 @@ final class RequestBuilder
         $headers = [];
         foreach ($extraHeaders as $name => $value) {
             $name = (string) $name;
-            if (in_array(strtolower($name), self::RESERVED_HEADERS, true)) {
+            if (self::reserved($name)) {
                 continue;
             }
             if (preg_match('/^[\x21-\x7e]+$/', $name) !== 1) {

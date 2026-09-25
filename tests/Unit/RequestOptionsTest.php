@@ -10,6 +10,7 @@ use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\OblodaiException;
 use Oblodai\Exception\TransportException;
 use Oblodai\Generated\Model\FaucetRequest;
+use Oblodai\Generated\Signing;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\FakeHttpClient;
 use PHPUnit\Framework\TestCase;
@@ -160,7 +161,7 @@ final class RequestOptionsTest extends TestCase
         $ob = self::client($fake);
 
         $ob->payments->create(['amount' => '1', 'currency' => 'USDT'], new RequestOptions(idempotencyKey: 'k-1'));
-        self::assertSame('k-1', $fake->header(0, 'Idempotency-Key'));
+        self::assertSame('k-1', $fake->header(0, Signing::HEADER_IDEMPOTENCY_KEY));
 
         $this->expectException(ConfigException::class);
         $ob->payments->cancel(['uuid' => 'u'], new RequestOptions(idempotencyKey: 'k-2'));
@@ -190,7 +191,7 @@ final class RequestOptionsTest extends TestCase
         self::client($fake)->sandbox->faucet(['asset' => 'USDT', 'amount' => '5'], new RequestOptions(idempotencyKey: 'tap-1'));
 
         self::assertSame('tap-1', $fake->body(0)['idempotency_key'] ?? null);
-        self::assertNull($fake->header(0, 'Idempotency-Key'));
+        self::assertNull($fake->header(0, Signing::HEADER_IDEMPOTENCY_KEY));
     }
 
     public function testTheFaucetKeyGivenTwiceIsAnErrorBeforeTheNetwork(): void

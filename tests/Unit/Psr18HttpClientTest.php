@@ -6,6 +6,7 @@ namespace Oblodai\Tests\Unit;
 
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Oblodai\Exception\TransportException;
+use Oblodai\Generated\Signing;
 use Oblodai\Http\HttpRequest;
 use Oblodai\Http\Psr18HttpClient;
 use Oblodai\Oblodai;
@@ -31,14 +32,14 @@ final class Psr18HttpClientTest extends TestCase
         $client = new Psr18HttpClient($psr, $factory, $factory);
 
         $response = $client->send(
-            new HttpRequest('POST', 'https://api.test/v1/payment', ['X-Public-Id' => 'pk'], '{"amount":"1"}'),
+            new HttpRequest('POST', 'https://api.test/v1/payment', [Signing::HEADER_PUBLIC_ID => 'pk'], '{"amount":"1"}'),
             5.0
         );
 
         self::assertNotNull($psr->last);
         self::assertSame('POST', $psr->last->getMethod());
         self::assertSame('https://api.test/v1/payment', (string) $psr->last->getUri());
-        self::assertSame('pk', $psr->last->getHeaderLine('X-Public-Id'));
+        self::assertSame('pk', $psr->last->getHeaderLine(Signing::HEADER_PUBLIC_ID));
         self::assertSame('{"amount":"1"}', (string) $psr->last->getBody());
         self::assertSame(200, $response->status);
         self::assertSame('application/json', $response->header('content-type'));
@@ -62,7 +63,7 @@ final class Psr18HttpClientTest extends TestCase
         );
         self::assertTrue($oblodai->splits->getRecipientOptIn()->enabled);
         self::assertNotNull($psr->last);
-        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $psr->last->getHeaderLine('X-Signature'));
+        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $psr->last->getHeaderLine(Signing::HEADER_SIGNATURE));
     }
 
     public function testANetworkFailureBecomesATransportException(): void

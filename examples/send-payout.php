@@ -55,7 +55,7 @@ if (!$check->valid) {
 }
 
 try {
-    // The SDK generates one Idempotency-Key per call and reuses it on every retry, so a timeout
+    // The SDK generates one idempotency key per call and reuses it on every retry, so a timeout
     // can never produce a second payout. Pass your own key to stay idempotent across restarts.
     $payout = $oblodai->payouts->create(
         [

@@ -14,6 +14,7 @@ use Oblodai\Exception\RateLimitException;
 use Oblodai\Exception\TransportException;
 use Oblodai\Exception\ValidationException;
 use Oblodai\Generated\Model\CurrenciesResult;
+use Oblodai\Generated\Signing;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\FakeHttpClient;
 use PHPUnit\Framework\TestCase;
@@ -43,8 +44,8 @@ final class TransportTest extends TestCase
 
         self::assertSame('https://api.test/v1/sandbox/webhooks?limit=10&offset=0', $fake->calls[0]->url);
         self::assertNull($fake->calls[0]->body);
-        self::assertSame('pk_test_1', $fake->header(0, 'X-Public-Id'));
-        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', (string) $fake->header(0, 'X-Signature'));
+        self::assertSame('pk_test_1', $fake->header(0, Signing::HEADER_PUBLIC_ID));
+        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', (string) $fake->header(0, Signing::HEADER_SIGNATURE));
     }
 
     public function testGeneratesOneIdempotencyKeyPerCreateCallAndReusesItAcrossRetries(): void
@@ -58,10 +59,10 @@ final class TransportTest extends TestCase
         $ob->payments->create(['amount' => '1', 'currency' => 'USDT']);
 
         self::assertSame(2, $fake->count());
-        $key = $fake->header(0, 'Idempotency-Key');
+        $key = $fake->header(0, Signing::HEADER_IDEMPOTENCY_KEY);
         self::assertMatchesRegularExpression('/^[0-9a-f-]{36}$/', (string) $key);
-        self::assertSame($key, $fake->header(1, 'Idempotency-Key'));
-        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', (string) $fake->header(1, 'X-Signature'));
+        self::assertSame($key, $fake->header(1, Signing::HEADER_IDEMPOTENCY_KEY));
+        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', (string) $fake->header(1, Signing::HEADER_SIGNATURE));
     }
 
     public function testHonoursACallerSuppliedIdempotencyKeyAndDoesNotAddOneToReadRoutes(): void
@@ -78,8 +79,8 @@ final class TransportTest extends TestCase
         );
         $ob->payments->getInfo(['uuid' => 'u']);
 
-        self::assertSame('my-key-1', $fake->header(0, 'Idempotency-Key'));
-        self::assertNull($fake->header(1, 'Idempotency-Key'));
+        self::assertSame('my-key-1', $fake->header(0, Signing::HEADER_IDEMPOTENCY_KEY));
+        self::assertNull($fake->header(1, Signing::HEADER_IDEMPOTENCY_KEY));
     }
 
     public function testDoesNotRetryANonRetryableErrorEvenOnA5xx(): void
@@ -197,7 +198,7 @@ final class TransportTest extends TestCase
         $ob->account->getBalance();
 
         self::assertSame(2, $fake->count());
-        $ts = (int) $fake->header(1, 'X-Timestamp');
+        $ts = (int) $fake->header(1, Signing::HEADER_TIMESTAMP);
         self::assertLessThan(5, abs($ts - $serverNow));
     }
 
@@ -225,10 +226,10 @@ final class TransportTest extends TestCase
         $ob->payouts->create(['amount' => '1', 'currency' => 'USDT', 'address' => 'T', 'order_id' => 'o']);
         $ob->payments->create(['amount' => '1', 'currency' => 'USDT']);
 
-        self::assertSame('pk_test_1', $fake->header(0, 'X-Public-Id'));
-        self::assertSame('pk_test_1', $fake->header(1, 'X-Public-Id'));
-        self::assertNotNull($fake->header(0, 'X-Signature'));
-        self::assertNotNull($fake->header(1, 'X-Signature'));
+        self::assertSame('pk_test_1', $fake->header(0, Signing::HEADER_PUBLIC_ID));
+        self::assertSame('pk_test_1', $fake->header(1, Signing::HEADER_PUBLIC_ID));
+        self::assertNotNull($fake->header(0, Signing::HEADER_SIGNATURE));
+        self::assertNotNull($fake->header(1, Signing::HEADER_SIGNATURE));
     }
 
     public function testRefusesASignedRouteWithNoCredentialsButAllowsAPublicOne(): void
@@ -270,13 +271,13 @@ final class TransportTest extends TestCase
             secret: 's',
             baseUrl: 'https://api.test',
             http: $fake,
-            headers: ['x-signature' => 'zz', 'X-Trace' => 't1'],
+            headers: [strtolower(Signing::HEADER_SIGNATURE) => 'zz', 'X-Trace' => 't1'],
             env: [],
         );
 
         $ob->account->getBalance();
 
-        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', (string) $fake->header(0, 'x-signature'));
+        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', (string) $fake->header(0, strtolower(Signing::HEADER_SIGNATURE)));
         self::assertSame('t1', $fake->header(0, 'x-trace'));
     }
 

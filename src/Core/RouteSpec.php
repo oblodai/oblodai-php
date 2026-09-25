@@ -19,7 +19,7 @@ final class RouteSpec
         public readonly string $path,
         /** Which credential the gateway expects: `public`, `key` or `onboard`. */
         public readonly string $auth,
-        /** Deduplicated by `Idempotency-Key`: a key is generated when the caller sends none. */
+        /** Deduplicated by the idempotency key header: a key is generated when the caller sends none. */
         public readonly bool $idempotent,
         /** Free of side effects: a failed attempt may be repeated without a key. */
         public readonly bool $safe,

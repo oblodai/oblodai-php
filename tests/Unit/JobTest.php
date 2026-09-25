@@ -16,6 +16,7 @@ use Oblodai\Generated\Model\DocumentJobView;
 use Oblodai\Generated\Resource\Batches;
 use Oblodai\Generated\Resource\Documents;
 use Oblodai\Generated\Resource\Payments;
+use Oblodai\Generated\Signing;
 use Oblodai\Lro;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\FakeHttpClient;
@@ -48,7 +49,7 @@ final class JobTest extends TestCase
         self::assertSame('completed', Job::statusOf($done));
         self::assertSame(3, $fake->count());
         self::assertSame(['batch_id' => 'b-1'], $fake->body(1));
-        self::assertNull($fake->header(1, 'Idempotency-Key'), 'polls are reads');
+        self::assertNull($fake->header(1, Signing::HEADER_IDEMPOTENCY_KEY), 'polls are reads');
         self::assertNotSame($fake->header(1, 'X-Request-ID'), $fake->header(2, 'X-Request-ID'));
     }
 
@@ -129,8 +130,8 @@ final class JobTest extends TestCase
         ));
         $job->wait(interval: 0);
 
-        self::assertSame('batch-key', $fake->header(0, 'Idempotency-Key'));
-        self::assertNull($fake->header(1, 'Idempotency-Key'));
+        self::assertSame('batch-key', $fake->header(0, Signing::HEADER_IDEMPOTENCY_KEY));
+        self::assertNull($fake->header(1, Signing::HEADER_IDEMPOTENCY_KEY));
         self::assertEqualsWithDelta(7.0, $fake->timeouts[1], 0.001);
         self::assertSame('s1', $fake->header(1, 'X-Shop'));
     }

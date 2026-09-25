@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Oblodai\Core;
 
 use Oblodai\Exception\ConfigException;
+use Oblodai\Generated\Signing;
 
 /**
  * Idempotency keys. On create-type routes the core caches the first response per key for the
@@ -14,7 +15,8 @@ use Oblodai\Exception\ConfigException;
  */
 final class Idempotency
 {
-    public const MAX_KEY_LENGTH = 255;
+    /** The contract's `max_idempotency_key_length` ({@see Signing::MAX_IDEMPOTENCY_KEY_LENGTH}). */
+    public const MAX_KEY_LENGTH = Signing::MAX_IDEMPOTENCY_KEY_LENGTH;
     public const BAD_KEY = ConfigException::BAD_IDEMPOTENCY_KEY;
 
     public static function newKey(): string

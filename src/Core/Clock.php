@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Oblodai\Core;
 
 /**
- * Injectable clock for signing. The core rejects timestamps more than ±300 s from its own time;
- * a host with a drifting clock would get `merchant.bad_signature` on every call. The transport
- * learns the server's time from the `Date` header of a signature-failure response, re-signs once,
- * and keeps the offset only if that re-signed attempt got past authentication.
+ * Injectable clock for signing. The core rejects timestamps further from its own time than
+ * {@see \Oblodai\Generated\Signing::SKEW_SECONDS}; a host with a drifting clock would get
+ * `merchant.bad_signature` on every call. The transport learns the server's time from the `Date`
+ * header of a signature-failure response, re-signs once, and keeps the offset only if that
+ * re-signed attempt got past authentication.
  *
  * The offset is shared by every call made through one client, and calls can interleave (Fibers,
  * Swoole, ReactPHP — anywhere a request can suspend at its socket). So it is never written blindly:

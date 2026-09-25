@@ -36,7 +36,7 @@ final class Util
 
     /**
      * Case-insensitive header lookup over any of the header shapes a PHP framework may hand us:
-     * `['X-Webhook-Id' => 'v']`, `['x-webhook-id' => ['v']]` or PHP's own `$_SERVER` style.
+     * `['X-Request-ID' => 'v']`, `['x-request-id' => ['v']]` or PHP's own `$_SERVER` style.
      *
      * @param array<string, mixed> $headers
      */

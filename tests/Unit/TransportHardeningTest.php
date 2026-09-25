@@ -9,6 +9,7 @@ use Oblodai\Core\FileResult;
 use Oblodai\Core\Retry;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\OblodaiException;
+use Oblodai\Generated\Signing;
 use Oblodai\Http\HttpRequest;
 use Oblodai\Oblodai;
 use Oblodai\Tests\Support\FakeHttpClient;
@@ -110,9 +111,20 @@ final class TransportHardeningTest extends TestCase
     /** @return iterable<string, array{string}> */
     public static function reservedHeaderSpellings(): iterable
     {
-        yield 'lower case' => ['x-signature'];
-        yield 'upper case' => ['X-SIGNATURE'];
-        yield 'mixed case' => ['X-sIgNaTuRe'];
+        yield 'lower case' => [strtolower(Signing::HEADER_SIGNATURE)];
+        yield 'upper case' => [strtoupper(Signing::HEADER_SIGNATURE)];
+        yield 'mixed case' => [self::alternateCase(Signing::HEADER_SIGNATURE)];
+    }
+
+    /** `X-Signature` → `x-SiGnAtUrE`: neither the canonical spelling nor a plain lower/upper one. */
+    private static function alternateCase(string $name): string
+    {
+        $out = '';
+        foreach (str_split($name) as $i => $char) {
+            $out .= $i % 2 === 0 ? strtolower($char) : strtoupper($char);
+        }
+
+        return $out;
     }
 
     #[DataProvider('reservedHeaderSpellings')]
@@ -126,7 +138,7 @@ final class TransportHardeningTest extends TestCase
         foreach ($fake->calls[0]->headers as $name => $value) {
             self::assertNotSame('forged', $value, sprintf('caller header "%s" survived as %s', $spelling, $name));
         }
-        self::assertNotSame('forged', $fake->header(0, 'X-Signature'));
+        self::assertNotSame('forged', $fake->header(0, Signing::HEADER_SIGNATURE));
     }
 
     /**
@@ -159,7 +171,7 @@ final class TransportHardeningTest extends TestCase
     {
         yield 'CR' => ["a\rb"];
         yield 'LF' => ["a\nb"];
-        yield 'CRLF injection' => ["a\r\nX-Signature: forged"];
+        yield 'CRLF injection' => ["a\r\n" . Signing::HEADER_SIGNATURE . ': forged'];
         yield 'non-ascii' => ['naïve'];
     }
 

@@ -12,20 +12,21 @@ use Oblodai\Exception\ContractException;
 use Oblodai\Exception\SignatureException;
 use Oblodai\Exception\WebhookPayloadException;
 use Oblodai\Generated\Facts;
+use Oblodai\Generated\Signing;
 
 /**
- * Webhook verification — usable on its own, no client and no API key required. Deliveries are
- * signed as:
+ * Webhook verification — usable on its own, no client and no API key required. Deliveries carry
+ * these headers (names are the contract's, {@see Signing}::WEBHOOK_HEADER_*, aliased below):
  *
- *   X-Webhook-Timestamp: <unix seconds>
- *   X-Webhook-Signature: hex(HMAC-SHA256(secret, "<ts>." + rawBody))
- *   X-Webhook-Signature-Prev: same, with the previous secret — only during a rotation overlap
- *   X-Webhook-Event: the event name ({@see Facts::WEBHOOK_EVENTS}: `invoice.paid`, `payout.sent`, …)
- *   X-Webhook-Id: stable per delivery (identical across retries of THAT delivery)
- *   X-Webhook-Event-Id: stable per STATE — the same for a resend of a state you already handled,
+ *   HEADER_TIMESTAMP: <unix seconds>
+ *   HEADER_SIGNATURE: hex(HMAC-SHA256(secret, canonical)) — {@see Signer::signWebhook()}
+ *   HEADER_SIGNATURE_PREV: same, with the previous secret — only during a rotation overlap
+ *   HEADER_EVENT: the event name ({@see Facts::WEBHOOK_EVENTS}: `invoice.paid`, `payout.sent`, …)
+ *   HEADER_ID: stable per delivery (identical across retries of THAT delivery)
+ *   HEADER_EVENT_ID: stable per STATE — the same for a resend of a state you already handled,
  *     different as soon as the state differs; this is the idempotency key to keep
- *   X-Webhook-Event-Time: unix seconds when the state change committed (order events by it)
- *   X-Webhook-Test: "true" on a rehearsal delivery (`webhooks.test`, sandbox) — see `Delivery::$isTest`
+ *   HEADER_EVENT_TIME: unix seconds when the state change committed (order events by it)
+ *   HEADER_TEST: "true" on a rehearsal delivery (`webhooks.test`, sandbox) — see `Delivery::$isTest`
  *
  * Always verify over the RAW request bytes (`file_get_contents('php://input')`); a re-serialized
  * parse will not match.
@@ -39,13 +40,14 @@ use Oblodai\Generated\Facts;
  */
 final class Verifier
 {
-    public const HEADER_TIMESTAMP = 'X-Webhook-Timestamp';
-    public const HEADER_SIGNATURE = 'X-Webhook-Signature';
-    public const HEADER_SIGNATURE_PREV = 'X-Webhook-Signature-Prev';
-    public const HEADER_EVENT = 'X-Webhook-Event';
-    public const HEADER_ID = 'X-Webhook-Id';
-    public const HEADER_EVENT_ID = 'X-Webhook-Event-Id';
-    public const HEADER_EVENT_TIME = 'X-Webhook-Event-Time';
+    public const HEADER_TIMESTAMP = Signing::WEBHOOK_HEADER_TIMESTAMP;
+    public const HEADER_SIGNATURE = Signing::WEBHOOK_HEADER_SIGNATURE;
+    public const HEADER_SIGNATURE_PREV = Signing::WEBHOOK_HEADER_SIGNATURE_PREV;
+    public const HEADER_EVENT = Signing::WEBHOOK_HEADER_EVENT;
+    public const HEADER_ID = Signing::WEBHOOK_HEADER_ID;
+    public const HEADER_EVENT_ID = Signing::WEBHOOK_HEADER_EVENT_ID;
+    public const HEADER_EVENT_TIME = Signing::WEBHOOK_HEADER_EVENT_TIME;
+    /** Not part of the signing protocol (`x-oblodai-signing` does not list it): advisory only. */
     public const HEADER_TEST = 'X-Webhook-Test';
 
     /**
@@ -55,8 +57,11 @@ final class Verifier
      */
     public const EVENT_MODELS = Facts::WEBHOOK_MODELS;
 
-    /** Reject deliveries whose timestamp is further away than this, seconds. */
-    public const DEFAULT_TOLERANCE_SECONDS = 300;
+    /**
+     * Reject deliveries whose timestamp is further away than this, seconds: the contract's
+     * `skew_seconds`.
+     */
+    public const DEFAULT_TOLERANCE_SECONDS = Signing::SKEW_SECONDS;
 
     /**
      * Verify the signature and freshness, then parse. Never returns an unverified body.

@@ -10,6 +10,7 @@ use Oblodai\Core\RequestOptions;
 use Oblodai\Core\Retry;
 use Oblodai\Exception\ConfigException;
 use Oblodai\Exception\TransportException;
+use Oblodai\Generated\Signing;
 use Oblodai\Http\HttpClient;
 use Oblodai\Http\HttpRequest;
 use Oblodai\Http\HttpResponse;
@@ -60,7 +61,7 @@ final class ClockSkewConcurrencyTest extends TestCase
                 if (Fiber::getCurrent() !== null) {
                     Fiber::suspend();
                 }
-                $signedAt = (int) ($request->headers['X-Timestamp'] ?? '0');
+                $signedAt = (int) ($request->headers[Signing::HEADER_TIMESTAMP] ?? '0');
                 $date = gmdate('D, d M Y H:i:s', $this->serverNow) . ' GMT';
                 if (abs($this->serverNow - $signedAt) > 300) {
                     ++$this->rejected;
@@ -176,11 +177,11 @@ final class ClockSkewConcurrencyTest extends TestCase
 
         $ob->payments->create(
             ['amount' => '1', 'currency' => 'USDT'],
-            new RequestOptions(extraHeaders: ['Idempotency-Key' => 'forged', 'X-Timestamp' => '1'])
+            new RequestOptions(extraHeaders: [Signing::HEADER_IDEMPOTENCY_KEY => 'forged', Signing::HEADER_TIMESTAMP => '1'])
         );
 
-        self::assertNotSame('forged', $fake->header(0, 'Idempotency-Key'));
-        self::assertNotSame('1', $fake->header(0, 'X-Timestamp'));
+        self::assertNotSame('forged', $fake->header(0, Signing::HEADER_IDEMPOTENCY_KEY));
+        self::assertNotSame('1', $fake->header(0, Signing::HEADER_TIMESTAMP));
     }
 
     public function testABadCallerHeaderHasItsOwnCode(): void

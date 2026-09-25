@@ -7,6 +7,7 @@ namespace Oblodai\Tests\Contract;
 use Oblodai\Core\Signer;
 use Oblodai\Generated\Model\ConversionWebhook;
 use Oblodai\Generated\Model\PaymentWebhook;
+use Oblodai\Generated\Signing;
 use Oblodai\Tests\Support\MockGateway;
 use Oblodai\Tests\Support\Samples;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -86,17 +87,17 @@ final class ExamplesTest extends TestCase
         try {
             $body = (string) json_encode(Samples::of(PaymentWebhook::class, ['type' => 'payment', 'status' => 'paid', 'order_id' => 'o-7', 'uuid' => 'u-7']));
             $now = time();
-            $signed = ['X-Webhook-Timestamp' => (string) $now, 'X-Webhook-Signature' => Signer::signWebhook('whsec-example', $now, $body), 'X-Webhook-Event-Id' => 'e-1'];
+            $signed = [Signing::WEBHOOK_HEADER_TIMESTAMP => (string) $now, Signing::WEBHOOK_HEADER_SIGNATURE => Signer::signWebhook('whsec-example', $now, $body), Signing::WEBHOOK_HEADER_EVENT_ID => 'e-1'];
 
             self::assertSame([200, 'ok: order o-7 paid with x x'], self::post($url, $body, $signed));
             self::assertSame([401, 'rejected: [webhook.bad_signature] signature does not match the body'], self::post($url, $body . ' ', $signed));
             $rehearsal = (string) json_encode(['type' => 'payment', 'uuid' => 'u-8', 'test' => true]);
             self::assertSame([200, 'rehearsal - not applied'], self::post($url, $rehearsal, [
-                'X-Webhook-Timestamp' => (string) $now, 'X-Webhook-Signature' => Signer::signWebhook('whsec-example', $now, $rehearsal),
+                Signing::WEBHOOK_HEADER_TIMESTAMP => (string) $now, Signing::WEBHOOK_HEADER_SIGNATURE => Signer::signWebhook('whsec-example', $now, $rehearsal),
             ]));
             $alien = (string) json_encode(['type' => 'teleport', 'uuid' => 'u-9']);
             self::assertSame([200, 'ok: unmodelled type teleport'], self::post($url, $alien, [
-                'X-Webhook-Timestamp' => (string) $now, 'X-Webhook-Signature' => Signer::signWebhook('whsec-example', $now, $alien),
+                Signing::WEBHOOK_HEADER_TIMESTAMP => (string) $now, Signing::WEBHOOK_HEADER_SIGNATURE => Signer::signWebhook('whsec-example', $now, $alien),
             ]));
             self::assertSame([200, 'duplicate'], self::post($url, $body, $signed));
         } finally {
@@ -121,7 +122,7 @@ final class ExamplesTest extends TestCase
                 $body = (string) json_encode(Samples::of(ConversionWebhook::class, ['type' => 'conversion', 'id' => $id, 'status' => $status, 'sequence' => $sequence]));
 
                 return self::post($url, $body, [
-                    'X-Webhook-Timestamp' => (string) $now, 'X-Webhook-Signature' => Signer::signWebhook('whsec-example', $now, $body), 'X-Webhook-Event-Id' => $eventId,
+                    Signing::WEBHOOK_HEADER_TIMESTAMP => (string) $now, Signing::WEBHOOK_HEADER_SIGNATURE => Signer::signWebhook('whsec-example', $now, $body), Signing::WEBHOOK_HEADER_EVENT_ID => $eventId,
                 ]);
             };
             self::assertSame([200, 'ok: conversion completed'], $deliver('A', 'completed', 5, 'e-a5'));
