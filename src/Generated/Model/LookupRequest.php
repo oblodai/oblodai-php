@@ -23,10 +23,15 @@ final class LookupRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Your order reference. */
+        /**
+         * Your order_id of the object: the payment's for /v1/payment/info, the payout's for
+         * /v1/payout/info.
+         */
         public readonly ?string $order_id = null,
         /**
-         * The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.
+         * The Oblodai id of the object being looked up: the invoice (payment) for /v1/payment/info,
+         * the payout or refund for /v1/payout/info. Either uuid or order_id is required; uuid takes
+         * precedence.
          */
         public readonly ?string $uuid = null,
         /** Fields newer than this SDK, exactly as received. */

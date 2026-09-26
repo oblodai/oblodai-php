@@ -25,7 +25,10 @@ final class TestWebhookResult extends Model
     public function __construct(
         /** How long the delivery took, ms. */
         public readonly int $duration_ms,
-        /** The delivery took place (the endpoint responded, with any status). */
+        /**
+         * The delivery took place: the endpoint answered, with any HTTP status — ok does not mean
+         * it was accepted; check status_code.
+         */
         public readonly bool $ok,
         /** The body is signed with the project endpoint's secret. */
         public readonly bool $signed,
@@ -33,7 +36,10 @@ final class TestWebhookResult extends Model
         public readonly string $url,
         /** Why the delivery did not take place; only when ok=false. */
         public readonly ?string $error = null,
-        /** The HTTP status returned by the endpoint; only when ok=true. */
+        /**
+         * The HTTP status returned by the endpoint; only when ok=true. Only 2xx counts as accepted:
+         * a live delivery answered with anything else is retried.
+         */
         public readonly ?int $status_code = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

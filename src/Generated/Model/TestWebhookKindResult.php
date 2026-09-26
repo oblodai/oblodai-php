@@ -23,11 +23,18 @@ final class TestWebhookKindResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Always true: the body was delivered. */
+        /**
+         * Always true: your endpoint received the body and answered, with any HTTP status — ok does
+         * not mean it was accepted; check status_code. If the endpoint cannot be reached, the call
+         * fails with webhook.test_failed.
+         */
         public readonly bool $ok,
         /** The body is signed with the project endpoint's secret. */
         public readonly bool $signed,
-        /** The HTTP status your endpoint responded with. */
+        /**
+         * The HTTP status your endpoint responded with. Only 2xx counts as accepted: a live
+         * delivery answered with anything else is retried and eventually marked dead.
+         */
         public readonly int $status_code,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

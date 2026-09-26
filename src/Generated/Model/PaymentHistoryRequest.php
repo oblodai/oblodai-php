@@ -9,39 +9,27 @@ namespace Oblodai\Generated\Model;
 // --- runtime imports: the only names taken from the hand-written runtime; adjust here ---
 use Oblodai\Core\Model;
 // --- generated imports ---
-use Oblodai\Generated\Enum\PayoutKind;
 use Oblodai\Generated\Wire;
 
-final class HistoryRequest extends Model
+final class PaymentHistoryRequest extends Model
 {
     /** Wire keys the contract marks required. */
     public const REQUIRED = [];
 
     /** Every wire key this model knows; the rest land in `extra`. */
-    public const FIELDS = ['include_refunds', 'kind', 'limit', 'offset', 'status'];
+    public const FIELDS = ['limit', 'offset', 'status'];
 
     /**
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /**
-         * true — return refunds together with payouts (the former behavior of the feed without
-         * kind). Default false: refunds are separate, kind=refund.
-         */
-        public readonly ?bool $include_refunds = null,
-        /**
-         * payout — regular payouts, refund — refunds; empty — regular payouts (with
-         * include_refunds=true — everything together).
-         */
-        public readonly PayoutKind|string|null $kind = null,
         /** Page size, 1–100; out of range — 25. */
         public readonly ?int $limit = null,
         /** Offset from the start of the list (newest first). */
         public readonly ?int $offset = null,
         /**
-         * Filter by payout status (an exact value from the payout status vocabulary: pending,
-         * approved, awaiting_cosign, broadcasting, sent, confirmed, failed, cancelled); empty —
-         * all.
+         * Filter by payment status (an exact value from the payment status vocabulary: select,
+         * created, confirm_check, paid, paid_over, wrong_amount, expired, cancelled); empty — all.
          */
         public readonly ?string $status = null,
         /** Fields newer than this SDK, exactly as received. */
@@ -53,8 +41,6 @@ final class HistoryRequest extends Model
     public static function fromArray(array $data): self
     {
         return new self(
-            include_refunds: isset($data['include_refunds']) ? Wire::bool($data['include_refunds']) : null,
-            kind: isset($data['kind']) ? Wire::enum(PayoutKind::class, $data['kind']) : null,
             limit: isset($data['limit']) ? Wire::int($data['limit']) : null,
             offset: isset($data['offset']) ? Wire::int($data['offset']) : null,
             status: isset($data['status']) ? Wire::str($data['status']) : null,
@@ -66,12 +52,6 @@ final class HistoryRequest extends Model
     public function toArray(): array
     {
         $out = [];
-        if ($this->include_refunds !== null) {
-            $out['include_refunds'] = Wire::dump($this->include_refunds);
-        }
-        if ($this->kind !== null) {
-            $out['kind'] = Wire::dump($this->kind);
-        }
         if ($this->limit !== null) {
             $out['limit'] = Wire::dump($this->limit);
         }

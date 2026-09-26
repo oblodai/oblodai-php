@@ -27,7 +27,12 @@ final class RefundRequest extends Model
         'uuid',
     ];
 
-    /** A partial amount. Defaults to the full received amount. */
+    /**
+     * The amount to refund, in the payment coin; overrides the default. Without it the refund is
+     * the amount paid minus the payer's network surcharge and — when the store's refund fee setting
+     * (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too,
+     * never more than was credited to your balance for this payment.
+     */
     public readonly ?string $amount;
 
     /**
@@ -40,7 +45,12 @@ final class RefundRequest extends Model
          * Bitcoin/UTXO.
          */
         public readonly ?string $address = null,
-        /** A partial amount. Defaults to the full received amount. */
+        /**
+         * The amount to refund, in the payment coin; overrides the default. Without it the refund
+         * is the amount paid minus the payer's network surcharge and — when the store's refund fee
+         * setting (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai
+         * commission too, never more than was credited to your balance for this payment.
+         */
         string|int|float|null $amount = null,
         /**
          * Fund the refund by converting balance: USDT → the payment currency only. Needed when the

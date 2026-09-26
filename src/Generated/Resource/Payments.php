@@ -14,14 +14,13 @@ use Oblodai\Core\Page;
 use Oblodai\Core\RequestOptions;
 use Oblodai\Core\Resource;
 // --- generated imports ---
-use Oblodai\Generated\Enum\PayoutKind;
 use Oblodai\Generated\Model\AMLLinksRequest;
 use Oblodai\Generated\Model\AMLLinksResult;
 use Oblodai\Generated\Model\CheckoutConfigRequest;
 use Oblodai\Generated\Model\CheckoutConfigView;
-use Oblodai\Generated\Model\HistoryRequest;
 use Oblodai\Generated\Model\LookupRequest;
 use Oblodai\Generated\Model\PageRequest;
+use Oblodai\Generated\Model\PaymentHistoryRequest;
 use Oblodai\Generated\Model\PaymentInfoResult;
 use Oblodai\Generated\Model\PaymentQRResult;
 use Oblodai\Generated\Model\PaymentRequest;
@@ -214,18 +213,12 @@ final class Payments extends Resource
      * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
      * request.rate_limited, request.too_deep
      *
-     * @param HistoryRequest|array{
-     *     include_refunds?: bool,
-     *     kind?: PayoutKind|string,
-     *     limit?: int,
-     *     offset?: int,
-     *     status?: string
-     * } $params
+     * @param PaymentHistoryRequest|array{limit?: int, offset?: int, status?: string} $params
      *
      * @return Page<PaymentView>
      */
     public function listHistory(
-        HistoryRequest|array $params = [],
+        PaymentHistoryRequest|array $params = [],
         ?RequestOptions $options = null,
     ): Page {
         return $this->requestPage(
