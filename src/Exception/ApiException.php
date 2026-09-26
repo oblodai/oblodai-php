@@ -70,7 +70,28 @@ class ApiException extends OblodaiException
             field: self::stringOrNull($detail['field'] ?? null),
             synthetic: $synthetic,
             raw: $raw,
+            details: $synthetic ? null : self::detailsOrNull($detail['details'] ?? null),
         );
+    }
+
+    /**
+     * The string values of the envelope's `details` object; null when there are none.
+     *
+     * @return array<string, string>|null
+     */
+    private static function detailsOrNull(mixed $value): ?array
+    {
+        if (!is_array($value) || array_is_list($value)) {
+            return null;
+        }
+        $out = [];
+        foreach ($value as $key => $item) {
+            if (is_string($key) && is_string($item)) {
+                $out[$key] = $item;
+            }
+        }
+
+        return $out === [] ? null : $out;
     }
 
     /** A string field, or null when the core sent something that is not one. */

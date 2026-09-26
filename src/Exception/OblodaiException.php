@@ -11,7 +11,7 @@ use Throwable;
 /**
  * Error model. One family, `OblodaiException`, mirrors the core's error envelope:
  *
- *   { "error": { "code", "message", "field"?, "retryable", "retry_after"?, "request_id"? } }
+ *   { "error": { "code", "message", "field"?, "details"?, "retryable", "retry_after"?, "request_id"? } }
  *
  * `retryable` is authoritative when the core wrote the envelope: it is the core's own classification
  * of the failure. A response without an envelope (a proxy 502, an HTML 503) is `synthetic` — the
@@ -54,6 +54,13 @@ class OblodaiException extends RuntimeException implements JsonSerializable
         public readonly bool $synthetic = false,
         mixed $raw = null,
         ?Throwable $previous = null,
+        /**
+         * Machine-readable facts about the refusal, keys documented by its code (e.g.
+         * `cli.permission_denied` carries `required_role` and `role`); null when absent.
+         *
+         * @var array<string, string>|null
+         */
+        public readonly ?array $details = null,
     ) {
         parent::__construct(self::render($errorCode, $message, $requestId), 0, $previous);
         $this->detail = $message;
@@ -104,6 +111,7 @@ class OblodaiException extends RuntimeException implements JsonSerializable
             'retryAfter' => $this->retryAfter,
             'requestId' => $this->requestId,
             'field' => $this->field,
+            'details' => $this->details,
         ];
     }
 }

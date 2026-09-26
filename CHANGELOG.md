@@ -4,6 +4,17 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the versions follow
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `$client->cliLogin` — `start`, `poll`, `logoutCli`: the browser login of the `oblodai` CLI (OAuth
+  2.0 device authorization) and logout of its key.
+- `OblodaiException::$details`: the machine-readable facts of an error envelope's new `details`
+  object (for example `cli.permission_denied` carries `required_role` and `role`); only string
+  values are kept.
+- Every method's documentation names the minimum team role a CLI key needs to call it.
+
 ## [2.0.0] — 2026-09-25
 
 The SDK regenerated from the gateway's OpenAPI contract. Breaking: method names, model classes,

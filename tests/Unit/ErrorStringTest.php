@@ -42,6 +42,23 @@ final class ErrorStringTest extends TestCase
         );
     }
 
+    public function testDetailsKeepOnlyStringValues(): void
+    {
+        $err = ApiException::from(403, [
+            'code' => 'cli.permission_denied',
+            'message' => 'no',
+            'retryable' => false,
+            'details' => ['required_role' => 'finance', 'role' => 'viewer', 'n' => 3, 'x' => null],
+        ]);
+
+        self::assertSame(['required_role' => 'finance', 'role' => 'viewer'], $err->details);
+        $json = json_decode((string) json_encode($err), true);
+        self::assertIsArray($json);
+        self::assertSame(['required_role' => 'finance', 'role' => 'viewer'], $json['details']);
+        self::assertNull(ApiException::from(403, ['code' => 'cli.permission_denied', 'details' => ['finance']])->details);
+        self::assertNull(ApiException::from(403, ['code' => 'cli.permission_denied'])->details);
+    }
+
     public function testJsonKeepsTheBareTextAsTheMessage(): void
     {
         $err = ApiException::from(400, ['code' => 'payment.bad_amount', 'message' => 'bad', 'request_id' => 'rq-9']);
