@@ -45,8 +45,9 @@ final class ErrorError extends Model
         public readonly bool $retryable,
         /**
          * Machine-readable facts about this refusal, with keys documented by its code (e.g.
-         * `cli.permission_denied` carries `required_role` and `role`). Absent when the code has
-         * none.
+         * `cli.permission_denied` carries `required_role`, `role` and, for a money-out operation,
+         * `reason`; the keys and values are listed in `x-oblodai-permissions.denied`). Absent when
+         * the code has none.
          */
         public readonly ?array $details = null,
         /**

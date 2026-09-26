@@ -46,7 +46,8 @@ final class PayoutLinks extends Resource
      * not the maximum — set the lifetime explicitly. Idempotency: `reference` (or the
      * `Idempotency-Key` header).
      *
-     * Requires role: Finance when called with a CLI key.
+     * With a CLI key: only the store owner's own key (role Owner); other team members use the
+     * dashboard, where each such operation is confirmed with 2FA.
      *
      * `POST /v1/payout/link`
      *
@@ -98,7 +99,8 @@ final class PayoutLinks extends Resource
      * Up to 500 links per call; each succeeds or fails independently, the response is aligned with
      * the request indices. Retrying with the same `reference` values is safe.
      *
-     * Requires role: Finance when called with a CLI key.
+     * With a CLI key: only the store owner's own key (role Owner); other team members use the
+     * dashboard, where each such operation is confirmed with 2FA.
      *
      * `POST /v1/payout/link/batch`
      *

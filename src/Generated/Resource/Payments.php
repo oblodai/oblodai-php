@@ -457,7 +457,8 @@ final class Payments extends Resource
      * (address/network default to the recorded payer address). It moves money — it is signed with
      * your API key like everything else: a merchant has one key and it has full access.
      *
-     * Requires role: Finance when called with a CLI key.
+     * With a CLI key: only the store owner's own key (role Owner); other team members use the
+     * dashboard, where each such operation is confirmed with 2FA.
      *
      * `POST /v1/payment/resolve`
      *

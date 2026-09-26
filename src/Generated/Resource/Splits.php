@@ -54,7 +54,8 @@ final class Splits extends Resource
      * cannot be recovered (top up your balance); an on-platform partner's share is clawed back
      * automatically.
      *
-     * Requires role: Finance when called with a CLI key.
+     * With a CLI key: only the store owner's own key (role Owner); other team members use the
+     * dashboard, where each such operation is confirmed with 2FA.
      *
      * `POST /v1/split/rule`
      *

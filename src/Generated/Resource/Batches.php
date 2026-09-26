@@ -86,7 +86,8 @@ final class Batches extends Resource
      * silently collapse into one. Returns `batch_id`; per-item status via `/v1/batch/info`.
      * `on_error`: `continue`/`stop`.
      *
-     * Requires role: Finance when called with a CLI key.
+     * With a CLI key: only the store owner's own key (role Owner); other team members use the
+     * dashboard, where each such operation is confirmed with 2FA.
      *
      * `POST /v1/refund/batch`
      *
@@ -125,7 +126,8 @@ final class Batches extends Resource
      * processed in the background, status via `/v1/batch/info`. Each item is a regular `/v1/payout`
      * object, idempotent on `order_id`.
      *
-     * Requires role: Finance when called with a CLI key.
+     * With a CLI key: only the store owner's own key (role Owner); other team members use the
+     * dashboard, where each such operation is confirmed with 2FA.
      *
      * `POST /v1/payout/batch`
      *

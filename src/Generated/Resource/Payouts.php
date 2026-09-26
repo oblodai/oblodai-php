@@ -62,7 +62,8 @@ final class Payouts extends Resource
      *
      * Also: `memo` (tag/memo for TON), `url_callback` (your own webhook URL for this payout).
      *
-     * Requires role: Finance when called with a CLI key.
+     * With a CLI key: only the store owner's own key (role Owner); other team members use the
+     * dashboard, where each such operation is confirmed with 2FA.
      *
      * `POST /v1/payout`
      *
@@ -125,7 +126,8 @@ final class Payouts extends Resource
      * stop the rest, and a result is returned for each. Idempotent on `order_id`, like a regular
      * payout.
      *
-     * Requires role: Finance when called with a CLI key.
+     * With a CLI key: only the store owner's own key (role Owner); other team members use the
+     * dashboard, where each such operation is confirmed with 2FA.
      *
      * `POST /v1/payout/mass`
      *
@@ -501,7 +503,8 @@ final class Payouts extends Resource
      * fee, instant, off-chain). The recipient is addressed by user id; a username is resolved by
      * the dashboard's public endpoint /public/users/{username}.
      *
-     * Requires role: Finance when called with a CLI key.
+     * With a CLI key: only the store owner's own key (role Owner); other team members use the
+     * dashboard, where each such operation is confirmed with 2FA.
      *
      * `POST /v1/transfer/to-user`
      *
@@ -547,7 +550,8 @@ final class Payouts extends Resource
      * An asynchronous batch of internal transfers: {"transfers":[<as in /v1/transfer/to-user>...],
      * "on_error":"continue"}. Status and per-row results — POST /v1/batch/info.
      *
-     * Requires role: Finance when called with a CLI key.
+     * With a CLI key: only the store owner's own key (role Owner); other team members use the
+     * dashboard, where each such operation is confirmed with 2FA.
      *
      * `POST /v1/transfer/batch`
      *

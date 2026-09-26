@@ -104,10 +104,10 @@ final class CliLogin extends Resource
      * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
      * request.overloaded, request.rate_limited, request.too_deep
      */
-    public function logoutCli(?RequestOptions $options = null): CLILogoutResult
+    public function logout(?RequestOptions $options = null): CLILogoutResult
     {
         return $this->request(
-            Routes::get('logoutCli'),
+            Routes::get('logoutCliLogin'),
             null,
             $options,
             parse: CLILogoutResult::fromArray(...),

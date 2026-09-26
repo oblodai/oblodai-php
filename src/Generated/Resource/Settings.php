@@ -583,7 +583,8 @@ final class Settings extends Resource
      *
      * Automatically withdraw incoming funds to a given address.
      *
-     * Requires role: Finance when called with a CLI key.
+     * With a CLI key: only the store owner's own key (role Owner); other team members use the
+     * dashboard, where each such operation is confirmed with 2FA.
      *
      * `POST /v1/auto-withdraw/set`
      *
@@ -643,7 +644,8 @@ final class Settings extends Resource
     /**
      * Delete an auto-withdrawal rule
      *
-     * Requires role: Finance when called with a CLI key.
+     * With a CLI key: only the store owner's own key (role Owner); other team members use the
+     * dashboard, where each such operation is confirmed with 2FA.
      *
      * `POST /v1/auto-withdraw/delete`
      *

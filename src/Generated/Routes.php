@@ -136,7 +136,7 @@ final class Routes
         'sandboxReplayWebhook',
         'startCliLogin',
         'pollCliLogin',
-        'logoutCli',
+        'logoutCliLogin',
     ];
 
     /** @var array<string, RouteSpec> */
@@ -1370,8 +1370,8 @@ final class Routes
                 bare: false,
                 listKind: null,
             ),
-            'logoutCli' => new RouteSpec(
-                operationId: 'logoutCli',
+            'logoutCliLogin' => new RouteSpec(
+                operationId: 'logoutCliLogin',
                 method: 'POST',
                 path: '/v1/cli/logout',
                 auth: 'key',
