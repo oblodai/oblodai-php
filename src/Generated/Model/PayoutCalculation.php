@@ -37,13 +37,23 @@ final class PayoutCalculation extends Model
         'payer_amount',
     ];
 
-    /** How much will be debited from the balance; null — unknown (the fee cannot be estimated). */
+    /**
+     * How much will be debited from YOUR balance, in currency (the fee included when you bear it);
+     * null — cannot be estimated right now (the fee is unknown and you bear it).
+     */
     public readonly ?string $amount;
 
-    /** Network fee; null — cannot be estimated right now. */
+    /**
+     * The network fee of the payout, in currency; who bears it is fee_bearer. null — cannot be
+     * estimated right now (the fee oracle or the rate is unavailable), not zero: retry later.
+     */
     public readonly ?string $commission;
 
-    /** How much the address will receive; null — unknown. */
+    /**
+     * How much the RECIPIENT receives at the address, in currency (not what you pay — that is
+     * amount). null — cannot be estimated right now (the fee is unknown and the recipient bears
+     * it).
+     */
     public readonly ?string $payer_amount;
 
     /**
@@ -55,7 +65,10 @@ final class PayoutCalculation extends Model
     public function __construct(
         /** Payout asset. */
         public readonly string $currency,
-        /** Who pays the fee: gateway, merchant or recipient. */
+        /**
+         * Who pays the network fee: gateway (Oblodai absorbs it, commission is 0), merchant (added
+         * to amount, the recipient gets the full sum) or recipient (deducted from payer_amount).
+         */
         public readonly PayoutFeeBearer|string $fee_bearer,
         /**
          * exact — the fee is contractual (the gateway absorbs it); estimated — an oracle estimate.
@@ -64,12 +77,20 @@ final class PayoutCalculation extends Model
         /** The network — as it came in the request. */
         public readonly string $network,
         /**
-         * How much will be debited from the balance; null — unknown (the fee cannot be estimated).
+         * How much will be debited from YOUR balance, in currency (the fee included when you bear
+         * it); null — cannot be estimated right now (the fee is unknown and you bear it).
          */
         string|int|float|null $amount = null,
-        /** Network fee; null — cannot be estimated right now. */
+        /**
+         * The network fee of the payout, in currency; who bears it is fee_bearer. null — cannot be
+         * estimated right now (the fee oracle or the rate is unavailable), not zero: retry later.
+         */
         string|int|float|null $commission = null,
-        /** How much the address will receive; null — unknown. */
+        /**
+         * How much the RECIPIENT receives at the address, in currency (not what you pay — that is
+         * amount). null — cannot be estimated right now (the fee is unknown and the recipient bears
+         * it).
+         */
         string|int|float|null $payer_amount = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -25,7 +25,10 @@ final class SummaryRequest extends Model
     public function __construct(
         /** Start of the window, inclusive (RFC 3339). */
         public readonly string $from,
-        /** End of the window, exclusive (RFC 3339). */
+        /**
+         * End of the window, exclusive (RFC 3339); must be after from, otherwise
+         * summary.bad_window.
+         */
         public readonly string $to,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

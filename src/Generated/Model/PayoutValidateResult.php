@@ -16,6 +16,7 @@ final class PayoutValidateResult extends Model
 {
     /** Wire keys the contract marks required. */
     public const REQUIRED = [
+        'address',
         'amount',
         'commission',
         'currency',
@@ -28,36 +29,62 @@ final class PayoutValidateResult extends Model
 
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = [
+        'address',
         'amount',
         'commission',
         'currency',
         'fee_bearer',
+        'from_amount',
         'funded_by',
         'maturity_note',
         'network',
         'payer_amount',
+        'rate',
         'valid',
     ];
 
-    /** How much will be debited from the balance. */
+    /**
+     * How much will be debited from the balance, in currency (for a from_currency payout the
+     * currency balance is first funded with it by the conversion, see from_amount).
+     */
     public readonly string $amount;
 
-    /** Network fee. */
+    /** Network fee, in currency; who bears it is fee_bearer. */
     public readonly string $commission;
 
-    /** How much will reach the recipient. */
+    /** How much the recipient will receive at address, in currency. */
     public readonly string $payer_amount;
+
+    /**
+     * How much funded_by (USDT) the conversion will debit to fund amount, at the current rate plus
+     * the conversion spread; the conversion re-prices at execution, so the final figure can differ
+     * slightly. Present only on a from_currency payout.
+     */
+    public readonly ?string $from_amount;
+
+    /**
+     * The rate the from_amount estimate used: USDT per 1 unit of currency. Present only on a
+     * from_currency payout.
+     */
+    public readonly ?string $rate;
 
     /**
      * @param string|int $amount
      * @param string|int $commission
      * @param string|int $payer_amount
+     * @param string|int|null $from_amount
+     * @param string|int|null $rate
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** How much will be debited from the balance. */
+        /** The destination address the payout will be sent to. */
+        public readonly string $address,
+        /**
+         * How much will be debited from the balance, in currency (for a from_currency payout the
+         * currency balance is first funded with it by the conversion, see from_amount).
+         */
         string|int|float $amount,
-        /** Network fee. */
+        /** Network fee, in currency; who bears it is fee_bearer. */
         string|int|float $commission,
         /** Payout currency. */
         public readonly string $currency,
@@ -67,27 +94,41 @@ final class PayoutValidateResult extends Model
         public readonly string $maturity_note,
         /** The payout network in canonical spelling. */
         public readonly string $network,
-        /** How much will reach the recipient. */
+        /** How much the recipient will receive at address, in currency. */
         string|int|float $payer_amount,
         /** Always true: a failed check responds with an error carrying the reason code. */
         public readonly bool $valid,
+        /**
+         * How much funded_by (USDT) the conversion will debit to fund amount, at the current rate
+         * plus the conversion spread; the conversion re-prices at execution, so the final figure
+         * can differ slightly. Present only on a from_currency payout.
+         */
+        string|int|float|null $from_amount = null,
         /**
          * The currency whose conversion funds the payout (from_currency); present only on such a
          * payout.
          */
         public readonly ?string $funded_by = null,
+        /**
+         * The rate the from_amount estimate used: USDT per 1 unit of currency. Present only on a
+         * from_currency payout.
+         */
+        string|int|float|null $rate = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
     ) {
         $this->amount = Wire::amount($amount, 'amount');
         $this->commission = Wire::amount($commission, 'commission');
         $this->payer_amount = Wire::amount($payer_amount, 'payer_amount');
+        $this->from_amount = $from_amount === null ? null : Wire::amount($from_amount, 'from_amount');
+        $this->rate = $rate === null ? null : Wire::amount($rate, 'rate');
     }
 
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data): self
     {
         return new self(
+            address: Wire::str(Wire::req($data, 'address')),
             amount: Wire::decimal(Wire::req($data, 'amount')),
             commission: Wire::decimal(Wire::req($data, 'commission')),
             currency: Wire::str(Wire::req($data, 'currency')),
@@ -96,7 +137,9 @@ final class PayoutValidateResult extends Model
             network: Wire::str(Wire::req($data, 'network')),
             payer_amount: Wire::decimal(Wire::req($data, 'payer_amount')),
             valid: Wire::bool(Wire::req($data, 'valid')),
+            from_amount: isset($data['from_amount']) ? Wire::decimal($data['from_amount']) : null,
             funded_by: isset($data['funded_by']) ? Wire::str($data['funded_by']) : null,
+            rate: isset($data['rate']) ? Wire::decimal($data['rate']) : null,
             extra: Wire::extra($data, self::FIELDS),
         );
     }
@@ -105,6 +148,7 @@ final class PayoutValidateResult extends Model
     public function toArray(): array
     {
         $out = [];
+        $out['address'] = Wire::dump($this->address);
         $out['amount'] = Wire::dump($this->amount);
         $out['commission'] = Wire::dump($this->commission);
         $out['currency'] = Wire::dump($this->currency);
@@ -113,8 +157,14 @@ final class PayoutValidateResult extends Model
         $out['network'] = Wire::dump($this->network);
         $out['payer_amount'] = Wire::dump($this->payer_amount);
         $out['valid'] = Wire::dump($this->valid);
+        if ($this->from_amount !== null) {
+            $out['from_amount'] = Wire::dump($this->from_amount);
+        }
         if ($this->funded_by !== null) {
             $out['funded_by'] = Wire::dump($this->funded_by);
+        }
+        if ($this->rate !== null) {
+            $out['rate'] = Wire::dump($this->rate);
         }
 
         return $out + $this->extra;

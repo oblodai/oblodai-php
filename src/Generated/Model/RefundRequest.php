@@ -28,10 +28,12 @@ final class RefundRequest extends Model
     ];
 
     /**
-     * The amount to refund, in the payment coin; overrides the default. Without it the refund is
+     * The amount to refund, in the payment coin. Without it the refund is what is still refundable:
      * the amount paid minus the payer's network surcharge and — when the store's refund fee setting
      * (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too,
-     * never more than was credited to your balance for this payment.
+     * never more than was credited to your balance for this payment, less the refunds already made.
+     * All refunds of a payment together cannot exceed that refundable amount
+     * (refund.exceeds_refundable); POST /v1/payment/refund/calculate shows it.
      */
     public readonly ?string $amount;
 
@@ -46,10 +48,13 @@ final class RefundRequest extends Model
          */
         public readonly ?string $address = null,
         /**
-         * The amount to refund, in the payment coin; overrides the default. Without it the refund
-         * is the amount paid minus the payer's network surcharge and — when the store's refund fee
-         * setting (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai
-         * commission too, never more than was credited to your balance for this payment.
+         * The amount to refund, in the payment coin. Without it the refund is what is still
+         * refundable: the amount paid minus the payer's network surcharge and — when the store's
+         * refund fee setting (getRefundFeeConfig) puts the commission on the customer — minus the
+         * Oblodai commission too, never more than was credited to your balance for this payment,
+         * less the refunds already made. All refunds of a payment together cannot exceed that
+         * refundable amount (refund.exceeds_refundable); POST /v1/payment/refund/calculate shows
+         * it.
          */
         string|int|float|null $amount = null,
         /**

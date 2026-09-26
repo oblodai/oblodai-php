@@ -24,14 +24,14 @@ final class LookupRequest extends Model
      */
     public function __construct(
         /**
-         * Your order_id of the object: the payment's for /v1/payment/info, the payout's for
-         * /v1/payout/info.
+         * Your order_id of that object: the payment's in payment operations, the payout's in payout
+         * operations. Used only when uuid is empty.
          */
         public readonly ?string $order_id = null,
         /**
-         * The Oblodai id of the object being looked up: the invoice (payment) for /v1/payment/info,
-         * the payout or refund for /v1/payout/info. Either uuid or order_id is required; uuid takes
-         * precedence.
+         * Our id (a UUID) of the object the operation acts on: the payment (invoice) in payment
+         * operations, the payout or refund in payout operations. Either uuid or order_id is
+         * required; when both are passed, uuid is used and order_id is ignored.
          */
         public readonly ?string $uuid = null,
         /** Fields newer than this SDK, exactly as received. */

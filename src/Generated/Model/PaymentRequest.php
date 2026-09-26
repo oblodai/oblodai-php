@@ -36,7 +36,12 @@ final class PaymentRequest extends Model
         'url_success',
     ];
 
-    /** The amount to pay in currency. */
+    /**
+     * The price in currency — what you are paid for the order. The payer can be asked for more: the
+     * invoice's payer_amount adds the network surcharge (the cost of accepting the deposit on the
+     * chosen network, see network_surcharge) and any per-method discount or surcharge; your credit
+     * is amount minus the commission.
+     */
     public readonly string $amount;
 
     /**
@@ -44,7 +49,12 @@ final class PaymentRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** The amount to pay in currency. */
+        /**
+         * The price in currency — what you are paid for the order. The payer can be asked for more:
+         * the invoice's payer_amount adds the network surcharge (the cost of accepting the deposit
+         * on the chosen network, see network_surcharge) and any per-method discount or surcharge;
+         * your credit is amount minus the commission.
+         */
         string|int|float $amount,
         /**
          * The price currency code: any of the 23 fiat currencies (USD, EUR, RUB, …) or any coin

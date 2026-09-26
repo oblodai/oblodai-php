@@ -51,7 +51,13 @@ final class PayoutValidateRequest extends Model
          * gets amount; false — the recipient gets amount-fee; omitted — the project's fee-config.
          */
         public readonly ?bool $is_subtract = null,
-        /** Destination tag/memo (TON Jetton). At most 120 characters. */
+        /**
+         * Destination tag / memo / comment, by network: XRP — the destination tag, a uint32
+         * (required unless the X-address carries one; 0 for a wallet without a tag); Stellar — the
+         * memo id, a uint64 (required unless the muxed M… address carries one); TON — a comment of
+         * at most 64 bytes (it must fit the transfer's message cell); other networks — at most 120
+         * bytes. Omit it where the network has none.
+         */
         public readonly ?string $memo = null,
         /** Network (tron, ethereum, …). Required for coins with several networks. */
         public readonly ?string $network = null,

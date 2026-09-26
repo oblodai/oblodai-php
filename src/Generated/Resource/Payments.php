@@ -133,7 +133,7 @@ final class Payments extends Resource
      * Get payment status
      *
      * Pass `uuid` (ours) OR `order_id` (yours). Returns the current status and amounts. If both are
-     * given, `order_id` takes precedence.
+     * given, `uuid` takes precedence and `order_id` is ignored.
      *
      * Requires role: Viewer when called with a CLI key.
      *

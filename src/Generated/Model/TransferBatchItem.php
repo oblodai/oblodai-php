@@ -33,6 +33,8 @@ final class TransferBatchItem extends Model
         public readonly string $currency,
         /**
          * Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch.
+         * Always pass it (or an Idempotency-Key header, which the SDKs send for you): without
+         * either, retrying the request after a network timeout creates a second transfer.
          */
         public readonly string $order_id,
         /**

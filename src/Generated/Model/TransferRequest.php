@@ -32,8 +32,9 @@ final class TransferRequest extends Model
         /** Currency code (cryptocurrency). */
         public readonly string $currency,
         /**
-         * Idempotency key: a retry with the same order_id is a no-op. Always pass it, otherwise
-         * retrying the request after a network timeout creates a second transfer.
+         * Idempotency key: a retry with the same order_id is a no-op. Always pass it (or an
+         * Idempotency-Key header, which the SDKs send for you): without either, retrying the
+         * request after a network timeout creates a second transfer.
          */
         public readonly ?string $order_id = null,
         /** Fields newer than this SDK, exactly as received. */

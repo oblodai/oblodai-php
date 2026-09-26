@@ -301,8 +301,10 @@ final class Payouts extends Resource
      * Runs all payout-creation checks — currency, amount, network, address, memo, address
      * screening, fee, freeze/daily limit and balance sufficiency — but reserves and sends nothing.
      * The response is `valid: true` with the amounts (`amount`, `commission`, `payer_amount`,
-     * `fee_bearer`), or the same error that creation would return. The body is the same as for POST
-     * /v1/payout (order_id is optional for validation).
+     * `fee_bearer`), the destination `address`, and for a `from_currency` payout the USDT the
+     * funding conversion would spend (`from_amount`, at the current rate), or the same error that
+     * creation would return. The body is the same as for POST /v1/payout (order_id is optional for
+     * validation).
      *
      * Requires role: Finance when called with a CLI key.
      *
@@ -316,15 +318,16 @@ final class Payouts extends Resource
      * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
      * payout.above_limit, payout.address_network_mismatch, payout.amount_below_fee,
      * payout.bad_address, payout.bad_amount, payout.bad_memo, payout.bad_url_callback,
-     * payout.cap_unpriceable, payout.daily_cap, payout.destination_internal,
-     * payout.from_currency_unsupported, payout.insufficient_funds, payout.memo_conflict,
-     * payout.memo_required, payout.memo_too_long, payout.merchant_frozen, payout.network_required,
-     * payout.reserved_reference, payout.unsupported_network, rates.deviation, rates.no_source,
-     * rates.non_positive, request.bad_json, request.body_read, request.control_char,
-     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-     * request.reference_invalid, request.reference_too_long, request.too_deep,
-     * request.unknown_currency, sandbox.convert_not_available, wallet.static_not_found,
-     * webhook.no_endpoint
+     * payout.cap_unpriceable, payout.convert_bad_amount, payout.convert_insufficient,
+     * payout.convert_no_rate, payout.convert_same_asset, payout.convert_unsupported,
+     * payout.daily_cap, payout.destination_internal, payout.from_currency_unsupported,
+     * payout.insufficient_funds, payout.memo_conflict, payout.memo_required, payout.memo_too_long,
+     * payout.merchant_frozen, payout.network_required, payout.reserved_reference,
+     * payout.unsupported_network, rates.deviation, rates.no_source, rates.non_positive,
+     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+     * request.nul_byte, request.overloaded, request.rate_limited, request.reference_invalid,
+     * request.reference_too_long, request.too_deep, request.unknown_currency,
+     * sandbox.convert_not_available, wallet.static_not_found, webhook.no_endpoint
      *
      * @param PayoutValidateRequest|array{
      *     address: string,
