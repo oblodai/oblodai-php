@@ -66,13 +66,15 @@ final class RefundCalculation extends Model
 
     /**
      * The Oblodai commission withheld from the refund: the payment's commission when
-     * commission_bearer is customer, 0 when it is merchant.
+     * commission_bearer is customer, 0 when it is merchant (you then pay it from your balance).
      */
     public readonly string $commission;
 
     /**
-     * The most that all refunds of this payment together may send: amount_paid minus surcharge
-     * (minus commission when commission_bearer is customer), never more than credited.
+     * The most that all refunds of this payment together may send; the surcharge is never refunded.
+     * commission_bearer customer: amount_paid minus surcharge minus commission, never more than
+     * credited. commission_bearer merchant: amount_paid minus surcharge (the surcharge counted per
+     * deposit), more than credited by the commission you pay from your balance.
      */
     public readonly string $refundable;
 
@@ -133,12 +135,14 @@ final class RefundCalculation extends Model
         string|int|float $amount_paid,
         /**
          * The Oblodai commission withheld from the refund: the payment's commission when
-         * commission_bearer is customer, 0 when it is merchant.
+         * commission_bearer is customer, 0 when it is merchant (you then pay it from your balance).
          */
         string|int|float $commission,
         /**
-         * Who bears the Oblodai commission on this refund (the store's refund fee setting,
-         * getRefundFeeConfig): customer — it is deducted from the refund; merchant — it is not.
+         * Who bears the Oblodai commission on this refund — the store's refund fee setting
+         * (getRefundFeeConfig): customer — it is deducted from the refund, and the refunds return
+         * at most what the payment credited you; merchant — it is not deducted, and you pay it from
+         * your balance, so the refunds debit more than the payment credited.
          */
         public readonly RefundCommissionBearer|string $commission_bearer,
         /** The refund coin — the one the buyer paid with. */
@@ -146,8 +150,11 @@ final class RefundCalculation extends Model
         /** The network the refund would be sent on (canonical). */
         public readonly string $network,
         /**
-         * The most that all refunds of this payment together may send: amount_paid minus surcharge
-         * (minus commission when commission_bearer is customer), never more than credited.
+         * The most that all refunds of this payment together may send; the surcharge is never
+         * refunded. commission_bearer customer: amount_paid minus surcharge minus commission, never
+         * more than credited. commission_bearer merchant: amount_paid minus surcharge (the
+         * surcharge counted per deposit), more than credited by the commission you pay from your
+         * balance.
          */
         string|int|float $refundable,
         /**

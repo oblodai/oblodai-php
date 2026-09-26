@@ -464,8 +464,14 @@ final class Settings extends Resource
     /**
      * Who pays our fee on a refund
      *
-     * `fee_on_customer: true` — on a refund our fee is borne by the customer (refund minus the
-     * fee); false — borne by the merchant.
+     * Who bears our commission when a payment is refunded: POST /v1/payment/refund (and its dry run
+     * /v1/payment/refund/calculate), the refund of POST /v1/payment/resolve and the automatic
+     * refunds of underpayments and overpayments. The payer's network surcharge is never refunded.
+     * `fee_on_customer: true` — the customer: the commission is deducted from the refund, so
+     * refunding a whole payment returns what it credited to your balance. `false` — you: the
+     * commission is not deducted and is paid from your balance, on top of what the payment
+     * credited. Without this setting your refunds follow the gateway default (the get method shows
+     * it), while the automatic refunds deduct the commission.
      *
      * Requires role: Finance when called with a CLI key.
      *
@@ -494,6 +500,9 @@ final class Settings extends Resource
 
     /**
      * Read the refund fee setting
+     *
+     * The effective `fee_on_customer` for your refunds: your setting, or the gateway default when
+     * `configured` is false (the automatic refunds then withhold the commission).
      *
      * Requires role: Viewer when called with a CLI key.
      *

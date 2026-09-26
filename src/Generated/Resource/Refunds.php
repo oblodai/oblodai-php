@@ -40,10 +40,15 @@ final class Refunds extends Resource
      * someone who never paid, so a request without `address` is rejected (`refund.no_address`): ask
      * the buyer for an address and pass it explicitly. The payment's `uuid`/`order_id` is required.
      * By default the remaining refundable amount is refunded; you may specify a partial `amount`.
-     * All refunds of a payment together cannot exceed its `refundable` amount: what was paid minus
-     * the payer's network surcharge (minus our commission when the store's refund fee setting puts
-     * it on the customer), never more than was credited to your balance for it — POST
-     * /v1/payment/refund/calculate shows these numbers without refunding.
+     * All refunds of a payment together cannot exceed its `refundable` amount
+     * (`refund.exceeds_refundable`), and the store's refund fee setting (POST
+     * /v1/payout/refund-fee-config/get) decides it. The payer's network surcharge is never
+     * refunded. When the customer bears our commission, `refundable` is what was paid minus the
+     * surcharge and the commission — what the payment credited to your balance. When you bear it,
+     * `refundable` is what was paid minus the surcharge: the commission is paid from your balance,
+     * so the refunds debit more than the payment credited, and a balance too small for that fails
+     * with `payout.insufficient_funds`. POST /v1/payment/refund/calculate shows these numbers
+     * without refunding.
      *
      * Idempotent on `(payment, address, amount)`. Refunds to any address are approved
      * automatically. The only exception is a card payment via an on-ramp: a refund TO THE RECORDED
@@ -122,14 +127,18 @@ final class Refunds extends Resource
      * `amount`, `currency`, `network`, `address` (and whether it is the recorded payer's) — and the
      * numbers behind it: `amount_paid`, the payer's network `surcharge` (never refunded from your
      * balance), the `commission` withheld and who bears it (`commission_bearer`, the store's refund
-     * fee setting), `credited`, the `refundable` ceiling for all refunds of the payment together,
-     * what is already `refunded` and what `remaining` can still go. With `from_currency` it also
+     * fee setting: with `merchant` nothing is withheld and you pay the commission from your
+     * balance), `credited`, the `refundable` ceiling for all refunds of the payment together, what
+     * is already `refunded` and what `remaining` can still go. With `from_currency` it also
      * estimates the USDT the funding conversion would spend (`from_amount`).
      *
      * Runs the same checks as the refund itself and fails with the same error the refund would
      * (`refund.exceeds_refundable`, `refund.dust`, `refund.no_address`, `refund.nothing_to_refund`,
-     * …) — except the destination address screening, which runs when the refund is made. Reserves
-     * and sends nothing; safe to retry.
+     * …), including `payout.insufficient_funds` when your available balance does not cover the
+     * refund — which, when you bear the commission, can be more than the payment credited. Not
+     * checked: the destination address screening, which runs when the refund is made, and deposits
+     * that are not yet final, which the refund holds back (`payout.funds_maturing`). Reserves and
+     * sends nothing; safe to retry.
      *
      * Requires role: Viewer when called with a CLI key.
      *
@@ -141,10 +150,11 @@ final class Refunds extends Resource
      * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, onramp.suppresses,
      * payment.bad_uuid, payment.no_lookup, payment.not_found, payout.above_limit,
      * payout.address_network_mismatch, payout.bad_address, payout.bad_memo, payout.cap_unpriceable,
-     * payout.convert_bad_amount, payout.convert_no_rate, payout.convert_same_asset,
-     * payout.convert_unsupported, payout.daily_cap, payout.freeze_unknown, payout.frozen,
-     * payout.memo_conflict, payout.memo_required, payout.memo_too_long, payout.merchant_frozen,
-     * rates.deviation, rates.no_source, rates.non_positive, rates.stale_rate, refund.bad_amount,
+     * payout.convert_bad_amount, payout.convert_insufficient, payout.convert_no_rate,
+     * payout.convert_same_asset, payout.convert_unsupported, payout.daily_cap,
+     * payout.freeze_unknown, payout.frozen, payout.insufficient_funds, payout.memo_conflict,
+     * payout.memo_required, payout.memo_too_long, payout.merchant_frozen, rates.deviation,
+     * rates.no_source, rates.non_positive, rates.stale_rate, refund.bad_amount,
      * refund.chain_ambiguous, refund.destination_internal, refund.dust, refund.exceeds_refundable,
      * refund.fence_check, refund.from_currency_personal_account, refund.from_currency_unsupported,
      * refund.network_required, refund.no_address, refund.nothing_to_refund,

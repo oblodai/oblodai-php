@@ -25,7 +25,10 @@ final class RefundFeeResult extends Model
     public function __construct(
         /** true — the project set this setting itself; false — the gateway default applies. */
         public readonly bool $configured,
-        /** The effective value: the project setting, or the gateway default if there is none. */
+        /**
+         * The effective value for your refunds: the project setting, or the gateway default if
+         * there is none (automatic refunds then deduct the commission).
+         */
         public readonly bool $fee_on_customer,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

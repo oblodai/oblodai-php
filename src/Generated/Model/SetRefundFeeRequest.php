@@ -24,8 +24,10 @@ final class SetRefundFeeRequest extends Model
      */
     public function __construct(
         /**
-         * true — the customer receives net (the customer pays the fee); false — the merchant pays
-         * the fee, the customer receives gross
+         * Who bears the Oblodai commission on refunds. true — the customer: it is deducted from the
+         * refund, which returns at most what the payment credited to your balance. false — you: it
+         * is not deducted and is paid from your balance, on top of what the payment credited. The
+         * payer's network surcharge is never refunded either way.
          */
         public readonly bool $fee_on_customer,
         /** Fields newer than this SDK, exactly as received. */

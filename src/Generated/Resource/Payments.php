@@ -446,9 +446,13 @@ final class Payments extends Resource
      *
      * For a payment in status `wrong_amount` (underpaid, expired) the merchant explicitly decides
      * what happens to the money: `action:"accept"` — keep the partial payment as settlement
-     * (cancels the auto-refund), `action:"refund"` — return what was received to the payer now
-     * (address/network default to the recorded payer address). It moves money — it is signed with
-     * your API key like everything else: a merchant has one key and it has full access.
+     * (cancels the auto-refund), `action:"refund"` — return it to the payer now (address/network
+     * default to the recorded payer address). The refund is the payment's `refundable` amount, the
+     * same as POST /v1/payment/refund without `amount`: what was received minus the payer's network
+     * surcharge, and minus our commission when the store's refund fee setting puts it on the
+     * customer; it fails with `refund.exceeds_refundable` if the payment was already partly
+     * refunded. It moves money — it is signed with your API key like everything else: a merchant
+     * has one key and it has full access.
      *
      * With a CLI key: only the store owner's own key (role Owner); other team members use the
      * dashboard, where each such operation is confirmed with 2FA.
