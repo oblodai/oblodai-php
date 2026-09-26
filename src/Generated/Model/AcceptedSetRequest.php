@@ -25,8 +25,8 @@ final class AcceptedSetRequest extends Model
      */
     public function __construct(
         /**
-         * Полный список пар валюта+сеть, которыми разрешено платить; пустой список — принимать всё
-         * из каталога.
+         * The full list of currency+network pairs allowed for payment; an empty list — accept
+         * everything in the catalog.
          */
         public readonly array $accepted,
         /** Fields newer than this SDK, exactly as received. */

@@ -19,7 +19,7 @@ final class TransferBatchItem extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'currency', 'order_id', 'to_user_id'];
 
-    /** Сумма перевода в currency. */
+    /** The transfer amount in currency. */
     public readonly string $amount;
 
     /**
@@ -27,15 +27,17 @@ final class TransferBatchItem extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сумма перевода в currency. */
+        /** The transfer amount in currency. */
         string|int|float $amount,
-        /** Код валюты (криптовалюта). */
+        /** Currency code (cryptocurrency). */
         public readonly string $currency,
-        /** Ключ идемпотентности: повтор с тем же order_id — no-op; в батче переводов обязателен. */
+        /**
+         * Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch.
+         */
         public readonly string $order_id,
         /**
-         * Платформенный user id получателя (UUID, не username); username резолвится в id через
-         * публичный профиль кабинета /public/users/{username}.
+         * The recipient's platform user id (a UUID, not a username); a username is resolved to an
+         * id via the dashboard's public profile /public/users/{username}.
          */
         public readonly string $to_user_id,
         /** Fields newer than this SDK, exactly as received. */

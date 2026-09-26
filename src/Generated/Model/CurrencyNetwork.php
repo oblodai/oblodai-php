@@ -42,23 +42,25 @@ final class CurrencyNetwork extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** То же, что deposit_available. */
+        /** The same as deposit_available. */
         public readonly bool $available,
-        /** false — метод показывается на оплате только после явного включения мерчантом. */
+        /**
+         * false — the method is shown at checkout only after the merchant explicitly enables it.
+         */
         public readonly bool $default_offer,
-        /** Приём в этой сети работает на этом развёртывании. */
+        /** Accepting payments on this network works on this deployment. */
         public readonly bool $deposit_available,
-        /** native — монета сети, token — токен контракта. */
+        /** native — the network's native coin, token — a contract token. */
         public readonly AssetKind|string $kind,
-        /** Подтверждений до зачисления. */
+        /** Confirmations until crediting. */
         public readonly int $min_confirmations,
-        /** Сеть. */
+        /** Network. */
         public readonly string $network,
-        /** Выплаты в этой сети работают на этом развёртывании. */
+        /** Payouts on this network work on this deployment. */
         public readonly bool $payout_available,
-        /** Номер EVM-сети (EIP-155); только у EVM-сетей. */
+        /** The EVM chain id (EIP-155); EVM networks only. */
         public readonly ?int $chain_id = null,
-        /** Контракт токена; у монеты сети ключа нет. */
+        /** The token contract; a native coin has no such key. */
         public readonly ?string $contract = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

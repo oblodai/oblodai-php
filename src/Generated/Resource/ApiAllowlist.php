@@ -20,20 +20,23 @@ use Oblodai\Generated\Routes;
 use Oblodai\Generated\Wire;
 
 /**
- * Ротация ключей и IP-allowlist API.
+ * Key rotation and the API IP allowlist.
  */
 final class ApiAllowlist extends Resource
 {
     /**
-     * Список разрешённых IP
+     * List allowed IPs
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/api-allowlist/list`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      */
     public function list(?RequestOptions $options = null): APIAllowListResult
     {
@@ -46,15 +49,18 @@ final class ApiAllowlist extends Resource
     }
 
     /**
-     * Добавить IP в allowlist
+     * Add an IP to the allowlist
+     *
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/api-allowlist/add`
      *
      * Error codes: apiallow.bad_cidr, apiallow.too_many, auth.bad_timestamp, auth.body_too_large,
-     * auth.ip_not_allowed, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep
+     * auth.ip_not_allowed, cli.permission_denied, internal, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep
      *
      * @param APIAllowEntryRequest|array{cidr: string} $params
      */
@@ -71,16 +77,18 @@ final class ApiAllowlist extends Resource
     }
 
     /**
-     * Удалить IP из allowlist
+     * Remove an IP from the allowlist
+     *
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/api-allowlist/remove`
      *
      * Error codes: apiallow.last_entry, auth.bad_timestamp, auth.body_too_large,
-     * auth.ip_not_allowed, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * postgres.lock_pool_busy, request.bad_json, request.body_read, request.control_char,
-     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-     * request.too_deep
+     * auth.ip_not_allowed, cli.permission_denied, internal, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, postgres.lock_pool_busy,
+     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep
      *
      * @param APIAllowEntryRequest|array{cidr: string} $params
      */
@@ -97,18 +105,21 @@ final class ApiAllowlist extends Resource
     }
 
     /**
-     * Вкл/выкл IP-allowlist
+     * Enable/disable the IP allowlist
      *
-     * Когда включён — запросы с IP не из списка отклоняются.
+     * When enabled, requests from IPs not on the list are rejected.
+     *
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/api-allowlist/enable`
      *
      * Error codes: apiallow.empty, apiallow.platform_unidentifiable, auth.bad_timestamp,
-     * auth.body_too_large, auth.ip_not_allowed, internal, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
-     * merchant.suspended, merchant.unknown_key, postgres.lock_pool_busy, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * auth.body_too_large, auth.ip_not_allowed, cli.permission_denied, internal,
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * postgres.lock_pool_busy, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      *
      * @param APIAllowEnableRequest|array{enabled: bool} $params
      */

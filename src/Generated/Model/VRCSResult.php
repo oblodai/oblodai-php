@@ -23,7 +23,7 @@ final class VRCSResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Включена ли автоконвертация волатильных поступлений в USDT. */
+        /** Whether auto-conversion of volatile incoming funds to USDT is enabled. */
         public readonly bool $enabled,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

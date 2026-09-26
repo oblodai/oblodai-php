@@ -23,7 +23,7 @@ final class WebhookResendResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Всегда true: вебхук поставлен в очередь; неудача отвечает ошибкой. */
+        /** Always true: the webhook has been queued; a failure responds with an error. */
         public readonly bool $ok,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

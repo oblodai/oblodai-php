@@ -23,11 +23,11 @@ final class PayServiceLimit extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Потолок одной выплаты в USD; "" — потолка нет (у приёма — всегда). */
+        /** The cap for a single payout in USD; "" — no cap (always so for accepting payments). */
         public readonly string $max_amount,
-        /** Единица сумм limit; нет ключа — нет и границ в деньгах. */
+        /** The unit of the limit amounts; no key — no monetary bounds either. */
         public readonly ?string $currency = null,
-        /** Минимальная сумма в валюте currency: "" — минимума нет, null — не определилась. */
+        /** The minimum amount in currency: "" — no minimum, null — could not be determined. */
         public readonly ?string $min_amount = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

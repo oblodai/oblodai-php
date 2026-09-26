@@ -23,13 +23,13 @@ final class ClaimRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Адрес получателя в сети выплаты. */
+        /** The recipient's address on the payout network. */
         public readonly string $address,
-        /** Memo/tag — только для сетей, где он обязателен. */
+        /** Memo/tag — only for networks where it is required. */
         public readonly ?string $memo = null,
         /**
-         * Код получения — если отправитель установил его на ссылку. После 10 неверных вводов ссылка
-         * запирается.
+         * Claim passcode — if the sender set one on the link. After 10 wrong attempts the link is
+         * locked.
          */
         public readonly ?string $passcode = null,
         /** Fields newer than this SDK, exactly as received. */

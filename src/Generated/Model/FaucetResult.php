@@ -19,7 +19,7 @@ final class FaucetResult extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'asset', 'journal_id'];
 
-    /** Зачисленная сумма в точности актива. */
+    /** The credited amount at the asset's precision. */
     public readonly string $amount;
 
     /**
@@ -27,11 +27,14 @@ final class FaucetResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Зачисленная сумма в точности актива. */
+        /** The credited amount at the asset's precision. */
         string|int|float $amount,
-        /** Актив пополнения. */
+        /** Deposit asset. */
         public readonly string $asset,
-        /** Журнальная запись пополнения; повтор с тем же idempotency_key возвращает ту же. */
+        /**
+         * The ledger entry of the top-up; a retry with the same idempotency_key returns the same
+         * one.
+         */
         public readonly string $journal_id,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

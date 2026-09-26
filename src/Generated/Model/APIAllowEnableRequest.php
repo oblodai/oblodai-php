@@ -24,8 +24,8 @@ final class APIAllowEnableRequest extends Model
      */
     public function __construct(
         /**
-         * true — принимать API-вызовы только с адресов из списка; false — список хранится, но не
-         * применяется.
+         * true — accept API calls only from addresses on the list; false — the list is kept but not
+         * enforced.
          */
         public readonly bool $enabled,
         /** Fields newer than this SDK, exactly as received. */

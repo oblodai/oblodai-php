@@ -19,7 +19,7 @@ final class TransferResult extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'currency', 'document_url', 'to_user_id', 'uuid'];
 
-    /** Сумма перевода. */
+    /** Transfer amount. */
     public readonly string $amount;
 
     /**
@@ -27,15 +27,15 @@ final class TransferResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сумма перевода. */
+        /** Transfer amount. */
         string|int|float $amount,
-        /** Актив перевода. */
+        /** Transfer asset. */
         public readonly string $currency,
-        /** Ссылка на PDF-документ перевода; пусто, если документы выключены. */
+        /** A link to the transfer PDF document; empty if documents are disabled. */
         public readonly string $document_url,
-        /** Получатель — пользователь личного кошелька. */
+        /** The recipient is a personal wallet user. */
         public readonly string $to_user_id,
-        /** Идентификатор проводки перевода. */
+        /** The transfer posting id. */
         public readonly string $uuid,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

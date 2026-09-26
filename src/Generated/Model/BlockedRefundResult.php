@@ -68,13 +68,13 @@ final class BlockedRefundResult extends Model
         'wallet_uuid',
     ];
 
-    /** Сумма выплаты в валюте currency, списанная с вашего баланса. */
+    /** The payout amount in currency, debited from your balance. */
     public readonly string $amount;
 
-    /** Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз. */
+    /** The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee. */
     public readonly string $commission;
 
-    /** Сколько реально уходит получателю на адрес: amount − commission. */
+    /** How much actually goes to the recipient's address: amount − commission. */
     public readonly string $payer_amount;
 
     /**
@@ -84,71 +84,75 @@ final class BlockedRefundResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Адрес получателя. */
+        /** Recipient address. */
         public readonly string $address,
-        /** Сумма выплаты в валюте currency, списанная с вашего баланса. */
+        /** The payout amount in currency, debited from your balance. */
         string|int|float $amount,
-        /** true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false). */
+        /**
+         * true — the payout is awaiting approval (internal scenarios; always false with an API
+         * key).
+         */
         public readonly bool $approval_required,
-        /** Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз. */
+        /** The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee. */
         string|int|float $commission,
-        /** Время создания (ISO 8601). */
+        /** Creation time (ISO 8601). */
         public readonly string $created_at,
-        /** Код валюты выплаты. */
+        /** Payout currency code. */
         public readonly string $currency,
         /**
-         * Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в
-         * письмо или отдать получателю. Пусто, если генерация документов не включена.
+         * A signed link to the PDF receipt of this operation — opens without an API key, can be
+         * attached to an email or given to the recipient. Empty if document generation is not
+         * enabled.
          */
         public readonly string $document_url,
         /**
-         * Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant —
-         * сумма списания увеличена на комиссию, получатель получает запрошенное целиком
-         * (is_subtract=true, выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана
-         * из выплаты, получателю приходит меньше запрошенного.
+         * Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant —
+         * the debit amount was increased by the fee, the recipient gets the full requested amount
+         * (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was
+         * withheld from the payout, the recipient gets less than requested.
          */
         public readonly PayoutFeeBearer|string $fee_bearer,
-        /** true — статус финальный (confirmed / failed / cancelled). */
+        /** true — the status is final (confirmed / failed / cancelled). */
         public readonly bool $is_final,
-        /** true — это возврат платежа, а не обычная выплата. */
+        /** true — this is a payment refund, not a regular payout. */
         public readonly bool $is_refund,
         /**
-         * Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.
+         * The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no
+         * memo.
          */
         public readonly string $memo,
-        /** Сеть блокчейна. */
+        /** Blockchain network. */
         public readonly string $network,
-        /** Сколько реально уходит получателю на адрес: amount − commission. */
+        /** How much actually goes to the recipient's address: amount − commission. */
         string|int|float $payer_amount,
-        /** api (через интеграцию) | manual (из кабинета). */
+        /** api (via the integration) | manual (from the dashboard). */
         public readonly PayoutSource|string $source,
         /**
-         * Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт
-         * второй подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) |
-         * confirmed (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в
-         * фильтр истории как есть.
+         * Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign
+         * (waiting for the second signature) | broadcasting (being broadcast) | sent (sent,
+         * awaiting confirmations) | confirmed (confirmed — done) | failed | cancelled. The value
+         * can be passed back to the history filter as is.
          */
         public readonly PayoutStatus|string $status,
-        /** Хеш транзакции в блокчейне (появляется после отправки). */
+        /** The blockchain transaction hash (appears after sending). */
         public readonly string $txid,
-        /** Время последнего изменения (ISO 8601). */
+        /** Time of the last change (ISO 8601). */
         public readonly string $updated_at,
-        /** Идентификатор выплаты. */
+        /** Payout id. */
         public readonly string $uuid,
-        /** Кошелёк, с которого вернули деньги. */
+        /** The wallet the money was refunded from. */
         public readonly string $wallet_uuid,
         /**
-         * Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора,
-         * см. payment_order_id.
+         * Your payout number (reference). null for a refund: a refund has no identifier of yours,
+         * see payment_order_id.
          */
         public readonly ?string $order_id = null,
         /**
-         * Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата
-         * собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому
-         * полю.
+         * Your order_id of the payment that was refunded (null for a regular payout). A refund has
+         * no order_id of its own — it comes as null, so match a refund to an order by this field.
          */
         public readonly ?string $payment_order_id = null,
-        /** Идентификатор возвращаемого платежа (null, если это не возврат). */
+        /** The id of the payment being refunded (null if this is not a refund). */
         public readonly ?string $refund_for = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

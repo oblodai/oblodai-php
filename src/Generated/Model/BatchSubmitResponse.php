@@ -25,13 +25,13 @@ final class BatchSubmitResponse extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор батча — с ним идите в POST /v1/batch/info за статусом и результатами. */
+        /** The batch id — use it with POST /v1/batch/info to get the status and results. */
         public readonly string $batch_id,
-        /** Сколько элементов принято в обработку. */
+        /** How many items were accepted for processing. */
         public readonly int $count,
-        /** Вид батча: payment | refund | payout | transfer. */
+        /** Batch kind: payment | refund | payout | transfer. */
         public readonly BatchKind|string $kind,
-        /** Стартовый статус — всегда pending. */
+        /** The initial status — always pending. */
         public readonly BatchStatus|string $status,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -26,13 +26,13 @@ final class PaymentBatchRequest extends Model
      */
     public function __construct(
         /**
-         * Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payment; order_id обязателен у
-         * каждого элемента: по нему сопоставляются результаты и он защищает от дублей.
+         * An array of 1 to 5000 items — the same fields as in POST /v1/payment; order_id is
+         * required on each item: results are matched by it and it protects against duplicates.
          */
         public readonly array $payments,
         /**
-         * Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop —
-         * прекратить обработку после первой ошибки.
+         * What to do when an item fails: continue (default) — process the rest; stop — stop
+         * processing after the first error.
          */
         public readonly BatchOnError|string|null $on_error = null,
         /** Fields newer than this SDK, exactly as received. */

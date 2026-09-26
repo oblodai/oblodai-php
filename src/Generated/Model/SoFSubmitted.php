@@ -24,9 +24,9 @@ final class SoFSubmitted extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Анкета принята к рассмотрению; это не решение о разблокировке. */
+        /** The questionnaire has been accepted for review; this is not a decision to unblock. */
         public readonly bool $accepted,
-        /** Статус анкеты после приёма — completed. */
+        /** The questionnaire status after acceptance — completed. */
         public readonly SoFStatus|string $status,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -24,13 +24,16 @@ final class PaymentLinkResponse extends Model
      */
     public function __construct(
         /**
-         * Подписанная ссылка на PDF-плакат с QR оплаты (печать на кассу). Пусто, если генерация
-         * документов не включена.
+         * A signed link to a PDF poster with the payment QR code (for printing at the till). Empty
+         * if document generation is not enabled.
          */
         public readonly string $document_url,
-        /** Идентификатор ссылки */
+        /** Link id */
         public readonly string $link_id,
-        /** Публичный URL страницы оплаты — его вы даёте покупателю: кнопкой, в письме, QR-кодом */
+        /**
+         * The public URL of the payment page — the one you give to the buyer: as a button, in an
+         * email, as a QR code
+         */
         public readonly string $url,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

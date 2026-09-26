@@ -89,7 +89,7 @@ final class PublicPayResult extends Model
         'uuid',
     ];
 
-    /** Сумма к оплате в валюте цены (например, в USD). */
+    /** The amount to pay in the price currency (e.g. USD). */
     public readonly string $amount;
 
     /**
@@ -99,131 +99,141 @@ final class PublicPayResult extends Model
      */
     public function __construct(
         /**
-         * Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО
-         * кошелька — платёж обязан нести destination_tag, иначе сеть его отклонит.
+         * The address the customer sends money to. On XRP this is the classic r-address of a SHARED
+         * wallet — the payment must carry destination_tag, otherwise the network rejects it.
          */
         public readonly string $address,
         /**
-         * Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе;
-         * его же кодирует QR. Пусто на остальных сетях.
+         * XLM only: the same payment details in one string — a muxed M… address (SEP-23), address
+         * and memo together; the QR code encodes it as well. Empty on other networks.
          */
         public readonly string $address_muxed,
         /**
-         * QR-код адреса как PNG data:-URI — можно сразу в <img src>. На XRP кодирует X-address
-         * (адрес+тег одной строкой).
+         * The address QR code as a PNG data: URI — can go straight into <img src>. On XRP it
+         * encodes the X-address (address + tag in one string).
          */
         public readonly string $address_qr_code,
         /**
-         * Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег
-         * вместе; его же кодирует QR. Пусто на остальных сетях.
+         * XRP only: the same payment details in one string in X-address format (XLS-5) — address
+         * and tag together; the QR code encodes it as well. Empty on other networks.
          */
         public readonly string $address_xaddress,
-        /** Сумма к оплате в валюте цены (например, в USD). */
+        /** The amount to pay in the price currency (e.g. USD). */
         string|int|float $amount,
         /**
-         * Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не
-         * пришло). Пусто, пока валюта оплаты не выбрана (счёт без валюты).
+         * How much has already been paid and confirmed, in the payment crypto; always a string (0
+         * if nothing has arrived). Empty until the payment currency is chosen (an invoice without a
+         * currency).
          */
         public readonly string $amount_paid,
         /**
-         * Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает. Пусто, пока валюта
-         * оплаты не выбрана (счёт без валюты).
+         * How much is still left to pay (due − paid); 0 if enough has been paid. Empty until the
+         * payment currency is chosen (an invoice without a currency).
          */
         public readonly string $amount_remaining,
-        /** Текущее число подтверждений входящего платежа. */
+        /** The current number of confirmations of the incoming payment. */
         public readonly int $confirmations,
-        /** Время создания (ISO 8601). */
+        /** Creation time (ISO 8601). */
         public readonly string $created_at,
         /**
-         * Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит,
-         * сколько счёт СТОИТ, а не чем за него платят (это payer_currency).
+         * The price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. It
+         * says how much the invoice COSTS, not what it is paid with (that is payer_currency).
          */
         public readonly string $currency,
         /**
-         * Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле
-         * «тег/memo получателя» на бирже или в кошельке). Пусто на остальных сетях.
+         * XRP only: the numeric destination tag the customer MUST specify in the transfer (the
+         * "recipient tag/memo" field at the exchange or in the wallet). Empty on other networks.
          */
         public readonly string $destination_tag,
-        /** Когда истекает счёт (ISO 8601, как и все временные поля). */
+        /** When the invoice expires (ISO 8601, like all time fields). */
         public readonly string $expired_at,
-        /** Можно ли сейчас оплатить картой через он-рамп. */
+        /** Whether paying by card via an on-ramp is possible right now. */
         public readonly bool $fiat_purchase_available,
-        /** true — статус финальный, больше не изменится. */
+        /** true — the status is final and will not change again. */
         public readonly bool $is_final,
-        /** true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть. */
+        /**
+         * true — this is a currency-agnostic link; the customer has not chosen the currency/network
+         * yet.
+         */
         public readonly bool $is_multi,
         /**
-         * Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе —
-         * поле «memo» на бирже или в кошельке. Пусто на остальных сетях.
+         * XLM (Stellar) only: the numeric memo (ID type) the customer MUST specify in the transfer
+         * — the "memo" field at the exchange or in the wallet. Empty on other networks.
          */
         public readonly string $memo,
         /**
-         * Ваша скидка или наценка для ВЫБРАННОГО способа оплаты, в валюте оплаты: на столько
-         * сдвинулась сумма плательщика из-за настройки по этой монете и сети. Положительное —
-         * плательщик платит МЕНЬШЕ (скидка), отрицательное — больше (наценка). Пусто, если
-         * настройки для метода нет.
+         * Your discount or surcharge for the CHOSEN payment method, in the payment currency: how
+         * much the payer's amount shifted because of the setting for this coin and network.
+         * Positive — the payer pays LESS (discount), negative — more (surcharge). Empty if there is
+         * no setting for the method.
          */
         public readonly string $method_adjustment,
         /**
-         * Та же скидка/наценка в базисных пунктах (так она переживает переоценку курса). Знак тот
-         * же, что в настройке скидок: ПЛЮС — скидка, МИНУС — наценка.
+         * The same discount/surcharge in basis points (this way it survives a rate re-quote). The
+         * sign is the same as in the discount setting: PLUS — a discount, MINUS — a surcharge.
          */
         public readonly int $method_adjustment_bps,
-        /** Сеть блокчейна (например, tron). */
+        /** Blockchain network (e.g. tron). */
         public readonly string $network,
         /**
-         * Сетевая надбавка плательщика в валюте оплаты: стоимость сбора депозита в выбранной сети
-         * (активация адреса, если адрес новый, плюс энергия/газ с запасом), зафиксированная при
-         * выборе сети. Пусто до выбора сети; 0, если надбавка выключена.
+         * The payer's network surcharge in the payment currency: the cost of sweeping the deposit
+         * on the chosen network (address activation, if the address is new, plus energy/gas with a
+         * margin), locked in when the network is chosen. Empty until the network is chosen; 0 if
+         * the surcharge is disabled.
          */
         public readonly string $network_surcharge,
         /**
-         * Та же надбавка в базисных пунктах от суммы к оплате (так она переживает переоценку
-         * курса).
+         * The same surcharge in basis points of the amount due (this way it survives a rate
+         * re-quote).
          */
         public readonly int $network_surcharge_bps,
-        /** Ваш номер заказа, который вы передали при создании. */
+        /** Your order number that you passed at creation. */
         public readonly string $order_id,
         /**
-         * Сколько нужно отправить в крипте оплаты. Пусто, пока валюта оплаты не выбрана (счёт без
-         * валюты).
+         * How much must be sent in the payment crypto. Empty until the payment currency is chosen
+         * (an invoice without a currency).
          */
         public readonly string $payer_amount,
         /**
-         * Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта
-         * (is_multi), пока клиент не выбрал монету — валюты расчёта у него ещё нет.
+         * The currency the customer pays in (e.g. USDT). Empty for a currency-agnostic invoice
+         * (is_multi) until the customer picks a coin — it has no settlement currency yet.
          */
         public readonly string $payer_currency,
         /**
-         * До какого момента действует зафиксированный payer_amount (ISO 8601; окно ~5 мин, после
-         * него страница оплаты перекотирует счёт). Пусто, когда перекотировки уже не будет: валюта
-         * не выбрана, депозит замечен, счёт вышел из created или истёк — сумма зафиксирована
-         * навсегда.
+         * Until when the locked payer_amount is valid (ISO 8601; a ~5 min window, after which the
+         * payment page re-quotes the invoice). Empty when there will be no more re-quotes: the
+         * currency has not been chosen, a deposit has been seen, the invoice has left created or
+         * expired — the amount is locked for good.
          */
         public readonly string $rate_expires_at,
-        /** Сколько подтверждений нужно для зачисления (зависит от суммы и сети). */
+        /**
+         * How many confirmations are required for crediting (depends on the amount and the
+         * network).
+         */
         public readonly int $required_confirmations,
         /**
-         * Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим
-         * оплату, ждём подтверждений; при amount_remaining > 0 — частичная, ждём остаток) | paid
-         * (оплачено) | paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired
-         * (просрочен) | cancelled (отменён) | under_review (поступление задержано на проверке,
-         * разбирает оператор).
+         * Status: select (the customer is choosing a currency) | created (awaiting payment) |
+         * confirm_check (payment seen, awaiting confirmations; with amount_remaining > 0 — partial,
+         * awaiting the remainder) | paid (paid) | paid_over (overpaid) | wrong_amount (underpaid,
+         * expired) | expired (expired) | cancelled (cancelled) | under_review (the deposit is held
+         * for review, an operator is handling it).
          */
         public readonly PaymentStatus|string $status,
-        /** Хеш входящей транзакции (когда замечена). */
+        /** The hash of the incoming transaction (once seen). */
         public readonly string $txid,
-        /** Время последнего изменения (ISO 8601). */
+        /** Time of the last change (ISO 8601). */
         public readonly string $updated_at,
-        /** Ссылка на готовую страницу оплаты. */
+        /** A link to the ready-made payment page. */
         public readonly string $url,
-        /** Ссылка «вернуться в магазин» до оплаты. */
+        /** The "back to store" link before payment. */
         public readonly string $url_return,
-        /** Куда перенаправить после успешной оплаты. */
+        /** Where to redirect after a successful payment. */
         public readonly string $url_success,
-        /** Наш идентификатор платежа (используйте его в info/refund). */
+        /** Our payment identifier (use it in info/refund). */
         public readonly string $uuid,
-        /** Способы оплаты, из которых выбирает покупатель; есть только у счёта в статусе select. */
+        /**
+         * The payment methods the buyer chooses from; present only on an invoice in status select.
+         */
         public readonly ?array $accepted = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

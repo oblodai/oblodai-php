@@ -23,7 +23,7 @@ final class CancelPayoutRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор выплаты (или возврата) для отмены. */
+        /** The id of the payout (or refund) to cancel. */
         public readonly string $uuid,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

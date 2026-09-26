@@ -25,11 +25,11 @@ final class APIAllowListResult extends Model
      */
     public function __construct(
         /**
-         * Применяется ли список: true — вызовы с адресов вне списка получают 403
+         * Whether the list is enforced: true — calls from addresses outside the list get 403
          * auth.ip_not_allowed.
          */
         public readonly bool $enabled,
-        /** Разрешённые IP и подсети в CIDR. */
+        /** Allowed IPs and CIDR subnets. */
         public readonly array $items,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

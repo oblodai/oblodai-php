@@ -23,11 +23,11 @@ final class ExchangeRate extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Цена одной единицы from в to, десятичной строкой. */
+        /** The price of one unit of from in to, as a decimal string. */
         public readonly string $course,
-        /** Исходная валюта. */
+        /** Source currency. */
         public readonly string $from,
-        /** Валюта котировки. */
+        /** Quote currency. */
         public readonly string $to,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

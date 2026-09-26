@@ -25,26 +25,23 @@ final class SetAutoConvertRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /**
-         * Монета, в которую сводится выручка (стейбл). Проверяется на возможность ликвидации при
-         * сохранении.
-         */
+        /** The coin revenue is converted into (a stablecoin). Checked for liquidity on save. */
         public readonly string $target,
-        /** Выключатель приказа целиком. Не передан — считается включённым. */
+        /** The master switch for the whole order. If omitted, it is considered enabled. */
         public readonly ?bool $enabled = null,
         /**
-         * Пол одной конвертации в долларах, десятичной строкой; пусто — умолчание процесса ($10).
-         * Ниже него спред съедает больше, чем сводит.
+         * The floor for a single conversion in dollars, as a decimal string; empty — the process
+         * default ($10). Below it the spread eats more than the conversion is worth.
          */
         public readonly ?string $min_amount = null,
         /**
-         * Режим зачисления: "economy" — заявка в партию казначейской ликвидации, зачисляется факт
-         * исполнения (комиссия минимальная); "instant" — мгновенно по спред-курсу. Не передан —
-         * instant: автообмен включают ради мгновенного зачисления, а ждать партию — осознанный
-         * выбор. Иное значение — 400 request.invalid_mode.
+         * The crediting mode: "economy" — an order in a treasury liquidation batch, the actual
+         * execution is credited (minimal fee); "instant" — immediately at the spread rate. Omitted
+         * — instant: auto-exchange is enabled for instant crediting, and waiting for a batch is a
+         * deliberate choice. Any other value — 400 request.invalid_mode.
          */
         public readonly AutoConvertMode|string|null $mode = null,
-        /** Монеты, которые сводить. Пусто — приказ есть, но не включён ни для чего. */
+        /** The coins to convert. Empty — the order exists but is not enabled for anything. */
         public readonly ?array $sources = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

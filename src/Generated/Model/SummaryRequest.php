@@ -23,9 +23,9 @@ final class SummaryRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Начало окна, включительно (RFC 3339). */
+        /** Start of the window, inclusive (RFC 3339). */
         public readonly string $from,
-        /** Конец окна, не включительно (RFC 3339). */
+        /** End of the window, exclusive (RFC 3339). */
         public readonly string $to,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -31,14 +31,15 @@ use Oblodai\Generated\Routes;
 use Oblodai\Generated\Wire;
 
 /**
- * Эндпоинты для страницы оплаты — работают без секрета.
+ * Endpoints for the payment page — they work without the secret.
  */
 final class Checkout extends Resource
 {
     /**
-     * Состояние анкеты (для плательщика)
+     * Questionnaire status (for the payer)
      *
-     * Публично, по токену из ссылки. Возвращает только статус — ни причины, ни классификации.
+     * Public, by the token from the link. Returns only the status — neither the reason nor the
+     * classification.
      *
      * `GET /v1/aml/{token}`
      *
@@ -56,10 +57,10 @@ final class Checkout extends Resource
     }
 
     /**
-     * Плательщик присылает происхождение средств
+     * The payer submits the source of funds
      *
-     * Публично, по токену из ссылки. Приём анкеты **не гарантирует** разблокировку средств: она
-     * даёт основание пересмотреть решение, и только.
+     * Public, by the token from the link. Accepting the questionnaire **does not guarantee** that
+     * the funds are unblocked: it provides grounds to reconsider the decision, nothing more.
      *
      * `POST /v1/aml/{token}`
      *
@@ -85,9 +86,9 @@ final class Checkout extends Resource
     }
 
     /**
-     * Конфиг платёжной ссылки (для страницы)
+     * Payment link configuration (for the page)
      *
-     * Публично: заголовок/описание/режим суммы/валюта — чтобы отрисовать страницу доната.
+     * Public: title/description/amount mode/currency — to render the donation page.
      *
      * `GET /v1/link/{id}`
      *
@@ -108,11 +109,11 @@ final class Checkout extends Resource
     }
 
     /**
-     * Оплатить по ссылке (создать платёж)
+     * Pay via a link (create a payment)
      *
-     * Публично: клиент вводит сумму (для open/range) и, если валюта не закреплена, выбирает
-     * валюту/сеть. Создаётся свежий инвойс — в ответе обычный объект платежа с `uuid` и `url`
-     * страницы оплаты.
+     * Public: the customer enters an amount (for open/range) and, if the currency is not pinned,
+     * picks the currency/network. A fresh invoice is created — the response is a regular payment
+     * object with `uuid` and the payment page `url`.
      *
      * `POST /v1/link/{id}/checkout`
      *
@@ -146,22 +147,23 @@ final class Checkout extends Resource
     }
 
     /**
-     * Список валют и сетей
+     * List currencies and networks
      *
-     * Публичный справочник. Возвращает два списка, и путать их не надо:
+     * A public reference. It returns two lists, and they must not be confused:
      *
-     * - `currencies` — в чём можно **получать**: монеты и их сети (плюс флаги доступности приёма и
-     * выплаты).
-     * - `pricing_currencies` — в чём можно **назначать цену** (`currency` при создании платежа): те
-     * же монеты **плюс 45 фиатных валют** (`{"symbol":"EUR","decimals":2,"fiat":true}`) — USD, EUR,
-     * GBP, RUB, UAH, PLN, CZK, TRY, CNY, INR, BRL, CAD, AUD, CHF, AED, ZAR, MXN, IDR, THB, VND,
-     * NGN, JPY, KRW, SGD, HKD, NZD, SEK, NOK, DKK, ILS, SAR, PHP, MYR, TWD, PKR, LKR, MMK, BDT,
-     * ARS, GEL, HUF, BMD, BHD, KWD, CLP. Число знаков после запятой у каждой в поле `decimals`
-     * (обычно 2; у JPY/KRW/VND/CLP — 0, у BHD/KWD — 3) — берите его из ответа, не хардкодьте. У
-     * фиата нет сетей и никогда не будет: в нём можно оценить счёт, но нельзя его получить.
+     * - `currencies` — what you can **receive**: coins and their networks (plus flags for whether
+     * accepting and payouts are available).
+     * - `pricing_currencies` — what you can **set a price in** (`currency` when creating a
+     * payment): the same coins **plus 45 fiat currencies**
+     * (`{"symbol":"EUR","decimals":2,"fiat":true}`) — USD, EUR, GBP, RUB, UAH, PLN, CZK, TRY, CNY,
+     * INR, BRL, CAD, AUD, CHF, AED, ZAR, MXN, IDR, THB, VND, NGN, JPY, KRW, SGD, HKD, NZD, SEK,
+     * NOK, DKK, ILS, SAR, PHP, MYR, TWD, PKR, LKR, MMK, BDT, ARS, GEL, HUF, BMD, BHD, KWD, CLP. The
+     * number of decimal places of each is in the `decimals` field (usually 2; JPY/KRW/VND/CLP — 0,
+     * BHD/KWD — 3) — take it from the response, do not hardcode it. Fiat has no networks and never
+     * will: you can price an invoice in it, but you cannot receive it.
      *
-     * Тенге, сом и сум пока не поддерживаются — источник курсов не котирует в них крипту напрямую,
-     * а выводить курс перемножением двух других мы не будем.
+     * The tenge, som and sum are not supported yet — the rate source does not quote crypto in them
+     * directly, and we will not derive a rate by multiplying two others.
      *
      * `GET /v1/currencies`
      *
@@ -178,10 +180,10 @@ final class Checkout extends Resource
     }
 
     /**
-     * Публичный статус платежа (страница оплаты)
+     * Public payment status (payment page)
      *
-     * Без секрета — можно опрашивать прямо из браузера. Содержит `amount_remaining` для подсказки
-     * «доплатите X».
+     * No secret — can be polled directly from the browser. Contains `amount_remaining` for a "pay X
+     * more" hint.
      *
      * `GET /v1/pay/{id}`
      *
@@ -204,9 +206,10 @@ final class Checkout extends Resource
     }
 
     /**
-     * Выбрать валюту и сеть для валюто-агностичной ссылки
+     * Choose the currency and network for a currency-agnostic link
      *
-     * Клиент выбирает `currency` + `network`; после этого фиксируется курс и выделяется адрес.
+     * The customer picks `currency` + `network`; after that the rate is locked in and an address is
+     * allocated.
      *
      * `POST /v1/pay/{id}/select`
      *
@@ -238,15 +241,15 @@ final class Checkout extends Resource
     }
 
     /**
-     * Оплатить фиатом: открыть покупку криптовалюты картой
+     * Pay with fiat: open a card purchase of crypto
      *
-     * Покупатель без криптовалюты платит картой стороннему рампу, а тот шлёт монеты прямо на
-     * депозитный адрес этого счёта. Ответ — ПОДПИСАННАЯ ссылка на виджет: подпись покрывает адрес
-     * получения и тег, поэтому переписать их в браузере нельзя. `url` пустой, когда покупка уже
-     * идёт (смотрите `status`) — второй виджет означал бы второе списание по одному заказу.
-     * `fiat_amount` — оценка: у рампов нет режима «зафиксировать сумму получения», сумму фиата мы
-     * считаем обратным ходом из их котировки и с запасом. Кнопку показывать только когда `GET
-     * /v1/pay/{id}` вернул `fiat_purchase_available: true`.
+     * A buyer without crypto pays by card to a third-party on-ramp, which sends the coins straight
+     * to this invoice's deposit address. The response is a SIGNED widget link: the signature covers
+     * the receiving address and tag, so they cannot be rewritten in the browser. `url` is empty
+     * when a purchase is already in progress (see `status`) — a second widget would mean a second
+     * charge for one order. `fiat_amount` is an estimate: on-ramps have no "fix the received
+     * amount" mode, so we compute the fiat amount backwards from their quote, with a margin. Show
+     * the button only when `GET /v1/pay/{id}` returned `fiat_purchase_available: true`.
      *
      * `POST /v1/pay/{id}/onramp`
      *
@@ -274,11 +277,12 @@ final class Checkout extends Resource
     }
 
     /**
-     * Статус карточной покупки по счёту
+     * Status of the card purchase for an invoice
      *
-     * Что стало с покупкой: `new`, `pending`, `paid`, `completed`, `failed`, `canceled`, плюс
-     * `reason` — дословная причина отказа провайдера, когда она есть. Пустой `status` = живой
-     * покупки нет. Счёт при этом закрывают ДЕНЬГИ В ЦЕПОЧКЕ, а не этот статус.
+     * What happened to the purchase: `new`, `pending`, `paid`, `completed`, `failed`, `canceled`,
+     * plus `reason` — the provider's verbatim rejection reason, when there is one. An empty
+     * `status` = no live purchase. The invoice, however, is closed by the MONEY ON CHAIN, not by
+     * this status.
      *
      * `GET /v1/pay/{id}/onramp`
      *
@@ -301,10 +305,10 @@ final class Checkout extends Resource
     }
 
     /**
-     * QR-код адреса оплаты
+     * Payment address QR code
      *
-     * PNG-картинка с QR того адреса (и суммы), которые уже вернул `GET /v1/pay/{id}`. Без ключа —
-     * её грузит браузер покупателя.
+     * A PNG image with the QR code of the address (and amount) already returned by `GET
+     * /v1/pay/{id}`. No key — the buyer's browser loads it.
      *
      * `GET /v1/pay/{id}/qr`
      *

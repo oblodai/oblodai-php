@@ -46,25 +46,25 @@ final class WebhookDeliveryLogItem extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сделано попыток. */
+        /** Attempts made. */
         public readonly int $attempts,
-        /** Почему доставка cancelled не будет отправлена; пусто у остальных статусов. */
+        /** Why a cancelled delivery will not be sent; empty for other statuses. */
         public readonly string $cancel_reason,
-        /** Когда поставлена, RFC 3339 UTC. */
+        /** When queued, RFC 3339 UTC. */
         public readonly string $created_at,
-        /** Событие в теле. */
+        /** The event in the body. */
         public readonly string $event_type,
-        /** Идентификатор доставки. */
+        /** Delivery id. */
         public readonly string $id,
-        /** Ошибка последней попытки; пусто, если её не было. */
+        /** The error of the last attempt; empty if there was none. */
         public readonly string $last_error,
-        /** Глобальный номер события (тот же, что в теле). */
+        /** The global event number (the same as in the body). */
         public readonly int $sequence,
-        /** Состояние доставки. */
+        /** Delivery state. */
         public readonly WebhookDeliveryStatus|string $status,
-        /** Последнее изменение, RFC 3339 UTC. */
+        /** Last change, RFC 3339 UTC. */
         public readonly string $updated_at,
-        /** Куда доставляется. */
+        /** Where it is delivered. */
         public readonly string $url,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

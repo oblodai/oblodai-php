@@ -21,64 +21,67 @@ use Oblodai\Generated\Routes;
 use Oblodai\Generated\Wire;
 
 /**
- * Вернуть деньги плательщику (списание с вашего баланса).
+ * Return money to the payer (debited from your balance).
  */
 final class Refunds extends Resource
 {
     /**
-     * Вернуть платёж
+     * Refund a payment
      *
-     * Возврат — это списание с вашего баланса.
+     * A refund is debited from your balance.
      *
-     * `address` (куда вернуть) можно опустить ТОЛЬКО если в платеже `payer_address_is_refundable` =
-     * true: тогда вернём на записанный адрес плательщика (`payer_address`). Если там false — адрес
-     * плательщика нам известен, но он не является адресом возврата (Bitcoin/UTXO: первый вход мог
-     * быть биржей или сдачей; XRP: общий адрес биржи с тегом назначения; оплата КАРТОЙ через
-     * крипто-он-рамп: отправитель — омнибусный горячий кошелёк провайдера, а не покупатель).
-     * Возврат туда уходит безвозвратно тому, кто денег не платил, поэтому запрос без `address`
-     * будет отклонён (`refund.no_address`): спросите адрес у покупателя и передайте его явно. Нужен
-     * `uuid`/`order_id` платежа. По умолчанию вернём всю полученную сумму; можно указать частичную
-     * `amount`.
+     * `address` (where to refund) may be omitted ONLY if the payment has
+     * `payer_address_is_refundable` = true: then we refund to the recorded payer address
+     * (`payer_address`). If it is false, we know the payer's address but it is not a refund address
+     * (Bitcoin/UTXO: the first input may belong to an exchange or be change; XRP: a shared exchange
+     * address with a destination tag; CARD payment via a crypto on-ramp: the sender is the
+     * provider's omnibus hot wallet, not the buyer). A refund sent there is irrecoverably lost to
+     * someone who never paid, so a request without `address` is rejected (`refund.no_address`): ask
+     * the buyer for an address and pass it explicitly. The payment's `uuid`/`order_id` is required.
+     * By default the full received amount is refunded; you may specify a partial `amount`.
      *
-     * Идемпотентно по `(платёж, адрес, сумма)`; суммарно нельзя вернуть больше, чем оплачено.
-     * Возврат подтверждается автоматически на любой адрес. Единственное исключение — платёж картой
-     * через он-рамп: возврат НА ЗАПИСАННЫЙ АДРЕС ПЛАТЕЛЬЩИКА такого счёта отклоняется
-     * (`refund.omnibus_destination`), потому что этот адрес принадлежит провайдеру, а не покупателю
-     * — пришлите адрес покупателя явно.
+     * Idempotent on `(payment, address, amount)`; in total you cannot refund more than was paid.
+     * Refunds to any address are approved automatically. The only exception is a card payment via
+     * an on-ramp: a refund TO THE RECORDED PAYER ADDRESS of such an invoice is rejected
+     * (`refund.omnibus_destination`), because that address belongs to the provider, not the buyer —
+     * send the buyer's address explicitly.
      *
-     * Возврат платится ТОЙ ЖЕ монетой, которой заплатил покупатель. Если она уже сведена в стейбл
-     * автообменом, передайте `from_currency: "USDT"` — возврат профинансируется конвертацией вашего
-     * баланса USDT и останется ВОЗВРАТОМ: счёт пометится возвращённым, доли партнёрам отзовутся.
-     * Отправить деньги обычной выплатой тоже можно, но в отчётах это будет выплата, а не возврат.
+     * A refund is paid in THE SAME coin the buyer paid with. If it has already been converted into
+     * a stablecoin by auto-conversion, pass `from_currency: "USDT"` — the refund is funded by
+     * converting your USDT balance and remains a REFUND: the invoice is marked refunded and partner
+     * shares are reversed. You can also send the money as a regular payout, but reports will show
+     * it as a payout, not a refund.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/refund`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
-     * compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
-     * compliance.sanctions_unavailable, idempotency.bad_key, idempotency.in_progress,
-     * idempotency.key_reused, idempotency.unavailable, internal, invoice.corrupt_pay_asset,
-     * ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
-     * ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
-     * ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
-     * ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
-     * merchant.suspended, merchant.unknown_key, onramp.suppresses, payment.bad_uuid,
-     * payment.no_lookup, payment.not_found, payout.above_limit, payout.address_network_mismatch,
-     * payout.amount_below_fee, payout.approver_is_creator, payout.asset_mismatch,
-     * payout.bad_address, payout.bad_amount, payout.bad_memo, payout.bad_owner_kind,
-     * payout.cap_unpriceable, payout.convert_bad_amount, payout.convert_frozen,
-     * payout.convert_idempotency_conflict, payout.convert_insufficient, payout.convert_no_rate,
-     * payout.convert_same_asset, payout.convert_unsupported, payout.daily_cap,
-     * payout.destination_not_activated, payout.duplicate_reference, payout.fee_asset_mismatch,
-     * payout.freeze_unknown, payout.frozen, payout.funds_maturing, payout.funds_settling,
-     * payout.illegal_transition, payout.insufficient_funds, payout.memo_conflict,
-     * payout.memo_required, payout.memo_too_long, payout.merchant_frozen, payout.no_destination,
-     * payout.no_owner, payout.not_found, payout.not_pending, payout.reference_collision,
-     * postgres.lock_pool_busy, rates.deviation, rates.no_source, rates.non_positive,
-     * rates.stale_rate, refund.bad_amount, refund.chain_ambiguous, refund.destination_internal,
-     * refund.dust, refund.exceeds_excess, refund.exceeds_refundable, refund.fence_check,
-     * refund.from_currency_personal_account, refund.from_currency_unsupported,
+     * cli.permission_denied, compliance.blocked, compliance.blocked_address,
+     * compliance.blocklist_unavailable, compliance.no_destination, compliance.no_network,
+     * compliance.sanctioned_address, compliance.sanctions_unavailable, idempotency.bad_key,
+     * idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
+     * invoice.corrupt_pay_asset, ledger.account_not_found, ledger.asset_mismatch,
+     * ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset,
+     * ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
+     * ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced,
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * onramp.suppresses, payment.bad_uuid, payment.no_lookup, payment.not_found,
+     * payout.above_limit, payout.address_network_mismatch, payout.amount_below_fee,
+     * payout.approver_is_creator, payout.asset_mismatch, payout.bad_address, payout.bad_amount,
+     * payout.bad_memo, payout.bad_owner_kind, payout.cap_unpriceable, payout.convert_bad_amount,
+     * payout.convert_frozen, payout.convert_idempotency_conflict, payout.convert_insufficient,
+     * payout.convert_no_rate, payout.convert_same_asset, payout.convert_unsupported,
+     * payout.daily_cap, payout.destination_not_activated, payout.duplicate_reference,
+     * payout.fee_asset_mismatch, payout.freeze_unknown, payout.frozen, payout.funds_maturing,
+     * payout.funds_settling, payout.illegal_transition, payout.insufficient_funds,
+     * payout.memo_conflict, payout.memo_required, payout.memo_too_long, payout.merchant_frozen,
+     * payout.no_destination, payout.no_owner, payout.not_found, payout.not_pending,
+     * payout.reference_collision, postgres.lock_pool_busy, rates.deviation, rates.no_source,
+     * rates.non_positive, rates.stale_rate, refund.bad_amount, refund.chain_ambiguous,
+     * refund.destination_internal, refund.dust, refund.exceeds_excess, refund.exceeds_refundable,
+     * refund.fence_check, refund.from_currency_personal_account, refund.from_currency_unsupported,
      * refund.network_required, refund.no_address, refund.nothing_to_refund,
      * refund.omnibus_destination, refund.paid_internally, refund.reference_collision,
      * refund.unsupported_network, request.bad_json, request.body_read, request.control_char,
@@ -108,29 +111,34 @@ final class Refunds extends Resource
     }
 
     /**
-     * Вернуть средства со статик-кошелька
+     * Refund funds from a static wallet
      *
-     * Возвращает на `address` ЧИСТУЮ сумму, полученную на (заблокированном) статик-кошельке: из
-     * полученного вычитается уже возвращённое. Пока возврат жив (создан, отправлен, подтверждён),
-     * повторный вызов возвращает его же. Если возврат не состоялся (failed/cancelled), вызов можно
-     * повторить — в том числе на другой адрес. Отменённые reorg'ом депозиты не считаются.
+     * Refunds to `address` the NET amount received on a (blocked) static wallet: the amount already
+     * refunded is subtracted from what was received. While a refund is alive (created, sent,
+     * confirmed), a repeated call returns that same refund. If the refund did not go through
+     * (failed/cancelled), the call can be repeated — including to a different address. Deposits
+     * reverted by a reorg are not counted.
      *
-     * Блокировка смотрит ВПЕРЁД: она останавливает следующий приход, а не пересматривает уже
-     * зачисленные. Деньги, пришедшие ПОСЛЕ блокировки, на баланс не попадают — они уходят в
-     * карантин и ждут решения оператора; вернуть их этой ручкой можно после того, как он их
-     * разобрал. Пока не разобраны — они ещё не ваши, и ответ будет «возвращать нечего».
+     * Blocking looks FORWARD: it stops the next incoming deposit, it does not revisit ones already
+     * credited. Money that arrives AFTER the block does not reach the balance — it goes to
+     * quarantine and waits for an operator's decision; you can refund it with this endpoint once
+     * the operator has reviewed it. Until then it is not yours yet, and the response will be
+     * "nothing to refund".
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/wallet/blocked-address-refund`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
-     * compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
-     * compliance.sanctions_unavailable, internal, ledger.account_not_found, ledger.asset_mismatch,
-     * ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset,
-     * ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
-     * ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.above_limit,
+     * cli.permission_denied, compliance.blocked, compliance.blocked_address,
+     * compliance.blocklist_unavailable, compliance.no_destination, compliance.no_network,
+     * compliance.sanctioned_address, compliance.sanctions_unavailable, internal,
+     * ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
+     * ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
+     * ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
+     * ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, payout.above_limit,
      * payout.address_network_mismatch, payout.amount_below_fee, payout.asset_mismatch,
      * payout.bad_address, payout.bad_amount, payout.bad_memo, payout.bad_owner_kind,
      * payout.cap_unpriceable, payout.daily_cap, payout.destination_not_activated,

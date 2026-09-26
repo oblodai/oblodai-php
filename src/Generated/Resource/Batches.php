@@ -27,34 +27,37 @@ use Oblodai\Generated\Routes;
 use Oblodai\Generated\Wire;
 
 /**
- * Асинхронные батчи: платежи, возвраты, выплаты, переводы пачками.
+ * Asynchronous batches of payments, refunds, payouts and transfers.
  */
 final class Batches extends Resource
 {
     /**
-     * Массовое создание платежей
+     * Create payments in bulk
      *
-     * До 5000 платежей за ОДИН запрос (одна отметка rate-limit). Каждый элемент — обычный объект
-     * `/v1/payment` (разные валюты/сети допустимы). В ответ сразу приходит `batch_id`; обработка
-     * идёт в фоне. Статус и результаты (включая `uuid` и ссылку оплаты каждого платежа) — через
-     * `/v1/batch/info`.
+     * Up to 5000 payments in ONE request (one rate-limit hit). Each item is a regular `/v1/payment`
+     * object (different currencies/networks are allowed). The response immediately returns
+     * `batch_id`; processing runs in the background. Status and results (including each payment's
+     * `uuid` and payment link) — via `/v1/batch/info`.
      *
-     * `on_error`: `continue` (по умолчанию — ошибка одного не мешает остальным) или `stop` (после
-     * первой ошибки оставшиеся отменяются); регистр не важен, любое другое значение — отказ
-     * `batch.bad_on_error`. Каждый элемент идемпотентен по своему `order_id`; вся пачка — по
-     * заголовку `Idempotency-Key`.
+     * `on_error`: `continue` (default — one item's error does not affect the rest) or `stop` (after
+     * the first error the remaining items are cancelled); case-insensitive, any other value is
+     * rejected with `batch.bad_on_error`. Each item is idempotent on its own `order_id`; the whole
+     * batch — on the `Idempotency-Key` header.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/batch`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
      * batch.bad_on_error, batch.bad_recipient, batch.disabled, batch.duplicate_order_id,
      * batch.duplicate_reference, batch.empty, batch.invoice_required, batch.order_id_required,
-     * batch.reference_required, batch.too_large, batch.unsupported_kind, idempotency.bad_key,
-     * idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * batch.reference_required, batch.too_large, batch.unsupported_kind, cli.permission_denied,
+     * idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
+     * idempotency.unavailable, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param PaymentBatchRequest|array{
      *     on_error?: BatchOnError|string,
@@ -74,25 +77,29 @@ final class Batches extends Resource
     }
 
     /**
-     * Массовые возвраты
+     * Bulk refunds
      *
-     * До 5000 возвратов за один запрос. Каждый элемент — обычный объект `/v1/payment/refund`, но
-     * `reference` ОБЯЗАТЕЛЕН на каждом элементе и уникален внутри батча: это ключ идемпотентности
-     * именно этого возврата (не путать с `order_id`, который указывает на счёт). Без него два
-     * разных возврата одной суммы одному плательщику молча схлопнулись бы в один. Возвращает
-     * `batch_id`; статус по каждому — через `/v1/batch/info`. `on_error`: `continue`/`stop`.
+     * Up to 5000 refunds in one request. Each item is a regular `/v1/payment/refund` object, but
+     * `reference` is REQUIRED on every item and must be unique within the batch: it is the
+     * idempotency key of that particular refund (not to be confused with `order_id`, which points
+     * to the invoice). Without it, two different refunds of the same amount to the same payer would
+     * silently collapse into one. Returns `batch_id`; per-item status via `/v1/batch/info`.
+     * `on_error`: `continue`/`stop`.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/refund/batch`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
      * batch.bad_on_error, batch.bad_recipient, batch.disabled, batch.duplicate_order_id,
      * batch.duplicate_reference, batch.empty, batch.invoice_required, batch.order_id_required,
-     * batch.reference_required, batch.too_large, batch.unsupported_kind, idempotency.bad_key,
-     * idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * batch.reference_required, batch.too_large, batch.unsupported_kind, cli.permission_denied,
+     * idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
+     * idempotency.unavailable, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param RefundBatchRequest|array{
      *     on_error?: BatchOnError|string,
@@ -112,23 +119,26 @@ final class Batches extends Resource
     }
 
     /**
-     * Массовые выплаты (async, без лимита 100)
+     * Bulk payouts (async, no 100 limit)
      *
-     * Асинхронный аналог `/v1/payout/mass` без ограничения в 100: до 5000 выплат, обработка в фоне,
-     * статус через `/v1/batch/info`. Каждый элемент — обычный объект `/v1/payout`, идемпотентен по
-     * `order_id`.
+     * Asynchronous counterpart of `/v1/payout/mass` without the 100-item limit: up to 5000 payouts,
+     * processed in the background, status via `/v1/batch/info`. Each item is a regular `/v1/payout`
+     * object, idempotent on `order_id`.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payout/batch`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
      * batch.bad_on_error, batch.bad_recipient, batch.disabled, batch.duplicate_order_id,
      * batch.duplicate_reference, batch.empty, batch.invoice_required, batch.order_id_required,
-     * batch.reference_required, batch.too_large, batch.unsupported_kind, idempotency.bad_key,
-     * idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * batch.reference_required, batch.too_large, batch.unsupported_kind, cli.permission_denied,
+     * idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
+     * idempotency.unavailable, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param PayoutBatchRequest|array{
      *     on_error?: BatchOnError|string,
@@ -148,19 +158,21 @@ final class Batches extends Resource
     }
 
     /**
-     * Статус пачки
+     * Batch status
      *
-     * Прогресс пачки (`total`/`succeeded`/`failed`/`status`) и постранично её элементы с
-     * результатом или ошибкой по каждому. `status`: `pending` → `processing` → `completed`.
+     * Batch progress (`total`/`succeeded`/`failed`/`status`) and its items, paginated, with the
+     * result or error for each. `status`: `pending` → `processing` → `completed`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/batch/info`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.bad_id,
-     * batch.disabled, batch.not_found, internal, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
-     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * batch.disabled, batch.not_found, cli.permission_denied, internal, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep
      *
      * @param BatchInfoRequest|array{batch_id: string, limit?: int, offset?: int} $params
      */

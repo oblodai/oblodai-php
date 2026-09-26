@@ -23,13 +23,16 @@ final class PaymentDiscountRule extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Монета правила. Пусто — правило по умолчанию для всех монет, у которых нет своего. */
+        /**
+         * The rule's coin. Empty — the default rule for all coins that have no rule of their own.
+         */
         public readonly string $currency,
         /**
-         * Процент, от -99 до 99. Плюс — скидка плательщику за оплату этой монетой, минус — наценка.
+         * Percent, from -99 to 99. Plus — a discount to the payer for paying with this coin, minus
+         * — a surcharge.
          */
         public readonly int $discount_percent,
-        /** Сеть. Пусто — любая сеть этой монеты. */
+        /** Network. Empty — any network of this coin. */
         public readonly string $network,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

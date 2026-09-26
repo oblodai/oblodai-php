@@ -23,9 +23,9 @@ final class PageRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Размер страницы, 1–100; вне диапазона — 25. */
+        /** Page size, 1–100; out of range — 25. */
         public readonly ?int $limit = null,
-        /** Смещение от начала списка. */
+        /** Offset from the start of the list. */
         public readonly ?int $offset = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

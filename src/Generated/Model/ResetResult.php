@@ -33,13 +33,15 @@ final class ResetResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сколько балансов (по активам) обнулено компенсирующей проводкой. */
+        /** How many balances (per asset) were zeroed by a compensating posting. */
         public readonly int $balances_zeroed,
-        /** Сколько открытых счетов отменено. */
+        /** How many open invoices were cancelled. */
         public readonly int $invoices_cancelled,
-        /** Сколько профинансированных выплатных ссылок отменено (резерв вернулся до обнуления). */
+        /**
+         * How many funded payout links were cancelled (the reserve was returned before zeroing).
+         */
         public readonly int $payout_links_cancelled,
-        /** Сколько профинансированных ссылок отменить не удалось — их резерв остался. */
+        /** How many funded links could not be cancelled — their reserve remains. */
         public readonly int $payout_links_left,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

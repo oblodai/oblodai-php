@@ -23,7 +23,7 @@ final class ApproveRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор выплаты. */
+        /** Payout id. */
         public readonly string $uuid,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

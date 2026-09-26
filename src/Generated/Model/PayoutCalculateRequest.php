@@ -19,7 +19,7 @@ final class PayoutCalculateRequest extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'currency', 'is_subtract', 'network'];
 
-    /** Сумма выплаты, строкой. */
+    /** The payout amount, as a string. */
     public readonly string $amount;
 
     /**
@@ -27,16 +27,16 @@ final class PayoutCalculateRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сумма выплаты, строкой. */
+        /** The payout amount, as a string. */
         string|int|float $amount,
-        /** Актив выплаты (USDT, BTC, …). */
+        /** Payout asset (USDT, BTC, …). */
         public readonly string $currency,
         /**
-         * true — комиссия списывается с баланса поверх суммы (получатель получит ровно amount);
-         * false — из суммы выплаты.
+         * true — the fee is debited from the balance on top of the amount (the recipient gets
+         * exactly amount); false — from the payout amount.
          */
         public readonly ?bool $is_subtract = null,
-        /** Сеть выплаты; обязательна, если актив живёт в нескольких сетях. */
+        /** Payout network; required if the asset lives on several networks. */
         public readonly ?string $network = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

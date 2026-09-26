@@ -23,9 +23,9 @@ final class AMLLinksRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор заказа мерчанта. */
+        /** The merchant's order id. */
         public readonly ?string $order_id = null,
-        /** Идентификатор платежа. Нужен uuid или order_id; приоритет у uuid. */
+        /** Payment id. Either uuid or order_id is required; uuid takes precedence. */
         public readonly ?string $uuid = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -24,7 +24,8 @@ final class SplitConfigView extends Model
      */
     public function __construct(
         /**
-         * На сколько секунд откладывается расчёт по сплитам после оплаты; 0 — доли уходят сразу.
+         * How many seconds split settlement is deferred after payment; 0 — shares are sent
+         * immediately.
          */
         public readonly int $refund_hold_seconds,
         /** Fields newer than this SDK, exactly as received. */

@@ -23,15 +23,15 @@ final class ResolveAcceptResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сколько оставлено мерчанту — всё, что пришло. */
+        /** How much was left to the merchant — everything that arrived. */
         public readonly string $amount_kept,
-        /** Валюта оплаты. */
+        /** Payment currency. */
         public readonly string $currency,
-        /** Номер заказа мерчанта. */
+        /** The merchant's order number. */
         public readonly string $order_id,
-        /** Идентификатор платежа. */
+        /** Payment id. */
         public readonly string $payment_uuid,
-        /** Принятое решение: accepted. */
+        /** The decision taken: accepted. */
         public readonly string $resolution,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -20,7 +20,10 @@ final class AutoConvertResult extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['configured', 'enabled', 'min_amount', 'mode', 'sources', 'target'];
 
-    /** Пол одной конвертации в долларах, десятичной строкой (с умолчанием процесса). */
+    /**
+     * The floor for a single conversion in dollars, as a decimal string (with the process default
+     * applied).
+     */
     public readonly string $min_amount;
 
     /**
@@ -29,17 +32,20 @@ final class AutoConvertResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Есть ли приказ. false — остальные поля — умолчания формы. */
+        /** Whether an order exists. false — the other fields are form defaults. */
         public readonly bool $configured,
-        /** Включён ли приказ. */
+        /** Whether the order is enabled. */
         public readonly bool $enabled,
-        /** Пол одной конвертации в долларах, десятичной строкой (с умолчанием процесса). */
+        /**
+         * The floor for a single conversion in dollars, as a decimal string (with the process
+         * default applied).
+         */
         string|int|float $min_amount,
-        /** Режим зачисления: economy или instant. */
+        /** The crediting mode: economy or instant. */
         public readonly AutoConvertMode|string $mode,
-        /** Монеты, которые сводятся; пусто — [], не null. */
+        /** The coins being converted; empty — [], not null. */
         public readonly array $sources,
-        /** Монета, в которую сводится выручка; пусто без приказа. */
+        /** The coin revenue is converted into; empty without an order. */
         public readonly string $target,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -23,30 +23,33 @@ use Oblodai\Generated\Routes;
 use Oblodai\Generated\Wire;
 
 /**
- * Постоянные (статические) адреса пополнения под клиента.
+ * Permanent (static) deposit addresses assigned to a customer.
  */
 final class Wallets extends Resource
 {
     /**
-     * Создать (или получить) статический кошелёк
+     * Create (or get) a static wallet
      *
-     * Постоянный адрес пополнения, закреплённый за мерчантом (и, по желанию, за одним клиентом
-     * через `order_id`). Любое пополнение на него сразу падает вам на баланс + шлёт вебхук.
+     * A permanent deposit address assigned to the merchant (and, optionally, to one customer via
+     * `order_id`). Any deposit to it is credited to your balance immediately and triggers a
+     * webhook.
      *
-     * Идемпотентно по `(currency, network, order_id)`: тот же `order_id` вернёт тот же адрес —
-     * удобно закрепить адрес за каждым клиентом.
+     * Idempotent on `(currency, network, order_id)`: the same `order_id` returns the same address —
+     * handy for assigning an address to each customer.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/wallet`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * invoice.daily_quota, merchant.acceptance_blocked, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, request.unknown_currency,
-     * wallet.abandoned, wallet.deposits_unavailable, wallet.no_network, wallet.sandbox_unsupported,
-     * wallet.static_disabled, wallet.static_exists, wallet.static_not_found,
-     * wallet.unsupported_network
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, invoice.daily_quota, merchant.acceptance_blocked,
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
+     * request.unknown_currency, wallet.abandoned, wallet.deposits_unavailable, wallet.no_network,
+     * wallet.sandbox_unsupported, wallet.static_disabled, wallet.static_exists,
+     * wallet.static_not_found, wallet.unsupported_network
      *
      * @param CreateWalletRequest|array{
      *     currency: string,
@@ -67,19 +70,22 @@ final class Wallets extends Resource
     }
 
     /**
-     * Заблокировать / разблокировать кошелёк
+     * Block / unblock a wallet
      *
-     * Заблокированный кошелёк перестаёт зачислять новые пополнения. `is_force_block` по умолчанию
-     * true (блокировать); передайте false, чтобы снять блокировку.
+     * A blocked wallet stops crediting new deposits. `is_force_block` defaults to true (block);
+     * pass false to lift the block.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/wallet/block`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, wallet.no_address,
-     * wallet.static_disabled, wallet.static_not_found
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, wallet.no_address, wallet.static_disabled,
+     * wallet.static_not_found
      *
      * @param BlockWalletRequest|array{address: string, is_force_block?: bool} $params
      */
@@ -96,17 +102,20 @@ final class Wallets extends Resource
     }
 
     /**
-     * QR-код адреса
+     * Address QR code
      *
-     * Возвращает PNG data:-URI по полю `address` — для `<img src>`.
+     * Returns a PNG data: URI for the `address` field — for `<img src>`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/wallet/qr`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, qr.no_address,
-     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, qr.no_address, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param QrRequest|array{address: string} $params
      */

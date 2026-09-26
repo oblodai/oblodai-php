@@ -23,15 +23,15 @@ final class AutoWithdrawSetRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Адрес назначения (внешний кошелёк мерчанта). */
+        /** Destination address (the merchant's external wallet). */
         public readonly string $address,
-        /** Актив, который выводить автоматически. */
+        /** The asset to withdraw automatically. */
         public readonly string $currency,
-        /** Сеть адреса назначения. */
+        /** The destination address network. */
         public readonly string $network,
         /**
-         * Порог: вывод срабатывает, когда доступный баланс актива не меньше этой суммы; пусто —
-         * сетевой минимум.
+         * Threshold: the withdrawal triggers when the asset's available balance is at least this
+         * amount; empty — the network minimum.
          */
         public readonly ?string $min_amount = null,
         /** Fields newer than this SDK, exactly as received. */

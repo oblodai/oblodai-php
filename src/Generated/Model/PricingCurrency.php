@@ -23,11 +23,11 @@ final class PricingCurrency extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Код для поля currency при создании счёта. */
+        /** The code for the currency field when creating an invoice. */
         public readonly string $currency,
-        /** Знаков после запятой. */
+        /** Decimal places. */
         public readonly int $decimals,
-        /** Фиат: счёт в нём выставляется, но оплачивается монетой. */
+        /** Fiat: an invoice can be priced in it, but is paid with a coin. */
         public readonly bool $fiat,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

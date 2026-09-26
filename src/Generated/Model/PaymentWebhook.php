@@ -13,10 +13,10 @@ use Oblodai\Generated\Enum\PaymentStatus;
 use Oblodai\Generated\Wire;
 
 /**
- * Приходит, когда платёж переходит в paid, paid_over, wrong_amount, expired или under_review, и
- * когда откатывается из них (реорганизация сети). Текущий статус — любой из словаря — можно
- * запросить заново: POST /v1/payment/resend. Сверять с заказом по order_id/uuid, с блокчейном — по
- * txid и network.
+ * Sent when a payment moves to paid, paid_over, wrong_amount, expired or under_review, and when it
+ * rolls back from them (a chain reorganization). The current status — any value from the vocabulary
+ * — can be requested again: POST /v1/payment/resend. Match it to the order by order_id/uuid and to
+ * the blockchain by txid and network.
  */
 final class PaymentWebhook extends Model
 {
@@ -63,13 +63,13 @@ final class PaymentWebhook extends Model
         'uuid',
     ];
 
-    /** Сумма счёта в валюте currency. */
+    /** The invoice amount in currency. */
     public readonly string $amount;
 
-    /** Сколько плательщик должен был заплатить в валюте payer_currency. */
+    /** How much the payer was supposed to pay, in payer_currency. */
     public readonly string $payer_amount;
 
-    /** Сколько фактически получено (подтверждено), в валюте payer_currency. */
+    /** How much was actually received (confirmed), in payer_currency. */
     public readonly string $payment_amount;
 
     /**
@@ -79,53 +79,55 @@ final class PaymentWebhook extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Ваши данные, переданные при создании платежа, как есть. */
+        /** Your data passed when creating the payment, as is. */
         public readonly string $additional_data,
-        /** Сумма счёта в валюте currency. */
+        /** The invoice amount in currency. */
         string|int|float $amount,
-        /** Валюта счёта. */
+        /** Invoice currency. */
         public readonly string $currency,
-        /** Когда событие произошло, UTC с миллисекундами (ISO 8601). */
+        /** When the event happened, UTC with milliseconds (ISO 8601). */
         public readonly string $event_at,
-        /** true — статус финальный, дальше платёж не изменится. */
+        /** true — the status is final, the payment will not change any further. */
         public readonly bool $is_final,
-        /** Сеть, в которой пришли деньги. */
+        /** The network the money arrived on. */
         public readonly string $network,
-        /** Ваш order_id платежа. */
+        /** Your order_id for the payment. */
         public readonly string $order_id,
         /**
-         * Адрес, с которого пришёл платёж (пусто, если неизвестен). Возвращать на него можно только
-         * при payer_address_is_refundable = true.
+         * The address the payment came from (empty if unknown). Refunding to it is allowed only
+         * when payer_address_is_refundable = true.
          */
         public readonly string $payer_address,
         /**
-         * true — payer_address принадлежит плательщику и годится как адрес возврата; false — это
-         * адрес биржи, провайдера карты или сдачи, возвращать на него нельзя.
+         * true — payer_address belongs to the payer and is usable as a refund address; false — it
+         * is an exchange, card provider or change address, refunding to it is not allowed.
          */
         public readonly bool $payer_address_is_refundable,
-        /** Сколько плательщик должен был заплатить в валюте payer_currency. */
+        /** How much the payer was supposed to pay, in payer_currency. */
         string|int|float $payer_amount,
-        /** Валюта, в которой платит плательщик. */
+        /** The currency the payer pays in. */
         public readonly string $payer_currency,
-        /** Сколько фактически получено (подтверждено), в валюте payer_currency. */
+        /** How much was actually received (confirmed), in payer_currency. */
         string|int|float $payment_amount,
         /**
-         * Глобальный номер события: в пределах одного объекта больший номер новее, меньший —
-         * опоздавшая доставка, её нужно отбросить. У репетиции (test: true) всегда 0.
+         * The global event number: within one object a higher number is newer, a lower one is a
+         * late delivery and must be discarded. Always 0 on a rehearsal (test: true).
          */
         public readonly int $sequence,
-        /** Статус платежа — тот же литерал, что в /v1/payment/info и фильтре истории. */
+        /** The payment status — the same literal as in /v1/payment/info and the history filter. */
         public readonly PaymentStatus|string $status,
-        /** Хеш транзакции, которой пришёл платёж (пусто, пока платежа нет). */
+        /**
+         * The hash of the transaction the payment arrived with (empty until there is a payment).
+         */
         public readonly string $txid,
-        /** Вид события: payment | payout | wallet | conversion — какое тело пришло. */
+        /** Event kind: payment | payout | wallet | conversion — which body arrived. */
         public readonly string $type,
-        /** Идентификатор платежа. */
+        /** Payment id. */
         public readonly string $uuid,
         /**
-         * Есть только у репетиции (/v1/test-webhook/*, /v1/payment/testing-webhook) и всегда true —
-         * внутри подписи. Боевое событие этого поля не несёт никогда: тело с test: true обработчик
-         * обязан игнорировать, даже если подпись верна.
+         * Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always
+         * true — inside the signature. A live event never carries this field: your handler must
+         * ignore a body with test: true even if the signature is valid.
          */
         public readonly ?bool $test = null,
         /** Fields newer than this SDK, exactly as received. */

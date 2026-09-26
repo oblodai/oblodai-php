@@ -23,11 +23,11 @@ final class SetDiscountRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Процент, от -99 до 99. Плюс — скидка, минус — наценка */
+        /** Percent, from -99 to 99. Plus — a discount, minus — a surcharge */
         public readonly int $discount_percent,
-        /** Валюта. Пусто = глобальный дефолт для всех монет */
+        /** Currency. Empty = the global default for all coins */
         public readonly ?string $currency = null,
-        /** Сеть. Пусто = любая сеть данной валюты */
+        /** Network. Empty = any network of the given currency */
         public readonly ?string $network = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

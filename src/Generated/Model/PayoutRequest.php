@@ -30,7 +30,7 @@ final class PayoutRequest extends Model
         'url_callback',
     ];
 
-    /** Сумма выплаты в валюте currency. */
+    /** The payout amount in currency. */
     public readonly string $amount;
 
     /**
@@ -38,30 +38,30 @@ final class PayoutRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Адрес получателя. */
+        /** Recipient address. */
         public readonly string $address,
-        /** Сумма выплаты в валюте currency. */
+        /** The payout amount in currency. */
         string|int|float $amount,
-        /** Код валюты (например USDT). */
+        /** Currency code (e.g. USDT). */
         public readonly string $currency,
-        /** Ваш номер выплаты; ключ идемпотентности. */
+        /** Your payout number; the idempotency key. */
         public readonly string $order_id,
-        /** Профинансировать выплату конвертацией баланса. Только USDT → currency. */
+        /** Fund the payout by converting balance. USDT → currency only. */
         public readonly ?string $from_currency = null,
         /**
-         * Кто платит сетевую комиссию: true — с баланса списывается amount+fee, получатель получает
-         * amount; false — получатель получает amount-fee; не передано — fee-config проекта.
+         * Who pays the network fee: true — amount+fee is debited from the balance, the recipient
+         * gets amount; false — the recipient gets amount-fee; omitted — the project's fee-config.
          */
         public readonly ?bool $is_subtract = null,
-        /** Тег/мемо назначения (TON Jetton). Максимум 120 символов. */
+        /** Destination tag/memo (TON Jetton). At most 120 characters. */
         public readonly ?string $memo = null,
-        /** Сеть (tron, ethereum, …). Обязательна для монет с несколькими сетями. */
+        /** Network (tron, ethereum, …). Required for coins with several networks. */
         public readonly ?string $network = null,
-        /** Метка происхождения: api (по умолчанию) или manual. */
+        /** The origin label: api (default) or manual. */
         public readonly ?string $source = null,
         /**
-         * Свой URL вебхука для этой выплаты (проходит SSRF-проверку). Требует зарегистрированного
-         * эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.
+         * Your own webhook URL for this payout (passes the SSRF check). Requires a registered
+         * endpoint (POST /v1/webhooks): the delivery is signed with its secret.
          */
         public readonly ?string $url_callback = null,
         /** Fields newer than this SDK, exactly as received. */

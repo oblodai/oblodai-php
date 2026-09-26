@@ -43,37 +43,40 @@ use Oblodai\Generated\Routes;
 use Oblodai\Generated\Wire;
 
 /**
- * Отправить деньги на адрес (списание с вашего баланса).
+ * Send money to an address (debited from your balance).
  */
 final class Payouts extends Resource
 {
     /**
-     * Создать выплату
+     * Create a payout
      *
-     * Отправить деньги на адрес. Идемпотентно по `order_id`. Выплата уходит сразу: ключ мерчанта
-     * несёт полную выплатную полномочность, белого списка адресов нет, ручного подтверждения тоже
-     * (`approval_required` в ответе всегда `false`). Ограничивают её суточный лимит, заморозка
-     * аккаунта и комплаенс-проверка адреса.
+     * Send money to an address. Idempotent on `order_id`. The payout goes out immediately: the
+     * merchant key carries full payout authority, there is no address whitelist and no manual
+     * approval (`approval_required` in the response is always `false`). It is limited by the daily
+     * limit, account freeze and the address compliance check.
      *
-     * **Конвертация (`from_currency`):** укажите `from_currency: "USDT"`, чтобы оплатить выплату в
-     * `currency`, списав ваш баланс USDT — мы сконвертируем USDT → `currency` (только те валюты,
-     * что казначейство может добыть он-чейн). В ответе появится объект `convert` с `from_amount`
-     * (сколько USDT списано) и `rate`.
+     * **Conversion (`from_currency`):** set `from_currency: "USDT"` to fund a payout in `currency`
+     * by debiting your USDT balance — we convert USDT → `currency` (only currencies the treasury
+     * can source on-chain). The response then contains a `convert` object with `from_amount` (how
+     * much USDT was debited) and `rate`.
      *
-     * Ещё: `memo` (тег/мемо для TON), `url_callback` (свой адрес вебхука для этой выплаты).
+     * Also: `memo` (tag/memo for TON), `url_callback` (your own webhook URL for this payout).
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payout`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
-     * compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
-     * compliance.sanctions_unavailable, idempotency.bad_key, idempotency.in_progress,
-     * idempotency.key_reused, idempotency.unavailable, internal, ledger.account_not_found,
-     * ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset,
-     * ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
-     * ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.above_limit,
+     * cli.permission_denied, compliance.blocked, compliance.blocked_address,
+     * compliance.blocklist_unavailable, compliance.no_destination, compliance.no_network,
+     * compliance.sanctioned_address, compliance.sanctions_unavailable, idempotency.bad_key,
+     * idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
+     * ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
+     * ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
+     * ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
+     * ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, payout.above_limit,
      * payout.address_network_mismatch, payout.amount_below_fee, payout.asset_mismatch,
      * payout.bad_address, payout.bad_amount, payout.bad_memo, payout.bad_owner_kind,
      * payout.bad_url_callback, payout.cap_unpriceable, payout.convert_bad_amount,
@@ -116,42 +119,45 @@ final class Payouts extends Resource
     }
 
     /**
-     * Массовая выплата
+     * Mass payout
      *
-     * Много выплат за один запрос (до 100). Каждая независима: ошибка по одной не останавливает
-     * остальные, по каждой возвращается результат. Идемпотентно по `order_id`, как обычная выплата.
+     * Many payouts in one request (up to 100). Each one is independent: an error in one does not
+     * stop the rest, and a result is returned for each. Idempotent on `order_id`, like a regular
+     * payout.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payout/mass`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * batch.duplicate_order_id, compliance.blocked, compliance.blocked_address,
-     * compliance.blocklist_unavailable, compliance.no_destination, compliance.no_network,
-     * compliance.sanctioned_address, compliance.sanctions_unavailable, idempotency.bad_key,
-     * idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
-     * ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
-     * ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
-     * ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
-     * ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
-     * merchant.suspended, merchant.unknown_key, payout.above_limit,
-     * payout.address_network_mismatch, payout.amount_below_fee, payout.asset_mismatch,
-     * payout.bad_address, payout.bad_amount, payout.bad_memo, payout.bad_owner_kind,
-     * payout.bad_url_callback, payout.batch_too_large, payout.cap_unpriceable,
-     * payout.convert_bad_amount, payout.convert_frozen, payout.convert_idempotency_conflict,
-     * payout.convert_insufficient, payout.convert_no_rate, payout.convert_same_asset,
-     * payout.convert_unsupported, payout.daily_cap, payout.destination_internal,
-     * payout.destination_not_activated, payout.duplicate_reference, payout.empty_batch,
-     * payout.fee_asset_mismatch, payout.freeze_unknown, payout.from_currency_unsupported,
-     * payout.frozen, payout.funds_maturing, payout.funds_settling, payout.insufficient_funds,
-     * payout.memo_conflict, payout.memo_required, payout.memo_too_long, payout.merchant_frozen,
-     * payout.network_required, payout.no_destination, payout.no_owner, payout.not_found,
-     * payout.order_id_required, payout.reference_collision, payout.reserved_reference,
-     * payout.unsupported_network, rates.deviation, rates.no_source, rates.non_positive,
-     * rates.stale_rate, request.bad_json, request.body_read, request.control_char,
-     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-     * request.reference_invalid, request.reference_too_long, request.too_deep,
-     * request.unknown_currency, sandbox.convert_not_available, treasury.no_ccy_map,
-     * wallet.static_not_found, webhook.no_endpoint
+     * batch.duplicate_order_id, cli.permission_denied, compliance.blocked,
+     * compliance.blocked_address, compliance.blocklist_unavailable, compliance.no_destination,
+     * compliance.no_network, compliance.sanctioned_address, compliance.sanctions_unavailable,
+     * idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
+     * idempotency.unavailable, internal, ledger.account_not_found, ledger.asset_mismatch,
+     * ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset,
+     * ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
+     * ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced,
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * payout.above_limit, payout.address_network_mismatch, payout.amount_below_fee,
+     * payout.asset_mismatch, payout.bad_address, payout.bad_amount, payout.bad_memo,
+     * payout.bad_owner_kind, payout.bad_url_callback, payout.batch_too_large,
+     * payout.cap_unpriceable, payout.convert_bad_amount, payout.convert_frozen,
+     * payout.convert_idempotency_conflict, payout.convert_insufficient, payout.convert_no_rate,
+     * payout.convert_same_asset, payout.convert_unsupported, payout.daily_cap,
+     * payout.destination_internal, payout.destination_not_activated, payout.duplicate_reference,
+     * payout.empty_batch, payout.fee_asset_mismatch, payout.freeze_unknown,
+     * payout.from_currency_unsupported, payout.frozen, payout.funds_maturing,
+     * payout.funds_settling, payout.insufficient_funds, payout.memo_conflict, payout.memo_required,
+     * payout.memo_too_long, payout.merchant_frozen, payout.network_required, payout.no_destination,
+     * payout.no_owner, payout.not_found, payout.order_id_required, payout.reference_collision,
+     * payout.reserved_reference, payout.unsupported_network, rates.deviation, rates.no_source,
+     * rates.non_positive, rates.stale_rate, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.reference_invalid, request.reference_too_long,
+     * request.too_deep, request.unknown_currency, sandbox.convert_not_available,
+     * treasury.no_ccy_map, wallet.static_not_found, webhook.no_endpoint
      *
      * @param MassPayoutRequest|array{
      *     payouts: list<PayoutRequest|array<string, mixed>>,
@@ -171,23 +177,26 @@ final class Payouts extends Resource
     }
 
     /**
-     * Узнать статус выплаты
+     * Get payout status
      *
-     * По `uuid`/`order_id`.
+     * By `uuid`/`order_id`.
      *
-     * Дополнительно к общему объекту выплаты этот ответ несёт `error` и `error_code`: последняя
-     * записанная причина, почему выплата упала или застряла (текст и, когда он есть, машинный код
-     * вида `payout.insufficient_funds`). Оба ключа присутствуют всегда; `null` — ошибок не
-     * записано.
+     * In addition to the common payout object this response carries `error` and `error_code`: the
+     * last recorded reason why the payout failed or got stuck (the text and, when present, a
+     * machine code like `payout.insufficient_funds`). Both keys are always present; `null` — no
+     * errors recorded.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payout/info`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.bad_uuid,
-     * payout.no_lookup, payout.not_found, request.bad_json, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, payout.bad_uuid, payout.no_lookup,
+     * payout.not_found, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      *
      * @param LookupRequest|array{order_id?: string, uuid?: string} $params
      */
@@ -204,22 +213,25 @@ final class Payouts extends Resource
     }
 
     /**
-     * История выплат
+     * Payout history
      *
-     * Список ваших выплат, новые сверху: `items` + блок `paginate` (`total`, `per_page`, `offset`,
-     * `has_pages`). Тело: `limit`, `offset`, необязательные `status`, `kind` (`refund` | `payout` |
-     * пусто — выплаты без возвратов) и `include_refunds`: по умолчанию возвраты в историю выплат не
-     * входят, `true` без `kind` возвращает выплаты и возвраты одной лентой; только возвраты —
+     * Your payouts, newest first: `items` plus a `paginate` block (`total`, `per_page`, `offset`,
+     * `has_pages`). Body: `limit`, `offset`, optional `status`, `kind` (`refund` | `payout` | empty
+     * — payouts without refunds) and `include_refunds`: by default refunds are not included in the
+     * payout history; `true` without `kind` returns payouts and refunds as one feed; refunds only —
      * `kind: refund`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payout/history`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.bad_kind,
-     * payout.bad_status, payout.not_found, request.bad_json, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, payout.bad_kind, payout.bad_status,
+     * payout.not_found, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      *
      * @param HistoryRequest|array{
      *     include_refunds?: bool,
@@ -244,20 +256,23 @@ final class Payouts extends Resource
     }
 
     /**
-     * Рассчитать сумму и комиссию выплаты
+     * Calculate payout amount and fee
      *
-     * Предварительный расчёт: сколько спишется, сколько комиссия, сколько получит адрес — без
-     * создания выплаты.
+     * A preliminary calculation: how much will be debited, the fee, and how much the address will
+     * receive — without creating a payout.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payout/calculate`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.amount_below_fee,
-     * payout.bad_amount, payout.network_required, payout.unsupported_network, rates.deviation,
-     * rates.no_source, rates.non_positive, request.bad_json, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep, request.unknown_currency
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, payout.amount_below_fee, payout.bad_amount,
+     * payout.network_required, payout.unsupported_network, rates.deviation, rates.no_source,
+     * rates.non_positive, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep, request.unknown_currency
      *
      * @param PayoutCalculateRequest|array{
      *     amount: string,
@@ -279,32 +294,35 @@ final class Payouts extends Resource
     }
 
     /**
-     * Проверить выплату без создания (dry-run)
+     * Validate a payout without creating it (dry run)
      *
-     * Прогоняет все проверки создания выплаты — валюта, сумма, сеть, адрес, memo, скрининг адреса,
-     * комиссия, заморозка/суточный лимит и достаточность баланса — но ничего не резервирует и не
-     * отправляет. Ответ `valid: true` с суммами (`amount`, `commission`, `payer_amount`,
-     * `fee_bearer`), либо та же ошибка, что вернуло бы создание. Тело — как у POST /v1/payout
-     * (order_id необязателен для проверки).
+     * Runs all payout-creation checks — currency, amount, network, address, memo, address
+     * screening, fee, freeze/daily limit and balance sufficiency — but reserves and sends nothing.
+     * The response is `valid: true` with the amounts (`amount`, `commission`, `payer_amount`,
+     * `fee_bearer`), or the same error that creation would return. The body is the same as for POST
+     * /v1/payout (order_id is optional for validation).
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payout/validate`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
-     * compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
-     * compliance.sanctions_unavailable, internal, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
-     * merchant.suspended, merchant.unknown_key, payout.above_limit,
-     * payout.address_network_mismatch, payout.amount_below_fee, payout.bad_address,
-     * payout.bad_amount, payout.bad_memo, payout.bad_url_callback, payout.cap_unpriceable,
-     * payout.daily_cap, payout.destination_internal, payout.from_currency_unsupported,
-     * payout.insufficient_funds, payout.memo_conflict, payout.memo_required, payout.memo_too_long,
-     * payout.merchant_frozen, payout.network_required, payout.reserved_reference,
-     * payout.unsupported_network, rates.deviation, rates.no_source, rates.non_positive,
-     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.reference_invalid,
-     * request.reference_too_long, request.too_deep, request.unknown_currency,
-     * sandbox.convert_not_available, wallet.static_not_found, webhook.no_endpoint
+     * cli.permission_denied, compliance.blocked, compliance.blocked_address,
+     * compliance.blocklist_unavailable, compliance.no_destination, compliance.no_network,
+     * compliance.sanctioned_address, compliance.sanctions_unavailable, internal,
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * payout.above_limit, payout.address_network_mismatch, payout.amount_below_fee,
+     * payout.bad_address, payout.bad_amount, payout.bad_memo, payout.bad_url_callback,
+     * payout.cap_unpriceable, payout.daily_cap, payout.destination_internal,
+     * payout.from_currency_unsupported, payout.insufficient_funds, payout.memo_conflict,
+     * payout.memo_required, payout.memo_too_long, payout.merchant_frozen, payout.network_required,
+     * payout.reserved_reference, payout.unsupported_network, rates.deviation, rates.no_source,
+     * rates.non_positive, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.reference_invalid, request.reference_too_long, request.too_deep,
+     * request.unknown_currency, sandbox.convert_not_available, wallet.static_not_found,
+     * webhook.no_endpoint
      *
      * @param PayoutValidateRequest|array{
      *     address: string,
@@ -332,25 +350,28 @@ final class Payouts extends Resource
     }
 
     /**
-     * Отменить неотправленную выплату
+     * Cancel an unsent payout
      *
-     * Отменяет выплату и освобождает зарезервированные средства, пока она не отправлена в сеть
-     * (статусы pending / approved / awaiting_cosign); после отправки — 409. Возврат тоже является
-     * выплатой, поэтому этим же методом отклоняется ещё не отправленный возврат. Только своя
-     * выплата.
+     * Cancels a payout and releases the reserved funds as long as it has not been broadcast to the
+     * network (statuses pending / approved / awaiting_cosign); after broadcast — 409. A refund is
+     * also a payout, so this same method rejects a refund that has not been sent yet. Only your own
+     * payout.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payout/cancel`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
-     * ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
-     * ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
-     * ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
-     * merchant.suspended, merchant.unknown_key, payout.already_broadcast, payout.bad_state,
-     * payout.bad_uuid, payout.illegal_transition, payout.not_found, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, split.bad_reversal_claim
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, ledger.account_not_found, ledger.asset_mismatch,
+     * ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset,
+     * ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
+     * ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced,
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * payout.already_broadcast, payout.bad_state, payout.bad_uuid, payout.illegal_transition,
+     * payout.not_found, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep, split.bad_reversal_claim
      *
      * @param CancelPayoutRequest|array{uuid: string} $params
      */
@@ -367,20 +388,23 @@ final class Payouts extends Resource
     }
 
     /**
-     * Подтвердить выплату
+     * Approve a payout
      *
-     * Подтверждает выплату, ожидающую подтверждения. Выплаты по API-ключу подтверждаются
-     * автоматически — этот метод нужен только внутренним/кабинетным сценариям.
+     * Approves a payout awaiting approval. Payouts made with an API key are approved automatically
+     * — this method is only needed for internal/dashboard scenarios.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payout/approve`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * payout.approver_is_creator, payout.bad_uuid, payout.freeze_unknown, payout.frozen,
-     * payout.illegal_transition, payout.not_found, payout.not_pending, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, payout.approver_is_creator, payout.bad_uuid,
+     * payout.freeze_unknown, payout.frozen, payout.illegal_transition, payout.not_found,
+     * payout.not_pending, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      *
      * @param ApproveRequest|array{uuid: string} $params
      */
@@ -397,18 +421,21 @@ final class Payouts extends Resource
     }
 
     /**
-     * Доступные валюты и сети для выплат
+     * Currencies and networks available for payouts
      *
-     * Список с лимитами и комиссиями. Тело — пустой `{}`.
+     * The list with limits and fees. The body is an empty `{}`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payout/services`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, rates.deviation,
-     * rates.no_source, rates.non_positive, request.bad_json, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, rates.deviation, rates.no_source,
+     * rates.non_positive, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      *
      * @param PageRequest|array{limit?: int, offset?: int} $params
      *
@@ -427,28 +454,31 @@ final class Payouts extends Resource
     }
 
     /**
-     * Перевод на личный кошелёк
+     * Transfer to the personal wallet
      *
-     * Перевести средства с бизнес-кошелька мерчанта на личный кошелёк владельца аккаунта. Требует
-     * привязки мерчанта к пользователю.
+     * Transfer funds from the merchant's business wallet to the account owner's personal wallet.
+     * Requires the merchant to be linked to a user.
+     *
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/transfer/to-personal`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
+     * cli.permission_denied, idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
      * idempotency.unavailable, internal, ledger.account_not_found, ledger.asset_mismatch,
      * ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset,
      * ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
      * ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.no_personal_wallet,
-     * merchant.not_found, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-     * merchant.unknown_key, payout.above_limit, payout.cap_unpriceable, payout.daily_cap,
-     * payout.merchant_frozen, personal.amount_invalid, personal.bad_source_id,
-     * personal.funds_maturing, personal.insufficient, rates.deviation, rates.no_source,
-     * rates.non_positive, request.bad_json, request.body_read, request.control_char,
-     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-     * request.reference_invalid, request.reference_too_long, request.too_deep,
-     * request.unknown_currency, sandbox.transfer_not_available, transfer.bad_amount
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.no_personal_wallet, merchant.not_found, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.above_limit,
+     * payout.cap_unpriceable, payout.daily_cap, payout.merchant_frozen, personal.amount_invalid,
+     * personal.bad_source_id, personal.funds_maturing, personal.insufficient, rates.deviation,
+     * rates.no_source, rates.non_positive, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.reference_invalid, request.reference_too_long,
+     * request.too_deep, request.unknown_currency, sandbox.transfer_not_available,
+     * transfer.bad_amount
      *
      * @param TransferRequest|array{amount: string, currency: string, order_id?: string} $params
      */
@@ -465,30 +495,32 @@ final class Payouts extends Resource
     }
 
     /**
-     * Внутренний перевод пользователю платформы
+     * Internal transfer to a platform user
      *
-     * Перевести средства с бизнес-кошелька на личный кошелёк ДРУГОГО пользователя платформы (без
-     * комиссии, мгновенно, без сети). Получатель адресуется по user id; юзернейм резолвится
-     * публичным эндпоинтом кабинета /public/users/{username}.
+     * Transfer funds from the business wallet to the personal wallet of ANOTHER platform user (no
+     * fee, instant, off-chain). The recipient is addressed by user id; a username is resolved by
+     * the dashboard's public endpoint /public/users/{username}.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/transfer/to-user`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
+     * cli.permission_denied, idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
      * idempotency.unavailable, internal, ledger.account_not_found, ledger.asset_mismatch,
      * ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset,
      * ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
      * ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.above_limit,
-     * payout.cap_unpriceable, payout.daily_cap, payout.merchant_frozen, personal.amount_invalid,
-     * personal.bad_source, personal.bad_source_id, personal.insufficient, personal.no_recipient,
-     * personal.self_transfer, rates.deviation, rates.no_source, rates.non_positive,
-     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.reference_invalid,
-     * request.reference_too_long, request.too_deep, request.unknown_currency,
-     * sandbox.transfer_not_available, transfer.bad_amount, transfer.bad_recipient,
-     * transfer.no_recipient, transfer.recipient_not_found
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * payout.above_limit, payout.cap_unpriceable, payout.daily_cap, payout.merchant_frozen,
+     * personal.amount_invalid, personal.bad_source, personal.bad_source_id, personal.insufficient,
+     * personal.no_recipient, personal.self_transfer, rates.deviation, rates.no_source,
+     * rates.non_positive, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.reference_invalid, request.reference_too_long, request.too_deep,
+     * request.unknown_currency, sandbox.transfer_not_available, transfer.bad_amount,
+     * transfer.bad_recipient, transfer.no_recipient, transfer.recipient_not_found
      *
      * @param TransferToUserRequest|array{
      *     amount: string,
@@ -510,22 +542,25 @@ final class Payouts extends Resource
     }
 
     /**
-     * Массовые внутренние переводы (ведомость)
+     * Bulk internal transfers (payroll)
      *
-     * Асинхронная пачка внутренних переводов: {"transfers":[<как /v1/transfer/to-user>...],
-     * "on_error":"continue"}. Статус и результаты по строкам — POST /v1/batch/info.
+     * An asynchronous batch of internal transfers: {"transfers":[<as in /v1/transfer/to-user>...],
+     * "on_error":"continue"}. Status and per-row results — POST /v1/batch/info.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/transfer/batch`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
      * batch.bad_on_error, batch.bad_recipient, batch.disabled, batch.duplicate_order_id,
      * batch.duplicate_reference, batch.empty, batch.invoice_required, batch.order_id_required,
-     * batch.reference_required, batch.too_large, batch.unsupported_kind, idempotency.bad_key,
-     * idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * batch.reference_required, batch.too_large, batch.unsupported_kind, cli.permission_denied,
+     * idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
+     * idempotency.unavailable, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param TransferBatchRequest|array{
      *     on_error?: BatchOnError|string,

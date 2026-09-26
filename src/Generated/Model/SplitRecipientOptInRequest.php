@@ -24,9 +24,9 @@ final class SplitRecipientOptInRequest extends Model
      */
     public function __construct(
         /**
-         * Разрешить другим мерчантам направлять доли сплитов на ваш баланс. true — включить приём,
-         * false — выключить (новые правила на вас перестанут создаваться; уже созданные продолжают
-         * исполняться).
+         * Allow other merchants to route split shares to your balance. true — enable receiving,
+         * false — disable (new rules targeting you can no longer be created; existing ones keep
+         * executing).
          */
         public readonly ?bool $enabled = null,
         /** Fields newer than this SDK, exactly as received. */

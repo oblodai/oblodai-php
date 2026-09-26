@@ -23,9 +23,9 @@ final class RefundFeeResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** true — проект задал настройку сам; false — действует умолчание шлюза. */
+        /** true — the project set this setting itself; false — the gateway default applies. */
         public readonly bool $configured,
-        /** Действующее значение: настройка проекта, а без неё — умолчание шлюза. */
+        /** The effective value: the project setting, or the gateway default if there is none. */
         public readonly bool $fee_on_customer,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

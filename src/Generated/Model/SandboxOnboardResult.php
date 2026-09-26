@@ -23,13 +23,16 @@ final class SandboxOnboardResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Ключ API мерчанта. */
+        /** The merchant's API key. */
         public readonly OnboardKey $api_key,
-        /** true — dev store создан сейчас; false — уже был, секрет ключа пуст. */
+        /**
+         * true — the dev store was created just now; false — it already existed, the key secret is
+         * empty.
+         */
         public readonly bool $created,
-        /** Мерчант. */
+        /** Merchant. */
         public readonly string $merchant_id,
-        /** Первый проект мерчанта. */
+        /** The merchant's first project. */
         public readonly string $project_id,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

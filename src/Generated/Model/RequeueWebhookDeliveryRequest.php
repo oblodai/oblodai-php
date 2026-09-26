@@ -23,7 +23,7 @@ final class RequeueWebhookDeliveryRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор доставки из журнала (POST /v1/webhooks/deliveries). */
+        /** The delivery id from the log (POST /v1/webhooks/deliveries). */
         public readonly string $id,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

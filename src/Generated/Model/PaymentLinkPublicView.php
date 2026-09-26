@@ -31,10 +31,10 @@ final class PaymentLinkPublicView extends Model
         'title',
     ];
 
-    /** Верхняя граница для range. */
+    /** Upper bound for range. */
     public readonly ?string $max_amount;
 
-    /** Нижняя граница для open/range. */
+    /** Lower bound for open/range. */
     public readonly ?string $min_amount;
 
     /**
@@ -43,25 +43,25 @@ final class PaymentLinkPublicView extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** fixed, open или range. */
+        /** fixed, open or range. */
         public readonly AmountMode|string $amount_mode,
-        /** Валюта цены. */
+        /** Price currency. */
         public readonly string $currency,
-        /** Описание. */
+        /** Description. */
         public readonly string $description,
-        /** Идентификатор ссылки. */
+        /** Link id. */
         public readonly string $link_id,
-        /** Заголовок страницы. */
+        /** Page title. */
         public readonly string $title,
-        /** Сумма для fixed. */
+        /** Amount for fixed. */
         public readonly ?string $amount_fixed = null,
-        /** Верхняя граница для range. */
+        /** Upper bound for range. */
         string|int|float|null $max_amount = null,
-        /** Нижняя граница для open/range. */
+        /** Lower bound for open/range. */
         string|int|float|null $min_amount = null,
-        /** Закреплённая валюта оплаты. */
+        /** The pinned payment currency. */
         public readonly ?string $pinned_currency = null,
-        /** Закреплённая сеть оплаты. */
+        /** The pinned payment network. */
         public readonly ?string $pinned_network = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

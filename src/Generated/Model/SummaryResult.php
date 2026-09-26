@@ -25,12 +25,13 @@ final class SummaryResult extends Model
      */
     public function __construct(
         /**
-         * Выплат в работе прямо сейчас (статус не финальный), без возвратов; от окна не зависит.
+         * Payouts in progress right now (non-final status), excluding refunds; independent of the
+         * window.
          */
         public readonly int $pending_payouts,
         /**
-         * Оборот окна: оплаченное по оплаченным счетам (paid, paid_over), созданным в окне, — по
-         * монете оплаты, по алфавиту. Пусто — оплат не было.
+         * Turnover for the window: amounts paid on paid invoices (paid, paid_over) created within
+         * the window — per payment coin, alphabetically. Empty — there were no payments.
          */
         public readonly array $turnover,
         /** Fields newer than this SDK, exactly as received. */

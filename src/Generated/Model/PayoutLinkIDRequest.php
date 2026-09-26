@@ -23,7 +23,7 @@ final class PayoutLinkIDRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор выплатной ссылки (link_id из ответа создания). */
+        /** The payout link id (link_id from the creation response). */
         public readonly string $link_id,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

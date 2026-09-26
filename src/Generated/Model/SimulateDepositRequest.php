@@ -23,19 +23,20 @@ final class SimulateDepositRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** UUID тестового счёта, который «оплачивается». */
+        /** The UUID of the test invoice being "paid". */
         public readonly string $invoice_id,
         /**
-         * Сумма в валюте счёта; пусто — оплатить ровно сколько нужно, иное — способ получить
-         * недо/переплату.
+         * The amount in the invoice currency; empty — pay exactly the amount due, anything else — a
+         * way to produce an under/overpayment.
          */
         public readonly ?string $amount = null,
         /**
-         * С каким числом подтверждений пришёл депозит; 0 — полностью подтверждён; меньше требуемого
-         * — способ проверить переход pending→confirmed (повторите тот же txid с большим числом).
+         * The number of confirmations the deposit arrived with; 0 — fully confirmed; fewer than
+         * required — a way to test the pending→confirmed transition (repeat the same txid with a
+         * higher number).
          */
         public readonly ?int $confirmations = null,
-        /** Повтор того же txid проверяет вашу идемпотентность; пусто — новый txid. */
+        /** Repeating the same txid tests your idempotency; empty — a new txid. */
         public readonly ?string $txid = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

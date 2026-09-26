@@ -23,21 +23,21 @@ final class TestWebhookKindRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Куда отправить пробное тело */
+        /** Where to send the sample body */
         public readonly string $url_callback,
-        /** Валюта в теле */
+        /** Currency in the body */
         public readonly ?string $currency = null,
-        /** Сеть в теле */
+        /** Network in the body */
         public readonly ?string $network = null,
-        /** Ваш order_id, который попадёт в пробное тело события */
+        /** Your order_id placed in the sample event body */
         public readonly ?string $order_id = null,
         /**
-         * Статус в теле — только те, с которыми боевой вебхук этого вида действительно приходит
-         * (кошелёк — только paid); иначе 400 webhook.bad_status. По умолчанию paid (для выплаты —
-         * confirmed, для конвертации — completed)
+         * The status in the body — only those with which a live webhook of this kind actually
+         * arrives (wallet — paid only); otherwise 400 webhook.bad_status. Default paid (for a
+         * payout — confirmed, for a conversion — completed)
          */
         public readonly ?string $status = null,
-        /** UUID объекта (платежа, кошелька или выплаты), который попадёт в пробное тело события */
+        /** The UUID of the object (payment, wallet or payout) placed in the sample event body */
         public readonly ?string $uuid = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

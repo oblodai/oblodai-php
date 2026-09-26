@@ -23,7 +23,7 @@ final class BalanceResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Балансы владельца. */
+        /** The owner's balances. */
         public readonly MerchantBalances $balance,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

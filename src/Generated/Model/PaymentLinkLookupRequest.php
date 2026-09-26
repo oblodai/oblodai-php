@@ -23,11 +23,11 @@ final class PaymentLinkLookupRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор платёжной ссылки. */
+        /** Payment link id. */
         public readonly string $link_id,
-        /** Размер страницы платежей по ссылке, 1–100; вне диапазона — 25. */
+        /** The page size for payments through the link, 1–100; out of range — 25. */
         public readonly ?int $limit = null,
-        /** Смещение страницы платежей. */
+        /** The offset of the payments page. */
         public readonly ?int $offset = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -23,7 +23,7 @@ final class WalletQRResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** PNG QR-кода как data:-URI; "" — не удалось отрисовать. */
+        /** The QR code PNG as a data: URI; "" — rendering failed. */
         public readonly string $image,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

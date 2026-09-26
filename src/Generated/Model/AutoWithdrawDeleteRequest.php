@@ -23,7 +23,7 @@ final class AutoWithdrawDeleteRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Актив, автовывод которого выключить. */
+        /** The asset whose auto-withdrawal to disable. */
         public readonly string $currency,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

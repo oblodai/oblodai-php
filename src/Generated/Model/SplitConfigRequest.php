@@ -24,8 +24,8 @@ final class SplitConfigRequest extends Model
      */
     public function __construct(
         /**
-         * На сколько секунд откладывать расчёт по сплитам; диапазон 0–7776000 (до 90 суток). 0 —
-         * отправлять доли сразу: риск невозможности возврата берёте на себя.
+         * How many seconds to defer split settlement; range 0–7776000 (up to 90 days). 0 — send
+         * shares immediately: you bear the risk of being unable to refund.
          */
         public readonly ?int $refund_hold_seconds = null,
         /** Fields newer than this SDK, exactly as received. */

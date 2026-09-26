@@ -28,42 +28,47 @@ use Oblodai\Generated\Routes;
 use Oblodai\Generated\Wire;
 
 /**
- * Автоматическое разделение поступлений между получателями.
+ * Automatic splitting of incoming funds between recipients.
  */
 final class Splits extends Resource
 {
     /**
-     * Правило сплита (отчисление партнёру)
+     * Split rule (partner share)
      *
-     * Автоматически отправлять долю КАЖДОГО входящего платежа партнёру. Укажите ровно одного
-     * получателя:
+     * Automatically send a share of EVERY incoming payment to a partner. Specify exactly one
+     * recipient:
      *
-     * • `address` + `network` — внешний крипто-адрес. Уходит он-чейн выплатой, **необратимо**.
-     * • `merchant_id` — аккаунт на Oblodai. Уходит проводкой по балансу: **обратимо** (возврат
-     * отзовёт долю обратно).
+     * • `address` + `network` — an external crypto address. Sent as an on-chain payout,
+     * **irreversibly**.
+     * • `merchant_id` — an Oblodai account. Sent as a balance posting: **reversible** (a refund
+     * claws the share back).
      *
-     * `percent` — доля от платежа (напр. `10` или `2.5`). Сумма всех активных правил проекта не
-     * может превышать 100%.
+     * `percent` — the share of the payment (e.g. `10` or `2.5`). The sum of all active rules of a
+     * project cannot exceed 100%.
      *
-     * ⚠️ **Возвраты.** Возврат списывается с ВАШЕГО баланса на всю сумму, что прислал плательщик.
-     * Поэтому отправка партнёрам не происходит сразу: она откладывается на `refund_hold_seconds`
-     * (см. `/v1/split/config/set`), и в момент отправки база пересчитывается как «оплачено −
-     * возвращено». Возврат внутри окна автоматически уменьшает (или отменяет) отчисление, и вам
-     * всегда есть чем вернуть деньги. Возврат ПОСЛЕ отправки: внешнюю долю вернуть нельзя
-     * (пополняйте баланс), долю on-platform партнёра мы отзовём автоматически.
+     * ⚠️ **Refunds.** A refund is debited from YOUR balance for the full amount the payer sent.
+     * That is why partner shares are not sent immediately: sending is deferred by
+     * `refund_hold_seconds` (see `/v1/split/config/set`), and at send time the base is recalculated
+     * as "paid − refunded". A refund within the window automatically reduces (or cancels) the
+     * share, so you always have the funds to refund. A refund AFTER sending: an external share
+     * cannot be recovered (top up your balance); an on-platform partner's share is clawed back
+     * automatically.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/split/rule`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
-     * idempotency.unavailable, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * payout.address_network_mismatch, payout.bad_address, payout.bad_memo, payout.memo_conflict,
-     * payout.memo_required, payout.memo_too_long, request.bad_json, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep, split.bad_destination, split.bad_merchant,
-     * split.bad_percent, split.consent_check_failed, split.dest_check_failed, split.dest_not_found,
-     * split.disabled, split.duplicate_destination, split.exceeds_100, split.network_required,
+     * cli.permission_denied, idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
+     * idempotency.unavailable, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, payout.address_network_mismatch,
+     * payout.bad_address, payout.bad_memo, payout.memo_conflict, payout.memo_required,
+     * payout.memo_too_long, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep, split.bad_destination, split.bad_merchant, split.bad_percent,
+     * split.consent_check_failed, split.dest_check_failed, split.dest_not_found, split.disabled,
+     * split.duplicate_destination, split.exceeds_100, split.network_required,
      * split.recipient_not_opted_in, split.self_destination, split.unsupported_network
      *
      * @param SplitRuleRequest|array{
@@ -87,18 +92,21 @@ final class Splits extends Resource
     }
 
     /**
-     * Список правил
+     * List rules
      *
-     * Ваши правила сплита. `reversible: true` — партнёр на платформе (долю можно отозвать при
-     * возврате).
+     * Your split rules. `reversible: true` — an on-platform partner (the share can be clawed back
+     * on refund).
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/split/rule/list`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, split.disabled
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, split.disabled
      *
      * @param PageRequest|array{limit?: int, offset?: int} $params
      *
@@ -115,18 +123,20 @@ final class Splits extends Resource
     }
 
     /**
-     * Удалить правило
+     * Delete a rule
      *
-     * `{rule_id}`. На уже отправленные доли не влияет.
+     * `{rule_id}`. Does not affect shares already sent.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/split/rule/delete`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, split.bad_id, split.disabled,
-     * split.not_found
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, split.bad_id, split.disabled, split.not_found
      *
      * @param SplitRuleDeleteRequest|array{rule_id: string} $params
      */
@@ -143,24 +153,26 @@ final class Splits extends Resource
     }
 
     /**
-     * Окно удержания под возвраты
+     * Refund hold window
      *
-     * `refund_hold_seconds` — на сколько СЕКУНД откладывается ВСЯ исходящая маршрутизация платежа
-     * (сплиты партнёрам, авто-вывод, авто-конвертация в USDT) после его зачисления.
+     * `refund_hold_seconds` — how many SECONDS ALL outgoing routing of a payment (partner splits,
+     * auto-withdrawal, auto-conversion to USDT) is deferred after the payment is credited.
      *
-     * Смысл: пока окно не истекло, деньги лежат на вашем балансе, и любой возврат проходит без
-     * проблем. `0` = отправлять сразу, тогда риск возврата после отправки вы берёте на себя.
-     * Диапазон 0–7776000 (до 90 суток); поле обязательное — пришлите `0` явно, если доли нужно
-     * отправлять сразу.
+     * The point: until the window expires the money stays on your balance, and any refund goes
+     * through without trouble. `0` = send immediately, in which case you bear the risk of a refund
+     * after sending. Range 0–7776000 (up to 90 days); the field is required — send `0` explicitly
+     * if shares should be sent immediately.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/split/config/set`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.missing_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, split.bad_hold,
-     * split.disabled
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.missing_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep, split.bad_hold, split.disabled
      *
      * @param SplitConfigRequest|array{refund_hold_seconds: int|null} $params
      */
@@ -177,17 +189,20 @@ final class Splits extends Resource
     }
 
     /**
-     * Текущее окно удержания
+     * Current hold window
      *
-     * Возвращает `refund_hold_seconds` проекта.
+     * Returns the project's `refund_hold_seconds`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/split/config/get`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep, split.disabled
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep, split.disabled
      */
     public function getConfig(?RequestOptions $options = null): SplitConfigView
     {
@@ -200,19 +215,22 @@ final class Splits extends Resource
     }
 
     /**
-     * Согласие принимать сплиты
+     * Consent to receive splits
      *
-     * `{enabled}` — разрешить другим мерчантам направлять доли своих платежей на ВАШ баланс. Пока
-     * выключено, никто не может создать внутреннее правило сплита с получателем-вами. Выключение не
-     * отзывает уже созданные правила (деньги по ним продолжают поступать), но блокирует новые.
+     * `{enabled}` — allow other merchants to route shares of their payments to YOUR balance. While
+     * disabled, nobody can create an internal split rule with you as the recipient. Disabling does
+     * not revoke rules already created (money keeps arriving under them), but blocks new ones.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/split/recipient/optin`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.missing_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, split.disabled
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.missing_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep, split.disabled
      *
      * @param SplitRecipientOptInRequest|array{enabled: bool|null} $params
      */
@@ -229,17 +247,20 @@ final class Splits extends Resource
     }
 
     /**
-     * Текущее согласие на приём сплитов
+     * Current consent to receive splits
      *
-     * Возвращает `enabled` — включён ли приём внутренних сплитов на ваш баланс.
+     * Returns `enabled` — whether receiving internal splits to your balance is enabled.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/split/recipient/optin/get`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep, split.disabled
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep, split.disabled
      */
     public function getRecipientOptIn(?RequestOptions $options = null): SplitRecipientOptInView
     {

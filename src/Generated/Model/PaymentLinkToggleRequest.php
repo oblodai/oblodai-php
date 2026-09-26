@@ -24,11 +24,11 @@ final class PaymentLinkToggleRequest extends Model
      */
     public function __construct(
         /**
-         * true — ссылка принимает оплату; false — выключена (страница покажет, что ссылка
-         * неактивна).
+         * true — the link accepts payments; false — disabled (the page will show that the link is
+         * inactive).
          */
         public readonly bool $active,
-        /** Идентификатор платёжной ссылки. */
+        /** Payment link id. */
         public readonly string $link_id,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

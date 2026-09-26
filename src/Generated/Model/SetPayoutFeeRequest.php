@@ -24,8 +24,8 @@ final class SetPayoutFeeRequest extends Model
      */
     public function __construct(
         /**
-         * true — сетевую комиссию платит получатель (получает меньше); false — комиссию несёт
-         * мерчант
+         * true — the network fee is paid by the recipient (who receives less); false — the merchant
+         * bears the fee
          */
         public readonly bool $fee_on_recipient,
         /** Fields newer than this SDK, exactly as received. */

@@ -12,6 +12,7 @@ use Oblodai\Generated\Resource\Account;
 use Oblodai\Generated\Resource\ApiAllowlist;
 use Oblodai\Generated\Resource\Batches;
 use Oblodai\Generated\Resource\Checkout;
+use Oblodai\Generated\Resource\CliLogin;
 use Oblodai\Generated\Resource\Documents;
 use Oblodai\Generated\Resource\PaymentLinks;
 use Oblodai\Generated\Resource\Payments;
@@ -62,6 +63,7 @@ final class Oblodai
     public readonly Documents $documents;
     public readonly Checkout $checkout;
     public readonly Sandbox $sandbox;
+    public readonly CliLogin $cliLogin;
 
     /** The transport, exposed for advanced use (custom routes, tests). */
     public readonly Transport $transport;
@@ -167,5 +169,6 @@ final class Oblodai
         $this->documents = new Documents($transport);
         $this->checkout = new Checkout($transport);
         $this->sandbox = new Sandbox($transport);
+        $this->cliLogin = new CliLogin($transport);
     }
 }

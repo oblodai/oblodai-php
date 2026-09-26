@@ -23,11 +23,9 @@ final class BlockWalletRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Адрес статического кошелька */
+        /** Static wallet address */
         public readonly string $address,
-        /**
-         * true — заблокировать (значение по умолчанию, если поле опущено); false — снять блокировку
-         */
+        /** true — block (the default if the field is omitted); false — lift the block */
         public readonly ?bool $is_force_block = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

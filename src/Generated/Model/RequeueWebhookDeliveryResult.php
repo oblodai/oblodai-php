@@ -24,16 +24,16 @@ final class RequeueWebhookDeliveryResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор доставки. */
+        /** Delivery id. */
         public readonly string $id,
         /**
-         * true — этот вызов вернул доставку в очередь; false — она уже была в очереди или
-         * доставлена (повтор вызова ничего не меняет).
+         * true — this call re-queued the delivery; false — it was already queued or delivered
+         * (repeating the call changes nothing).
          */
         public readonly bool $ok,
         /**
-         * Статус доставки после вызова: pending — снова в очереди; delivered — уже доставлена,
-         * повторять нечего.
+         * The delivery status after the call: pending — queued again; delivered — already
+         * delivered, nothing to repeat.
          */
         public readonly WebhookDeliveryStatus|string $status,
         /** Fields newer than this SDK, exactly as received. */

@@ -24,8 +24,8 @@ final class SetRefundFeeRequest extends Model
      */
     public function __construct(
         /**
-         * true — клиент получает net (комиссию платит клиент); false — мерчант платит комиссию,
-         * клиент получает gross
+         * true — the customer receives net (the customer pays the fee); false — the merchant pays
+         * the fee, the customer receives gross
          */
         public readonly bool $fee_on_customer,
         /** Fields newer than this SDK, exactly as received. */

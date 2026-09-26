@@ -23,11 +23,11 @@ final class BatchInfoRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор батча из ответа на submit. */
+        /** The batch id from the submit response. */
         public readonly string $batch_id,
-        /** Сколько элементов вернуть в items (пагинация). */
+        /** How many items to return in items (pagination). */
         public readonly ?int $limit = null,
-        /** Смещение по элементам. */
+        /** Offset in items. */
         public readonly ?int $offset = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

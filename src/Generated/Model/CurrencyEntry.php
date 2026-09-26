@@ -24,9 +24,9 @@ final class CurrencyEntry extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Код валюты. */
+        /** Currency code. */
         public readonly string $currency,
-        /** Знаков после запятой в суммах этой валюты. */
+        /** Decimal places in amounts of this currency. */
         public readonly int $decimals,
         public readonly array $networks,
         /** Fields newer than this SDK, exactly as received. */

@@ -24,12 +24,12 @@ final class PayServiceEntry extends Model
      */
     public function __construct(
         public readonly PayServiceCommission $commission,
-        /** Валюта. */
+        /** Currency. */
         public readonly string $currency,
-        /** Метод работает на этом развёртывании. */
+        /** The method works on this deployment. */
         public readonly bool $is_available,
         public readonly PayServiceLimit $limit,
-        /** Сеть. */
+        /** Network. */
         public readonly string $network,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

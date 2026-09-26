@@ -23,9 +23,9 @@ final class DocumentJobError extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Машинный код отказа. */
+        /** The machine code of the rejection. */
         public readonly string $code,
-        /** Что случилось и что делать. */
+        /** What happened and what to do. */
         public readonly string $message,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

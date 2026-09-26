@@ -23,11 +23,11 @@ final class SendEmailResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Кому ушло письмо. */
+        /** Who the email was sent to. */
         public readonly string $email,
-        /** Письмо поставлено в очередь отправки; неудача отвечает ошибкой. */
+        /** The email has been queued for sending; a failure responds with an error. */
         public readonly bool $ok,
-        /** Идентификатор платежа. */
+        /** Payment id. */
         public readonly string $uuid,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

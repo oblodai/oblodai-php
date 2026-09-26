@@ -36,7 +36,7 @@ final class PaymentRequest extends Model
         'url_success',
     ];
 
-    /** Сумма к оплате в валюте currency. */
+    /** The amount to pay in currency. */
     public readonly string $amount;
 
     /**
@@ -44,55 +44,58 @@ final class PaymentRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сумма к оплате в валюте currency. */
+        /** The amount to pay in currency. */
         string|int|float $amount,
         /**
-         * Код валюты цены: любой из 23 фиатов (USD, EUR, RUB, …) или любая монета (USDT, BTC, …). У
-         * JPY и KRW ноль знаков после запятой.
+         * The price currency code: any of the 23 fiat currencies (USD, EUR, RUB, …) or any coin
+         * (USDT, BTC, …). JPY and KRW have zero decimal places.
          */
         public readonly string $currency,
-        /** Допуск недо/переплаты, 0–5 %. Перекрывает настройку мерчанта. */
+        /** Underpayment/overpayment tolerance, 0–5 %. Overrides the merchant setting. */
         public readonly ?float $accuracy_payment_percent = null,
-        /** Приватные данные мерчанта, эхом в вебхуках (покупателю не видны). */
+        /** The merchant's private data, echoed in webhooks (not visible to the buyer). */
         public readonly ?string $additional_data = null,
-        /** Разрешить доплату остатка. */
+        /** Allow paying the remainder. */
         public readonly ?bool $is_payment_multiple = null,
-        /** Оживить просроченный счёт по order_id вместо создания нового. */
+        /** Revive an expired invoice by order_id instead of creating a new one. */
         public readonly ?bool $is_refresh = null,
         /**
-         * Время жизни счёта в секундах, 300–43200; по умолчанию 3600. Значения вне диапазона
-         * обрезаются к ближайшей границе.
+         * Invoice lifetime in seconds, 300–43200; default 3600. Out-of-range values are clamped to
+         * the nearest bound.
          */
         public readonly ?int $lifetime_seconds = null,
-        /** Сеть расчёта (напр. tron, ethereum). Необязательна — см. режимы выбора валюты и сети. */
+        /**
+         * The settlement network (e.g. tron, ethereum). Optional — see the currency and network
+         * selection modes.
+         */
         public readonly ?string $network = null,
-        /** Ссылка мерчанта; ключ идемпотентности. Настоятельно рекомендуется. */
+        /** The merchant reference; the idempotency key. Strongly recommended. */
         public readonly ?string $order_id = null,
         /**
-         * Email плательщика. Если задан — после оплаты на него автоматически уходит чек; он же
-         * получатель по умолчанию у POST /v1/payment/send-email.
+         * The payer's email. If set, a receipt is sent to it automatically after payment; it is
+         * also the default recipient for POST /v1/payment/send-email.
          */
         public readonly ?string $payer_email = null,
         /**
-         * Устаревшее: % сетевой наценки на плательщика (0–100); payer-facing наценки настраиваются
-         * через discount.
+         * Deprecated: % network surcharge on the payer (0–100); payer-facing surcharges are
+         * configured via discount.
          */
         public readonly ?int $subtract = null,
-        /** Тема страницы оплаты: dark | light. */
+        /** Payment page theme: dark | light. */
         public readonly ?string $theme = null,
         /**
-         * Валюта расчёта — крипта, которой платят. По умолчанию = currency (только если currency —
-         * крипта); при цене в фиате задайте явно либо опустите вместе с network.
+         * The settlement currency — the crypto used to pay. Defaults to currency (only if currency
+         * is crypto); for a fiat price set it explicitly or omit it together with network.
          */
         public readonly ?string $to_currency = null,
         /**
-         * Индивидуальный webhook для этого счёта. Требует зарегистрированного эндпоинта (POST
-         * /v1/webhooks): доставка подписывается его секретом.
+         * A per-invoice webhook. Requires a registered endpoint (POST /v1/webhooks): the delivery
+         * is signed with its secret.
          */
         public readonly ?string $url_callback = null,
-        /** Ссылка «назад в магазин» на странице оплаты. */
+        /** The "back to store" link on the payment page. */
         public readonly ?string $url_return = null,
-        /** Редирект после успешной оплаты. */
+        /** Redirect after a successful payment. */
         public readonly ?string $url_success = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -13,8 +13,8 @@ use Oblodai\Generated\Enum\ConversionWebhookStatus;
 use Oblodai\Generated\Wire;
 
 /**
- * Приходит, когда конвертация в эконом-режиме исполнена (completed — зачислено) или отменена с
- * возвратом исходной суммы (refunded).
+ * Sent when an economy-mode conversion is executed (completed — credited) or cancelled with the
+ * source amount returned (refunded).
  */
 final class ConversionWebhook extends Model
 {
@@ -58,13 +58,16 @@ final class ConversionWebhook extends Model
         'type',
     ];
 
-    /** Комиссия конвертации, в процентах. */
+    /** Conversion fee, in percent. */
     public readonly string $fee_percent;
 
-    /** Сколько отдано, в валюте from. */
+    /** How much was given, in the from currency. */
     public readonly string $sent;
 
-    /** Сколько зачислено, в валюте to. Есть только у completed; у refunded поля нет. */
+    /**
+     * How much was credited, in the to currency. Present only for completed; refunded has no such
+     * field.
+     */
     public readonly ?string $received;
 
     /**
@@ -74,47 +77,51 @@ final class ConversionWebhook extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Когда завершена (ISO 8601). */
+        /** When completed (ISO 8601). */
         public readonly string $completed_at,
-        /** Когда конвертация принята (ISO 8601). */
+        /** When the conversion was accepted (ISO 8601). */
         public readonly string $created_at,
         /**
-         * Подписанная ссылка на PDF-чек конвертации; пусто у возврата и когда документы выключены.
+         * A signed link to the PDF conversion receipt; empty for a refund and when documents are
+         * disabled.
          */
         public readonly string $document_url,
-        /** Когда событие произошло, UTC с миллисекундами (ISO 8601). */
+        /** When the event happened, UTC with milliseconds (ISO 8601). */
         public readonly string $event_at,
-        /** Комиссия конвертации, в процентах. */
+        /** Conversion fee, in percent. */
         string|int|float $fee_percent,
-        /** Из какой валюты. */
+        /** Source currency. */
         public readonly string $from,
-        /** Идентификатор конвертации — тот id, что вернул запрос конвертации. */
+        /** The conversion id — the id returned by the conversion request. */
         public readonly string $id,
-        /** Всегда true: событие приходит, когда деньги уже зачислены или возвращены. */
+        /** Always true: the event arrives when the money has already been credited or returned. */
         public readonly bool $is_final,
-        /** Режим: economy (исполнена очередью) | instant. */
+        /** Mode: economy (executed via the queue) | instant. */
         public readonly string $mode,
-        /** Причина возврата (market_below_min | window_expired); пусто у completed. */
+        /** The refund reason (market_below_min | window_expired); empty for completed. */
         public readonly string $reason,
-        /** Сколько отдано, в валюте from. */
+        /** How much was given, in the from currency. */
         string|int|float $sent,
         /**
-         * Глобальный номер события: в пределах одного объекта больший номер новее, меньший —
-         * опоздавшая доставка, её нужно отбросить. У репетиции (test: true) всегда 0.
+         * The global event number: within one object a higher number is newer, a lower one is a
+         * late delivery and must be discarded. Always 0 on a rehearsal (test: true).
          */
         public readonly int $sequence,
-        /** completed — зачислено; refunded — исходная сумма возвращена. */
+        /** completed — credited; refunded — the source amount was returned. */
         public readonly ConversionWebhookStatus|string $status,
-        /** В какую валюту. */
+        /** Target currency. */
         public readonly string $to,
-        /** Вид события: payment | payout | wallet | conversion — какое тело пришло. */
+        /** Event kind: payment | payout | wallet | conversion — which body arrived. */
         public readonly string $type,
-        /** Сколько зачислено, в валюте to. Есть только у completed; у refunded поля нет. */
+        /**
+         * How much was credited, in the to currency. Present only for completed; refunded has no
+         * such field.
+         */
         string|int|float|null $received = null,
         /**
-         * Есть только у репетиции (/v1/test-webhook/*, /v1/payment/testing-webhook) и всегда true —
-         * внутри подписи. Боевое событие этого поля не несёт никогда: тело с test: true обработчик
-         * обязан игнорировать, даже если подпись верна.
+         * Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always
+         * true — inside the signature. A live event never carries this field: your handler must
+         * ignore a body with test: true even if the signature is valid.
          */
         public readonly ?bool $test = null,
         /** Fields newer than this SDK, exactly as received. */

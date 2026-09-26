@@ -23,19 +23,21 @@ final class PaymentQRResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Депозитный адрес; пусто, пока его нет. */
+        /** The deposit address; empty until there is one. */
         public readonly string $address,
         /**
-         * PNG QR-кода как data:-URI; "" — адреса ещё нет (монета не выбрана) или он не платёжный
-         * (песочница).
+         * The QR code PNG as a data: URI; "" — there is no address yet (the coin has not been
+         * chosen) or it is not a payment address (sandbox).
          */
         public readonly string $image,
         /**
-         * true — в QR платёжный запрос с суммой (кошелёк подставит её сам); false — только адрес,
-         * сумму плательщик вводит.
+         * true — the QR code holds a payment request with the amount (the wallet fills it in);
+         * false — address only, the payer enters the amount.
          */
         public readonly bool $is_uri,
-        /** Что закодировано в QR: платёжный URI сети с суммой или голый адрес. */
+        /**
+         * What the QR code encodes: the network's payment URI with the amount, or the bare address.
+         */
         public readonly string $payload,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

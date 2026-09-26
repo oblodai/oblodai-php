@@ -23,11 +23,11 @@ final class SetAccuracyRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Включить/выключить допуск */
+        /** Enable/disable the tolerance */
         public readonly bool $enabled,
         /**
-         * Допуск в процентах, 1–5. Обязателен при enabled: true; при enabled: false игнорируется
-         * (сбрасывается в 0). Кэп 5 %
+         * Tolerance in percent, 1–5. Required when enabled: true; ignored (reset to 0) when
+         * enabled: false. Capped at 5 %
          */
         public readonly ?int $accuracy_percent = null,
         /** Fields newer than this SDK, exactly as received. */

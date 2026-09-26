@@ -39,19 +39,19 @@ final class APILogEntry extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Ключ, которым подписан запрос. */
+        /** The key the request was signed with. */
         public readonly string $api_key_id,
-        /** Когда пришёл запрос (UTC). */
+        /** When the request arrived (UTC). */
         public readonly string $created_at,
-        /** Длительность обработки, мс. */
+        /** Processing duration, ms. */
         public readonly int $duration_ms,
-        /** Адрес клиента. */
+        /** The customer's address. */
         public readonly string $ip,
-        /** HTTP-метод. */
+        /** HTTP method. */
         public readonly string $method,
-        /** Путь запроса. */
+        /** Request path. */
         public readonly string $path,
-        /** Код ответа. */
+        /** Response code. */
         public readonly int $status,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

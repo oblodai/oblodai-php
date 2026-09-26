@@ -19,7 +19,7 @@ final class AutoWithdrawRule extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['address', 'currency', 'min_amount', 'network'];
 
-    /** Порог срабатывания в единицах актива. */
+    /** The trigger threshold in asset units. */
     public readonly string $min_amount;
 
     /**
@@ -27,13 +27,13 @@ final class AutoWithdrawRule extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Адрес назначения. */
+        /** Destination address. */
         public readonly string $address,
-        /** Актив. */
+        /** Asset. */
         public readonly string $currency,
-        /** Порог срабатывания в единицах актива. */
+        /** The trigger threshold in asset units. */
         string|int|float $min_amount,
-        /** Сеть адреса назначения. */
+        /** The destination address network. */
         public readonly string $network,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

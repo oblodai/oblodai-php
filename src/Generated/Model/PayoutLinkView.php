@@ -57,13 +57,16 @@ final class PayoutLinkView extends Model
         'title',
     ];
 
-    /** Сумма ссылки — обещание получателю. */
+    /** The link amount — a promise to the recipient. */
     public readonly string $amount;
 
-    /** Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение). */
+    /** Network fee; null — cannot be estimated right now (zero would mean the claim is free). */
     public readonly ?string $commission;
 
-    /** Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму). */
+    /**
+     * How much will reach the recipient; null — cannot be said (the fee was not estimated or ate
+     * the amount).
+     */
     public readonly ?string $payer_amount;
 
     /**
@@ -73,47 +76,48 @@ final class PayoutLinkView extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сумма ссылки — обещание получателю. */
+        /** The link amount — a promise to the recipient. */
         string|int|float $amount,
-        /** Когда создана (UTC). */
+        /** When created (UTC). */
         public readonly string $created_at,
-        /** Актив выплаты. */
+        /** Payout asset. */
         public readonly string $currency,
-        /** До какого момента ссылку можно получить (UTC). */
+        /** Until when the link can be claimed (UTC). */
         public readonly string $expires_at,
-        /** Кто платит сетевую комиссию. */
+        /** Who pays the network fee. */
         public readonly PayoutLinkFeeBearer|string $fee_bearer,
-        /** exact — комиссия зафиксирована; estimated — оценка по текущей сети. */
+        /** exact — the fee is fixed; estimated — an estimate based on the current network. */
         public readonly FeeType|string $fee_type,
-        /** Идентификатор ссылки. */
+        /** Link id. */
         public readonly string $link_id,
-        /** Сеть выплаты. */
+        /** Payout network. */
         public readonly string $network,
-        /** Сообщение получателю. */
+        /** Message to the recipient. */
         public readonly string $note,
-        /** Получение требует кода. */
+        /** Claiming requires a passcode. */
         public readonly bool $passcode_protected,
-        /** Состояние ссылки. */
+        /** Link state. */
         public readonly PayoutLinkStatus|string $status,
-        /** Заголовок, видный получателю. */
+        /** Title visible to the recipient. */
         public readonly string $title,
-        /** Пачка, в которой создана ссылка. */
+        /** The batch in which the link was created. */
         public readonly ?string $batch_id = null,
-        /** Адрес, который указал получатель. */
+        /** The address the recipient specified. */
         public readonly ?string $claim_address = null,
         /**
-         * Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение).
+         * Network fee; null — cannot be estimated right now (zero would mean the claim is free).
          */
         string|int|float|null $commission = null,
-        /** Адрес, на который ушло письмо получателю. */
+        /** The address the email to the recipient was sent to. */
         public readonly ?string $email = null,
         /**
-         * Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму).
+         * How much will reach the recipient; null — cannot be said (the fee was not estimated or
+         * ate the amount).
          */
         string|int|float|null $payer_amount = null,
-        /** Выплата, порождённая получением; есть у полученной ссылки. */
+        /** The payout created by the claim; present on a claimed link. */
         public readonly ?string $payout_id = null,
-        /** Ваш ключ дедупликации. */
+        /** Your deduplication key. */
         public readonly ?string $reference = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

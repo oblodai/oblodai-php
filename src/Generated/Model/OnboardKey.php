@@ -23,9 +23,9 @@ final class OnboardKey extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Публичная часть ключа. */
+        /** The public part of the key. */
         public readonly string $public_id,
-        /** Секрет ключа; пусто у повторного ответа песочницы (секрет хэширован). */
+        /** The key secret; empty in a repeated sandbox response (the secret is hashed). */
         public readonly string $secret,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

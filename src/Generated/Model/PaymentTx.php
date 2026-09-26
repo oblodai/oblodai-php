@@ -19,7 +19,7 @@ final class PaymentTx extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'created_at', 'height', 'network', 'txid'];
 
-    /** Сумма перевода в валюте оплаты. */
+    /** The transfer amount in the payment currency. */
     public readonly string $amount;
 
     /**
@@ -27,18 +27,18 @@ final class PaymentTx extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сумма перевода в валюте оплаты. */
+        /** The transfer amount in the payment currency. */
         string|int|float $amount,
-        /** Когда перевод зачислен (ISO 8601). */
+        /** When the transfer was credited (ISO 8601). */
         public readonly string $created_at,
-        /** Высота блока, в котором перевод подтверждён. */
+        /** The height of the block in which the transfer was confirmed. */
         public readonly int $height,
         /**
-         * Сеть, в которой пришёл перевод. На EVM может отличаться от network счёта: депозит
-         * зачитывается и на другой цепочке с тем же адресом.
+         * The network the transfer arrived on. On EVM it may differ from the invoice's network: a
+         * deposit is also credited on another chain with the same address.
          */
         public readonly string $network,
-        /** Хеш транзакции. */
+        /** Transaction hash. */
         public readonly string $txid,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

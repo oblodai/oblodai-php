@@ -25,9 +25,9 @@ final class CurrenciesResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Чем счёт можно оплатить: монеты по сетям. */
+        /** What the invoice can be paid with: coins by network. */
         public readonly array $currencies,
-        /** В чём счёт можно выставить: те же монеты и фиат; отсортированы по коду. */
+        /** What an invoice can be priced in: the same coins plus fiat; sorted by code. */
         public readonly array $pricing_currencies,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

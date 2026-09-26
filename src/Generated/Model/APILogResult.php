@@ -24,11 +24,11 @@ final class APILogResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Строки этой страницы, новые сверху. */
+        /** The rows of this page, newest first. */
         public readonly array $items,
-        /** Сколько дней лог хранится. */
+        /** How many days the log is kept. */
         public readonly int $retention_days,
-        /** Всего строк по фильтру. */
+        /** Total rows matching the filter. */
         public readonly int $total,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

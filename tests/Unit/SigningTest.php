@@ -24,7 +24,7 @@ final class SigningTest extends TestCase
 
     public function testSignsTheBodyBytesSoAUtf8BodySignsItsRawBytes(): void
     {
-        $body = '{"additional_data":"тест"}';
+        $body = '{"additional_data":"tëst"}';
         // The body is a UTF-8 encoded PHP string, i.e. already the exact bytes on the wire — the
         // canonical string (and therefore the signature) is taken over those bytes, not over any
         // character-count view of them.

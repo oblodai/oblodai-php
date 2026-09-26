@@ -23,11 +23,11 @@ final class BlockWalletResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Адрес кошелька. */
+        /** Wallet address. */
         public readonly string $address,
-        /** Заблокирован ли кошелёк после вызова. */
+        /** Whether the wallet is blocked after the call. */
         public readonly bool $blocked,
-        /** Идентификатор статического кошелька. */
+        /** Static wallet id. */
         public readonly string $uuid,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

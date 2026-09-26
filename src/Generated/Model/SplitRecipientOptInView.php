@@ -23,7 +23,7 @@ final class SplitRecipientOptInView extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** true — другие мерчанты могут направлять доли на ваш баланс. */
+        /** true — other merchants may route shares to your balance. */
         public readonly bool $enabled,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

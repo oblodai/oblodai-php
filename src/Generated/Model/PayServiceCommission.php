@@ -20,7 +20,7 @@ final class PayServiceCommission extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['currency', 'fee_amount', 'fee_type', 'percent'];
 
-    /** Фиксированная часть комиссии в валюте currency; null — не определилась. */
+    /** The fixed part of the fee in currency; null — could not be determined. */
     public readonly ?string $fee_amount;
 
     /**
@@ -28,13 +28,13 @@ final class PayServiceCommission extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** exact — договорная ставка; estimated — оценка по сетевой комиссии. */
+        /** exact — a contractual rate; estimated — an estimate based on the network fee. */
         public readonly FeeType|string $fee_type,
-        /** Единица fee_amount: USD у приёма, валюта выплаты у выплаты. */
+        /** The unit of fee_amount: USD for accepting payments, the payout currency for payouts. */
         public readonly ?string $currency = null,
-        /** Фиксированная часть комиссии в валюте currency; null — не определилась. */
+        /** The fixed part of the fee in currency; null — could not be determined. */
         string|int|float|null $fee_amount = null,
-        /** Процент комиссии; null — не определился. */
+        /** The fee percentage; null — could not be determined. */
         public readonly ?string $percent = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

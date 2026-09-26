@@ -20,8 +20,8 @@ final class MerchantBalanceEntry extends Model
     public const FIELDS = ['balance', 'converting', 'currency'];
 
     /**
-     * Сколько этой монеты сейчас едет через очередь автоконверта (economy); нет ключа — очереди
-     * нет.
+     * How much of this coin is currently in transit through the auto-conversion queue (economy); no
+     * key — no queue.
      */
     public readonly ?string $converting;
 
@@ -30,13 +30,13 @@ final class MerchantBalanceEntry extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Доступно к выводу, десятичной строкой. */
+        /** Available to withdraw, as a decimal string. */
         public readonly string $balance,
-        /** Символ актива. */
+        /** Asset symbol. */
         public readonly string $currency,
         /**
-         * Сколько этой монеты сейчас едет через очередь автоконверта (economy); нет ключа — очереди
-         * нет.
+         * How much of this coin is currently in transit through the auto-conversion queue
+         * (economy); no key — no queue.
          */
         string|int|float|null $converting = null,
         /** Fields newer than this SDK, exactly as received. */

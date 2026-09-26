@@ -23,9 +23,9 @@ final class PaymentLinkToggled extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Новое состояние: true — принимает оплату. */
+        /** The new state: true — accepts payments. */
         public readonly bool $active,
-        /** Идентификатор ссылки. */
+        /** Link id. */
         public readonly string $link_id,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

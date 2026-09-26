@@ -23,13 +23,13 @@ final class DocumentJobFile extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Путь скачивания (GET под ключом мерчанта). */
+        /** The download path (GET under the merchant key). */
         public readonly string $download_url,
-        /** Строк в отчёте. */
+        /** Rows in the report. */
         public readonly int $rows,
-        /** Размер файла в байтах. */
+        /** File size in bytes. */
         public readonly int $size_bytes,
-        /** До какого момента файл хранится (UTC). */
+        /** Until when the file is kept (UTC). */
         public readonly ?string $expires_at = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

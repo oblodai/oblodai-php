@@ -26,10 +26,10 @@ final class PaymentFeeResult extends Model
         'payer_pays_percent',
     ];
 
-    /** Фиксированная часть комиссии на платёж, USD десятичной строкой. */
+    /** The fixed part of the fee per payment, USD as a decimal string. */
     public readonly ?string $fee_fixed_usd;
 
-    /** Процент комиссии мерчанта. */
+    /** The merchant fee percentage. */
     public readonly ?string $fee_percent;
 
     /**
@@ -38,19 +38,21 @@ final class PaymentFeeResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Разрешён ли мерчанту перенос комиссии на покупателя (решение оператора). */
-        public readonly bool $enabled,
-        /** Доля, которую применит следующий счёт; 0, если оператор выключил перенос комиссии. */
-        public readonly int $payer_pays_percent,
-        /** Фиксированная часть комиссии на платёж, USD десятичной строкой. */
-        string|int|float|null $fee_fixed_usd = null,
         /**
-         * Устарело: та же фиксированная часть целыми центами США числом — читайте fee_fixed_usd.
+         * Whether the merchant is allowed to pass the fee on to the buyer (an operator decision).
          */
+        public readonly bool $enabled,
+        /**
+         * The share the next invoice will apply; 0 if the operator has disabled fee pass-through.
+         */
+        public readonly int $payer_pays_percent,
+        /** The fixed part of the fee per payment, USD as a decimal string. */
+        string|int|float|null $fee_fixed_usd = null,
+        /** Deprecated: the same fixed part in whole US cents as a number — read fee_fixed_usd. */
         public readonly ?int $fee_fixed_usd_cents = null,
-        /** true — персональный тариф; false — умолчание платформы. */
+        /** true — a personal rate; false — the platform default. */
         public readonly ?bool $fee_individual = null,
-        /** Процент комиссии мерчанта. */
+        /** The merchant fee percentage. */
         string|int|float|null $fee_percent = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

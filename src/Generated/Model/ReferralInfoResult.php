@@ -39,17 +39,17 @@ final class ReferralInfoResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Реферальный код мерчанта. */
+        /** The merchant's referral code. */
         public readonly string $code,
-        /** Заработано по активам, десятичными строками. */
+        /** Earned per asset, as decimal strings. */
         public readonly array $earnings_by_asset,
-        /** Реферальная ссылка (или сам код, если публичный адрес не настроен). */
+        /** The referral link (or the code itself if the public address is not configured). */
         public readonly string $link,
-        /** Сколько мерчантов приглашено. */
+        /** How many merchants have been invited. */
         public readonly int $referred_count,
-        /** Доля нашей комиссии по месяцам, в базисных пунктах. */
+        /** The share of our fee by month, in basis points. */
         public readonly array $tier_bps,
-        /** То же за скользящие 7 дней. */
+        /** The same over a rolling 7 days. */
         public readonly ReferralWeek $week,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -23,16 +23,16 @@ final class RotateWebhookSecretResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор эндпоинта. */
+        /** Endpoint id. */
         public readonly string $endpoint_id,
         /**
-         * До этого момента доставки дополнительно подписываются старым секретом
+         * Until this moment deliveries are additionally signed with the old secret
          * (X-Webhook-Signature-Prev), RFC 3339 UTC.
          */
         public readonly string $previous_secret_valid_until,
-        /** Новый секрет подписи — показывается только здесь. */
+        /** The new signing secret — shown only here. */
         public readonly string $secret,
-        /** URL коллбэка. */
+        /** Callback URL. */
         public readonly string $url,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

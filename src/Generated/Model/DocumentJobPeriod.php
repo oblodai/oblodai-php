@@ -23,9 +23,9 @@ final class DocumentJobPeriod extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Начало периода, YYYY-MM-DD. */
+        /** Start of the period, YYYY-MM-DD. */
         public readonly string $from,
-        /** Конец периода включительно, YYYY-MM-DD. */
+        /** End of the period, inclusive, YYYY-MM-DD. */
         public readonly string $to,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

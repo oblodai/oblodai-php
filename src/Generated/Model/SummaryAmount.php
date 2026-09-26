@@ -19,7 +19,7 @@ final class SummaryAmount extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'asset'];
 
-    /** Сумма в единицах монеты. */
+    /** The amount in coin units. */
     public readonly string $amount;
 
     /**
@@ -27,9 +27,9 @@ final class SummaryAmount extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сумма в единицах монеты. */
+        /** The amount in coin units. */
         string|int|float $amount,
-        /** Монета оплаты. */
+        /** Payment coin. */
         public readonly string $asset,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -23,11 +23,11 @@ final class CheckoutConfigView extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Слать ли покупателю чек на почту после оплаты. */
+        /** Whether to email the buyer a receipt after payment. */
         public readonly bool $email_receipts,
-        /** Куда вернуть покупателя, ушедшего с оплаты; пусто — никуда. */
+        /** Where to send a buyer who left the payment page; empty — nowhere. */
         public readonly string $fail_url,
-        /** Куда вернуть покупателя после оплаты; пусто — никуда. */
+        /** Where to send the buyer after payment; empty — nowhere. */
         public readonly string $success_url,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

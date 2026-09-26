@@ -24,7 +24,7 @@ final class MerchantBalances extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Доступные балансы по активам. */
+        /** Available balances per asset. */
         public readonly array $merchant,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

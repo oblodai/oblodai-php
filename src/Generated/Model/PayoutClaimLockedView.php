@@ -24,15 +24,18 @@ final class PayoutClaimLockedView extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Получить можно сейчас: ссылка оплачена и не истекла. */
+        /** Can be claimed now: the link is funded and has not expired. */
         public readonly bool $claimable,
-        /** До какого момента ссылку можно получить (UTC). */
+        /** Until when the link can be claimed (UTC). */
         public readonly string $expires_at,
-        /** Всегда true: суммы и сеть покажутся после кода в заголовке X-Claim-Passcode. */
+        /**
+         * Always true: amounts and network are shown after the passcode in the X-Claim-Passcode
+         * header.
+         */
         public readonly bool $passcode_required,
-        /** Состояние ссылки. */
+        /** Link state. */
         public readonly PayoutLinkStatus|string $status,
-        /** Заголовок от отправителя. */
+        /** Title from the sender. */
         public readonly string $title,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

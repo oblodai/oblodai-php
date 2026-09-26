@@ -23,7 +23,7 @@ final class SplitRuleDeleteRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор правила из POST /v1/split/rule или списка. */
+        /** The rule id from POST /v1/split/rule or the list. */
         public readonly string $rule_id,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

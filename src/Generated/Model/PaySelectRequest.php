@@ -23,9 +23,9 @@ final class PaySelectRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Выбранная валюта оплаты. */
+        /** The chosen payment currency. */
         public readonly string $currency,
-        /** Выбранная сеть. */
+        /** The chosen network. */
         public readonly string $network,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -12,7 +12,7 @@ use Oblodai\Core\Model;
 use Oblodai\Generated\Wire;
 
 /**
- * Приходит, когда депозит на статический кошелёк зачислен.
+ * Sent when a deposit to a static wallet is credited.
  */
 final class WalletWebhook extends Model
 {
@@ -55,39 +55,39 @@ final class WalletWebhook extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Адрес кошелька, на который пришёл платёж. */
+        /** The wallet address the payment arrived at. */
         public readonly string $address,
-        /** Код валюты зачисления. */
+        /** Credit currency code. */
         public readonly string $currency,
-        /** Когда событие произошло, UTC с миллисекундами (ISO 8601). */
+        /** When the event happened, UTC with milliseconds (ISO 8601). */
         public readonly string $event_at,
-        /** true — статус финальный. */
+        /** true — the status is final. */
         public readonly bool $is_final,
-        /** Сеть блокчейна. */
+        /** Blockchain network. */
         public readonly string $network,
-        /** Ваш order_id кошелька. */
+        /** Your order_id for the wallet. */
         public readonly string $order_id,
-        /** Валюта, в которой заплатил плательщик (совпадает с currency). */
+        /** The currency the payer paid in (matches currency). */
         public readonly string $payer_currency,
-        /** Зачисленная сумма депозита (десятичное число строкой). */
+        /** The credited deposit amount (a decimal number as a string). */
         public readonly string $payment_amount,
         /**
-         * Глобальный номер события: в пределах одного объекта больший номер новее, меньший —
-         * опоздавшая доставка, её нужно отбросить. У репетиции (test: true) всегда 0.
+         * The global event number: within one object a higher number is newer, a lower one is a
+         * late delivery and must be discarded. Always 0 on a rehearsal (test: true).
          */
         public readonly int $sequence,
-        /** Статус в словаре платежа; живой поток шлёт только paid. */
+        /** A status from the payment vocabulary; the live flow sends only paid. */
         public readonly string $status,
-        /** Хеш транзакции депозита. */
+        /** The deposit transaction hash. */
         public readonly string $txid,
-        /** Вид события: payment | payout | wallet | conversion — какое тело пришло. */
+        /** Event kind: payment | payout | wallet | conversion — which body arrived. */
         public readonly string $type,
-        /** Идентификатор статического кошелька. */
+        /** Static wallet id. */
         public readonly string $uuid,
         /**
-         * Есть только у репетиции (/v1/test-webhook/*, /v1/payment/testing-webhook) и всегда true —
-         * внутри подписи. Боевое событие этого поля не несёт никогда: тело с test: true обработчик
-         * обязан игнорировать, даже если подпись верна.
+         * Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always
+         * true — inside the signature. A live event never carries this field: your handler must
+         * ignore a body with test: true even if the signature is valid.
          */
         public readonly ?bool $test = null,
         /** Fields newer than this SDK, exactly as received. */

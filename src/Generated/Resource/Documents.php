@@ -24,24 +24,25 @@ use Oblodai\Generated\Routes;
 use Oblodai\Generated\Wire;
 
 /**
- * PDF-документы операций: чеки, счета, отчёты за период.
+ * PDF documents for operations: receipts, invoices, period reports.
  */
 final class Documents extends Resource
 {
     /**
-     * PDF-документ операции (по подписанной ссылке)
+     * Operation PDF document (via a signed link)
      *
-     * Отдаёт фирменный PDF: чек платежа (`kind=payment`), чек выплаты или возврата (`kind=payout`),
-     * счёт (`kind=invoice`), плакат ссылки (`kind=paylink`), справку о реквизитах (`kind=wallet`),
-     * сплит-расчёт (`kind=split`), чек перевода (`kind=transfer`), чек конвертации
-     * (`kind=conversion`). Ссылку НЕ нужно строить самим: готовая приходит в `document_url`
-     * соответствующих ответов — подпись в `sig` и есть доступ, API-ключ не нужен. ⚠ Ссылка ЖИВЁТ
-     * ОГРАНИЧЕННО (`exp` в query, по умолчанию 30 суток): скачанный PDF-файл — документ навсегда, а
-     * просроченная ссылка отвечает 403 `document.link_expired` — возьмите свежую из любого свежего
-     * ответа info/history той же операции. `?lang=` — один из 41 языка (en по умолчанию; полный
-     * список — в ошибке `document.unknown_lang`). Ответ — `application/pdf`; документ отражает
-     * текущий статус операции. На самом PDF ссылок нет — документы не раскрывают путь к себе при
-     * пересылке.
+     * Returns a branded PDF: payment receipt (`kind=payment`), payout or refund receipt
+     * (`kind=payout`), invoice (`kind=invoice`), link poster (`kind=paylink`), payment details
+     * certificate (`kind=wallet`), split settlement (`kind=split`), transfer receipt
+     * (`kind=transfer`), conversion receipt (`kind=conversion`). You do NOT need to build the link
+     * yourself: a ready one comes in `document_url` of the corresponding responses — the signature
+     * in `sig` is the access grant, no API key needed. ⚠ The link has A LIMITED LIFETIME (`exp` in
+     * the query, 30 days by default): a downloaded PDF file is a document forever, while an expired
+     * link responds 403 `document.link_expired` — take a fresh one from any fresh info/history
+     * response for the same operation. `?lang=` — one of 41 languages (en by default; the full list
+     * is in the `document.unknown_lang` error). The response is `application/pdf`; the document
+     * reflects the current status of the operation. The PDF itself contains no links — documents do
+     * not reveal their own URL when forwarded.
      *
      * `GET /v1/documents/{kind}/{id}`
      *
@@ -53,9 +54,9 @@ final class Documents extends Resource
      * payout.not_found, report.too_large, request.overloaded, request.rate_limited,
      * wallet.static_disabled, wallet.static_not_found
      *
-     * @param int $exp Срок действия ссылки (unix-время) из document_url.
-     * @param string $sig Подпись ссылки из document_url.
-     * @param string|null $lang Язык документа (по умолчанию en); список — document.Languages.
+     * @param int $exp The link expiry (Unix time) from document_url.
+     * @param string $sig The link signature from document_url.
+     * @param string|null $lang Document language (en by default); the list is document.Languages.
      */
     public function getSigned(
         string $kind,
@@ -75,24 +76,26 @@ final class Documents extends Resource
     }
 
     /**
-     * Справка о балансе (PDF)
+     * Balance certificate (PDF)
      *
-     * Фирменная PDF-справка: available-балансы мерчанта по валютам на момент формирования, со
-     * штампом. Для контрагентов и бухгалтерии. `?lang=` — 41 язык (en по умолчанию). Ответ —
-     * `application/pdf`.
+     * A branded PDF certificate: the merchant's available balances per currency at the time of
+     * generation, with a stamp. For counterparties and accounting. `?lang=` — 41 languages (en by
+     * default). The response is `application/pdf`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `GET /v1/documents/balance`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * document.balance_unavailable, document.disabled, document.encode_failed,
-     * document.render_failed, document.render_rejected, document.render_unavailable,
-     * document.unknown_lang, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.not_found, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-     * merchant.unknown_key, report.too_large, request.body_read, request.control_char,
-     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-     * request.too_deep
+     * cli.permission_denied, document.balance_unavailable, document.disabled,
+     * document.encode_failed, document.render_failed, document.render_rejected,
+     * document.render_unavailable, document.unknown_lang, internal, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, report.too_large,
+     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep
      *
-     * @param string|null $lang Язык документа (по умолчанию en); список — document.Languages.
+     * @param string|null $lang Document language (en by default); the list is document.Languages.
      */
     public function getBalance(?string $lang = null, ?RequestOptions $options = null): FileResult
     {
@@ -105,29 +108,32 @@ final class Documents extends Resource
     }
 
     /**
-     * Отчёт о комиссиях за период (PDF)
+     * Fee report for a period (PDF)
      *
-     * Сколько удержано за период: комиссия сервиса с каждого зачтённого платежа и сетевые комиссии
-     * выплат/возвратов, с итогами по валютам. `?from=YYYY-MM-DD&to=YYYY-MM-DD` (включительно,
-     * максимум год; по умолчанию — текущий месяц), `?lang=` — 41 язык (en по умолчанию). Ответ —
-     * `application/pdf`.
+     * How much was withheld over the period: the service fee on each credited payment and the
+     * network fees of payouts/refunds, with totals per currency. `?from=YYYY-MM-DD&to=YYYY-MM-DD`
+     * (inclusive, at most one year; defaults to the current month), `?lang=` — 41 languages (en by
+     * default). The response is `application/pdf`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `GET /v1/documents/fees`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.disabled,
-     * document.encode_failed, document.fees_unavailable, document.render_failed,
-     * document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
-     * invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.not_found, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-     * merchant.unknown_key, payment.not_found, payout.not_found, report.too_large,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, statement.bad_from,
-     * statement.bad_range, statement.bad_to, statement.range_too_long
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, document.disabled, document.encode_failed, document.fees_unavailable,
+     * document.render_failed, document.render_rejected, document.render_unavailable,
+     * document.unknown_lang, internal, invoice.corrupt_pay_asset, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payment.not_found,
+     * payout.not_found, report.too_large, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep, statement.bad_from, statement.bad_range, statement.bad_to,
+     * statement.range_too_long
      *
-     * @param string|null $from Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
-     * @param string|null $to Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.
-     * @param string|null $lang Язык документа (по умолчанию en); список — document.Languages.
-     * @param string|null $format Формат файла: pdf (по умолчанию) или csv.
+     * @param string|null $from Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
+     * @param string|null $to End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.
+     * @param string|null $lang Document language (en by default); the list is document.Languages.
+     * @param string|null $format File format: pdf (default) or csv.
      */
     public function getFees(
         ?string $from = null,
@@ -145,30 +151,34 @@ final class Documents extends Resource
     }
 
     /**
-     * Выписка по счёту (PDF)
+     * Account statement (PDF)
      *
-     * ВСЕ движения available-баланса за период — включая комиссии, доли сплитов и внутренние
-     * переводы, которых нет в отчёте по операциям. Приход/расход помечены, итоги по валютам. Нужен
-     * АКТ СВЕРКИ (с сальдо на начало и конец периода)? Закажите тот же отчёт фоном — `POST
-     * /v1/documents/jobs` с `kind=ledger`: сальдо требует агрегата по всей истории и потому
-     * считается только в фоновой задаче, не в синхронной ручке. `?from&to` как у отчёта, `?lang=` —
-     * 41 язык (en по умолчанию). Ответ — `application/pdf`.
+     * ALL movements of the available balance over the period — including fees, split shares and
+     * internal transfers that are not in the operations report. Credits/debits are marked, with
+     * totals per currency. Need a RECONCILIATION STATEMENT (with opening and closing balances for
+     * the period)? Order the same report in the background — `POST /v1/documents/jobs` with
+     * `kind=ledger`: the balances require an aggregate over the whole history and are therefore
+     * computed only in a background job, not in a synchronous endpoint. `?from&to` as in the
+     * report, `?lang=` — 41 languages (en by default). The response is `application/pdf`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `GET /v1/documents/ledger`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.disabled,
-     * document.encode_failed, document.ledger_unavailable, document.render_failed,
-     * document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.not_found,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * report.too_large, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
-     * statement.bad_from, statement.bad_range, statement.bad_to, statement.range_too_long
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, document.disabled, document.encode_failed,
+     * document.ledger_unavailable, document.render_failed, document.render_rejected,
+     * document.render_unavailable, document.unknown_lang, internal, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, report.too_large,
+     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep, statement.bad_from,
+     * statement.bad_range, statement.bad_to, statement.range_too_long
      *
-     * @param string|null $from Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
-     * @param string|null $to Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.
-     * @param string|null $lang Язык документа (по умолчанию en); список — document.Languages.
-     * @param string|null $format Формат файла: pdf (по умолчанию) или csv.
+     * @param string|null $from Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
+     * @param string|null $to End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.
+     * @param string|null $lang Document language (en by default); the list is document.Languages.
+     * @param string|null $format File format: pdf (default) or csv.
      */
     public function getLedger(
         ?string $from = null,
@@ -186,26 +196,29 @@ final class Documents extends Resource
     }
 
     /**
-     * Справка о сплит-расчёте платежа (PDF)
+     * Payment split settlement certificate (PDF)
      *
-     * Как распределился конкретный платёж между получателями: доли, суммы, статусы. `?uuid=<UUID
-     * платежа>`, `?lang=` — 41 язык (en по умолчанию). На самом документе напечатана подписанная
-     * публичная ссылка — её можно переслать партнёру. 404 `document.no_split`, если платёж ничего
-     * не разводил.
+     * How a specific payment was distributed between recipients: shares, amounts, statuses.
+     * `?uuid=<payment UUID>`, `?lang=` — 41 languages (en by default). A signed public link is
+     * printed on the document itself — it can be forwarded to a partner. 404 `document.no_split` if
+     * the payment was not split.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `GET /v1/documents/split`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.bad_id,
-     * document.disabled, document.encode_failed, document.no_split, document.render_failed,
-     * document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
-     * invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.not_found, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-     * merchant.unknown_key, payment.not_found, payout.not_found, report.too_large,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, document.bad_id, document.disabled, document.encode_failed,
+     * document.no_split, document.render_failed, document.render_rejected,
+     * document.render_unavailable, document.unknown_lang, internal, invoice.corrupt_pay_asset,
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * payment.not_found, payout.not_found, report.too_large, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
-     * @param string $uuid UUID платежа.
-     * @param string|null $lang Язык документа (по умолчанию en); список — document.Languages.
+     * @param string $uuid The payment UUID.
+     * @param string|null $lang Document language (en by default); the list is document.Languages.
      */
     public function getSplit(
         string $uuid,
@@ -221,23 +234,26 @@ final class Documents extends Resource
     }
 
     /**
-     * Крипточек (PDF, на предъявителя)
+     * Crypto cheque (PDF, bearer)
      *
-     * Печатный чек выплатной ссылки: сумма, срок и QR получения. Передайте `claim_token` из ответа
-     * создания ссылки — он хранится только хешем и повторно НЕ выдаётся, поэтому чек можно
-     * напечатать только пока токен у вас. ⚠ Документ — деньги: любой, у кого он есть, может
-     * получить средства. Ответ — `application/pdf`.
+     * A printable cheque for a payout link: the amount, the expiry and the claim QR code. Pass the
+     * `claim_token` from the link creation response — it is stored only as a hash and is NOT issued
+     * again, so the cheque can only be printed while you still have the token. ⚠ The document is
+     * money: anyone who has it can claim the funds. The response is `application/pdf`.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payout/link/cheque`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * cheque.token_required, document.disabled, document.encode_failed, document.render_failed,
-     * document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.not_found,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * payoutlink.disabled, payoutlink.not_found, report.too_large, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * cheque.token_required, cli.permission_denied, document.disabled, document.encode_failed,
+     * document.render_failed, document.render_rejected, document.render_unavailable,
+     * document.unknown_lang, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payoutlink.disabled,
+     * payoutlink.not_found, report.too_large, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param PayoutLinkChequeRequest|array{claim_token: string, lang?: string} $params
      */
@@ -253,28 +269,32 @@ final class Documents extends Resource
     }
 
     /**
-     * Отчёт по операциям за период (PDF)
+     * Operations report for a period (PDF)
      *
-     * Фирменный PDF-отчёт: платежи, выплаты и возвраты мерчанта за период, с итогами по валютам.
-     * `?from=YYYY-MM-DD&to=YYYY-MM-DD` (включительно, максимум год; по умолчанию — текущий месяц),
-     * `?lang=` — 41 язык (en по умолчанию). Ответ — `application/pdf`.
+     * A branded PDF report: the merchant's payments, payouts and refunds for the period, with
+     * totals per currency. `?from=YYYY-MM-DD&to=YYYY-MM-DD` (inclusive, at most one year; defaults
+     * to the current month), `?lang=` — 41 languages (en by default). The response is
+     * `application/pdf`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `GET /v1/documents/statement`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.disabled,
-     * document.encode_failed, document.render_failed, document.render_rejected,
-     * document.render_unavailable, document.unknown_lang, internal, invoice.corrupt_pay_asset,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.not_found,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * payment.not_found, payout.not_found, report.too_large, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep, statement.bad_from, statement.bad_range,
-     * statement.bad_to, statement.range_too_long, statement.unavailable
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, document.disabled, document.encode_failed, document.render_failed,
+     * document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
+     * invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payment.not_found,
+     * payout.not_found, report.too_large, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep, statement.bad_from, statement.bad_range, statement.bad_to,
+     * statement.range_too_long, statement.unavailable
      *
-     * @param string|null $from Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
-     * @param string|null $to Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.
-     * @param string|null $lang Язык документа (по умолчанию en); список — document.Languages.
-     * @param string|null $format Формат файла: pdf (по умолчанию) или csv.
+     * @param string|null $from Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
+     * @param string|null $to End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.
+     * @param string|null $lang Document language (en by default); the list is document.Languages.
+     * @param string|null $format File format: pdf (default) or csv.
      */
     public function getStatement(
         ?string $from = null,
@@ -292,26 +312,29 @@ final class Documents extends Resource
     }
 
     /**
-     * Ведомость массовой операции (PDF)
+     * Batch operation register (PDF)
      *
-     * Итоги батча (`/v1/*\/batch`) одним документом: сколько строк, сколько прошло и упало, каждая
-     * строка с получателем, суммой, статусом и машинным кодом причины отказа — тем же, что вернул
-     * бы одиночный вызов. `?uuid=<UUID батча>`, `?lang=` — 41 язык. Ответ — `application/pdf`.
+     * The results of a batch (`/v1/*\/batch`) in one document: how many rows, how many succeeded
+     * and failed, each row with the recipient, amount, status and the machine code of the rejection
+     * reason — the same one a single call would return. `?uuid=<batch UUID>`, `?lang=` — 41
+     * languages. The response is `application/pdf`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `GET /v1/documents/batch`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.disabled,
-     * batch.not_found, document.bad_id, document.batch_unavailable, document.disabled,
-     * document.encode_failed, document.render_failed, document.render_rejected,
+     * batch.not_found, cli.permission_denied, document.bad_id, document.batch_unavailable,
+     * document.disabled, document.encode_failed, document.render_failed, document.render_rejected,
      * document.render_unavailable, document.unknown_lang, internal, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
      * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, report.too_large,
      * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
      * request.overloaded, request.rate_limited, request.too_deep
      *
-     * @param string $uuid UUID батча.
-     * @param string|null $lang Язык документа (по умолчанию en); список — document.Languages.
-     * @param string|null $format Формат файла: pdf (по умолчанию) или csv.
+     * @param string $uuid The batch UUID.
+     * @param string|null $lang Document language (en by default); the list is document.Languages.
+     * @param string|null $format File format: pdf (default) or csv.
      */
     public function getBatch(
         string $uuid,
@@ -328,18 +351,21 @@ final class Documents extends Resource
     }
 
     /**
-     * Отчёт о сборах платёжной ссылки (PDF)
+     * Payment link collections report (PDF)
      *
-     * Сколько собрала конкретная платёжная ссылка: каждый порождённый платёж строкой, итог по
-     * валютам (только зачтённые). Для донатов и сборов. `?uuid=<UUID ссылки>`, `?from&to`
-     * (включительно, максимум год; по умолчанию — текущий месяц), `?lang=`. Ответ —
+     * How much a specific payment link has collected: each resulting payment as a row, totals per
+     * currency (credited only). For donations and fundraising. `?uuid=<link UUID>`, `?from&to`
+     * (inclusive, at most one year; defaults to the current month), `?lang=`. The response is
      * `application/pdf`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `GET /v1/documents/link`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.bad_id,
-     * document.disabled, document.encode_failed, document.render_failed, document.render_rejected,
-     * document.render_unavailable, document.unknown_lang, internal, merchant.bad_signature,
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, document.bad_id, document.disabled, document.encode_failed,
+     * document.render_failed, document.render_rejected, document.render_unavailable,
+     * document.unknown_lang, internal, merchant.bad_signature, merchant.key_expired,
      * merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
      * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, paylink.disabled,
      * paylink.not_found, report.too_large, request.body_read, request.control_char,
@@ -347,11 +373,11 @@ final class Documents extends Resource
      * request.too_deep, statement.bad_from, statement.bad_range, statement.bad_to,
      * statement.range_too_long
      *
-     * @param string $uuid UUID платёжной ссылки.
-     * @param string|null $from Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
-     * @param string|null $to Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.
-     * @param string|null $lang Язык документа (по умолчанию en); список — document.Languages.
-     * @param string|null $format Формат файла: pdf (по умолчанию) или csv.
+     * @param string $uuid The payment link UUID.
+     * @param string|null $from Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
+     * @param string|null $to End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.
+     * @param string|null $lang Document language (en by default); the list is document.Languages.
+     * @param string|null $format File format: pdf (default) or csv.
      */
     public function getPaymentLink(
         string $uuid,
@@ -370,29 +396,32 @@ final class Documents extends Resource
     }
 
     /**
-     * Выписка по статическому кошельку (PDF)
+     * Static wallet statement (PDF)
      *
-     * Движения, порождённые конкретным статик-кошельком (депозиты клиента на постоянный адрес), с
-     * реквизитами кошелька в шапке и итогами по валютам. `?uuid=<UUID кошелька>`, `?from&to`,
-     * `?lang=`. Ответ — `application/pdf`.
+     * Movements produced by a specific static wallet (customer deposits to a permanent address),
+     * with the wallet details in the header and totals per currency. `?uuid=<wallet UUID>`,
+     * `?from&to`, `?lang=`. The response is `application/pdf`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `GET /v1/documents/wallet/statement`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.bad_id,
-     * document.disabled, document.encode_failed, document.ledger_unavailable,
-     * document.render_failed, document.render_rejected, document.render_unavailable,
-     * document.unknown_lang, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.not_found, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-     * merchant.unknown_key, report.too_large, request.body_read, request.control_char,
-     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-     * request.too_deep, statement.bad_from, statement.bad_range, statement.bad_to,
-     * statement.range_too_long, wallet.static_disabled, wallet.static_not_found
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, document.bad_id, document.disabled, document.encode_failed,
+     * document.ledger_unavailable, document.render_failed, document.render_rejected,
+     * document.render_unavailable, document.unknown_lang, internal, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, report.too_large,
+     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep, statement.bad_from,
+     * statement.bad_range, statement.bad_to, statement.range_too_long, wallet.static_disabled,
+     * wallet.static_not_found
      *
-     * @param string $uuid UUID статического кошелька.
-     * @param string|null $from Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
-     * @param string|null $to Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.
-     * @param string|null $lang Язык документа (по умолчанию en); список — document.Languages.
-     * @param string|null $format Формат файла: pdf (по умолчанию) или csv.
+     * @param string $uuid The static wallet UUID.
+     * @param string|null $from Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
+     * @param string|null $to End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.
+     * @param string|null $lang Document language (en by default); the list is document.Languages.
+     * @param string|null $format File format: pdf (default) or csv.
      */
     public function getWalletStatement(
         string $uuid,
@@ -411,26 +440,29 @@ final class Documents extends Resource
     }
 
     /**
-     * Отчёт о реферальных начислениях (PDF)
+     * Referral earnings report (PDF)
      *
-     * Начисления реферальной программы за период: каждая награда строкой (когда, за кого, сколько),
-     * итог по валютам. `?from&to`, `?lang=`. Ответ — `application/pdf`.
+     * Referral program earnings for the period: each reward as a row (when, for whom, how much),
+     * totals per currency. `?from&to`, `?lang=`. The response is `application/pdf`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `GET /v1/documents/referrals`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.disabled,
-     * document.encode_failed, document.render_failed, document.render_rejected,
-     * document.render_unavailable, document.unknown_lang, internal, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, referral.disabled,
-     * report.too_large, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
-     * statement.bad_from, statement.bad_range, statement.bad_to, statement.range_too_long
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, document.disabled, document.encode_failed, document.render_failed,
+     * document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * referral.disabled, report.too_large, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep, statement.bad_from, statement.bad_range, statement.bad_to,
+     * statement.range_too_long
      *
-     * @param string|null $from Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
-     * @param string|null $to Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.
-     * @param string|null $lang Язык документа (по умолчанию en); список — document.Languages.
-     * @param string|null $format Формат файла: pdf (по умолчанию) или csv.
+     * @param string|null $from Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
+     * @param string|null $to End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.
+     * @param string|null $lang Document language (en by default); the list is document.Languages.
+     * @param string|null $format File format: pdf (default) or csv.
      */
     public function getReferrals(
         ?string $from = null,
@@ -448,27 +480,30 @@ final class Documents extends Resource
     }
 
     /**
-     * Заказать тяжёлый отчёт (фоновая генерация)
+     * Order a heavy report (background generation)
      *
-     * Синхронные отчётные ручки ограничены по объёму; отчёт за большой период закажите фоном:
-     * `kind` — `statement`/`fees`/`ledger`, период — до двух лет. Задача попадает в очередь и
-     * собирается в течение суток (обычно — минуты); статус — `POST /v1/documents/jobs/info`,
-     * готовый файл — `GET /v1/documents/jobs/file`. Повторный заказ с теми же параметрами при живой
-     * задаче возвращает её же. `format` — `pdf` (по умолчанию) или `csv`: CSV собирается БЕЗ
-     * вёрстки (для тяжёлой квартальной выписки — ноль нагрузки на рендер, грузится в Excel/1С).
-     * Квоты: не больше 3 задач в работе и 20 за сутки. Готовый отчёт хранится 7 суток, затем
-     * удаляется — скачайте и храните файл у себя.
+     * Synchronous report endpoints are limited in volume; order a report for a long period in the
+     * background: `kind` — `statement`/`fees`/`ledger`, period — up to two years. The job is queued
+     * and built within a day (usually minutes); status — `POST /v1/documents/jobs/info`, the
+     * finished file — `GET /v1/documents/jobs/file`. Ordering again with the same parameters while
+     * a job is alive returns that job. `format` — `pdf` (default) or `csv`: CSV is built WITHOUT
+     * layout (for a heavy quarterly statement — zero rendering load, imports into Excel/1C).
+     * Quotas: at most 3 jobs in progress and 20 per day. A finished report is kept for 7 days and
+     * then deleted — download it and keep the file yourself.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/documents/jobs`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * document.bad_format, document.bad_kind, document.daily_quota, document.jobs_disabled,
-     * document.too_many_jobs, document.unknown_lang, internal, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
-     * merchant.suspended, merchant.unknown_key, report.crashed, report.expired, report.too_large,
-     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
-     * statement.bad_from, statement.bad_range, statement.bad_to, statement.range_too_long
+     * cli.permission_denied, document.bad_format, document.bad_kind, document.daily_quota,
+     * document.jobs_disabled, document.too_many_jobs, document.unknown_lang, internal,
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * report.crashed, report.expired, report.too_large, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, statement.bad_from, statement.bad_range,
+     * statement.bad_to, statement.range_too_long
      *
      * @param DocumentJobRequest|array{
      *     format?: string,
@@ -491,22 +526,24 @@ final class Documents extends Resource
     }
 
     /**
-     * Статус фонового отчёта
+     * Background report status
      *
-     * Статусы: `queued` → `processing` → `done` (в `file` — ссылка скачивания, размер, число строк
-     * и срок хранения) или `failed` (в `error` — машинный `code` и человекочитаемый `message`;
-     * например `report.too_large` — период надо разбить). `expired` — срок хранения вышел, закажите
-     * отчёт заново.
+     * Statuses: `queued` → `processing` → `done` (`file` contains the download link, size, row
+     * count and retention period) or `failed` (`error` contains a machine `code` and a
+     * human-readable `message`; e.g. `report.too_large` — the period must be split). `expired` —
+     * the retention period is over, order the report again.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/documents/jobs/info`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * document.bad_job_id, document.job_not_found, document.jobs_disabled, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, report.crashed,
-     * report.expired, report.too_large, request.bad_json, request.body_read, request.control_char,
-     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-     * request.too_deep
+     * cli.permission_denied, document.bad_job_id, document.job_not_found, document.jobs_disabled,
+     * internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * report.crashed, report.expired, report.too_large, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param DocumentJobInfoRequest|array{job_id: string} $params
      */
@@ -523,24 +560,26 @@ final class Documents extends Resource
     }
 
     /**
-     * Скачать готовый фоновый отчёт (PDF)
+     * Download a finished background report (PDF)
      *
-     * `?job_id=<UUID задачи>`. Отдаёт `application/pdf` под тем же ключом мерчанта — публичных
-     * ссылок на файл не существует. 409 `document.job_not_ready`, пока задача в работе; 404
-     * `document.job_expired`, когда срок хранения вышел.
+     * `?job_id=<job UUID>`. Returns `application/pdf` under the same merchant key — public links to
+     * the file do not exist. 409 `document.job_not_ready` while the job is in progress; 404
+     * `document.job_expired` once the retention period is over.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `GET /v1/documents/jobs/file`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * document.bad_job_id, document.job_expired, document.job_failed, document.job_not_found,
-     * document.job_not_ready, document.jobs_disabled, internal, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
-     * merchant.suspended, merchant.unknown_key, report.crashed, report.too_large,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, s3.bad_endpoint, s3.not_found,
-     * s3.request, s3.unavailable
+     * cli.permission_denied, document.bad_job_id, document.job_expired, document.job_failed,
+     * document.job_not_found, document.job_not_ready, document.jobs_disabled, internal,
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * report.crashed, report.too_large, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep, s3.bad_endpoint, s3.not_found, s3.request, s3.unavailable
      *
-     * @param string $job_id Идентификатор задачи из ответа POST /v1/documents/jobs.
+     * @param string $job_id The job id from the POST /v1/documents/jobs response.
      */
     public function downloadJobFile(string $job_id, ?RequestOptions $options = null): FileResult
     {

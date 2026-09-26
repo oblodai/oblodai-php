@@ -24,13 +24,13 @@ final class ExchangeRatesResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Курсы этой страницы. */
+        /** The rates of this page. */
         public readonly array $items,
-        /** Блок пагинации. */
+        /** Pagination block. */
         public readonly Pagination $paginate,
         /**
-         * Квота конвертации в обоих режимах; нет ключа — квоту не просили, она не удалась или пара
-         * вне режимов.
+         * The conversion quota in both modes; no key — no quota was requested, it failed, or the
+         * pair is outside both modes.
          */
         public readonly ?ConversionModes $modes = null,
         /** Fields newer than this SDK, exactly as received. */

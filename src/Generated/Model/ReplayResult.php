@@ -23,9 +23,9 @@ final class ReplayResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор доставки, как передан. */
+        /** The delivery id, as passed. */
         public readonly string $delivery_id,
-        /** Всегда true: доставка поставлена в очередь; иначе — ошибка. */
+        /** Always true: the delivery has been queued; otherwise — an error. */
         public readonly bool $ok,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

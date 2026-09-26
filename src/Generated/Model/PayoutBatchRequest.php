@@ -26,13 +26,14 @@ final class PayoutBatchRequest extends Model
      */
     public function __construct(
         /**
-         * Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payout; order_id у каждого
-         * элемента обязателен и служит ключом идемпотентности: повтор вернёт уже созданную выплату.
+         * An array of 1 to 5000 items — the same fields as in POST /v1/payout; order_id is required
+         * on each item and serves as the idempotency key: a retry returns the payout already
+         * created.
          */
         public readonly array $payouts,
         /**
-         * Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop —
-         * прекратить обработку после первой ошибки.
+         * What to do when an item fails: continue (default) — process the rest; stop — stop
+         * processing after the first error.
          */
         public readonly BatchOnError|string|null $on_error = null,
         /** Fields newer than this SDK, exactly as received. */

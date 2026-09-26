@@ -17,22 +17,25 @@ use Oblodai\Generated\Model\ReferralInfoResult;
 use Oblodai\Generated\Routes;
 
 /**
- * Реферальная программа.
+ * Referral program.
  */
 final class Referrals extends Resource
 {
     /**
-     * Реферальная информация
+     * Referral information
      *
-     * Ваш реферальный код, приглашённые и начисления.
+     * Your referral code, invitees and earnings.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/referral/info`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      */
     public function getInfo(?RequestOptions $options = null): ReferralInfoResult
     {

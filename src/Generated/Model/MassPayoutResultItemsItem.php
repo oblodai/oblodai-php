@@ -31,19 +31,19 @@ final class MassPayoutResultItemsItem extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Номер элемента в запросе. */
+        /** The item's number in the request. */
         public readonly int $idx,
-        /** Элемент выполнен. */
+        /** The item was executed. */
         public readonly bool $ok,
-        /** Машинный код отказа; есть при ok=false. */
+        /** The machine code of the rejection; present when ok=false. */
         public readonly ?string $error_code = null,
-        /** HTTP-статус, которым ответил бы одиночный вызов; есть при ok=false. */
+        /** The HTTP status a single call would have returned; present when ok=false. */
         public readonly ?int $http_status = null,
-        /** Текст отказа; есть при ok=false. */
+        /** The rejection text; present when ok=false. */
         public readonly ?string $message = null,
-        /** order_id элемента, если он был в запросе. */
+        /** The item's order_id, if it was in the request. */
         public readonly ?string $order_id = null,
-        /** Результат одиночного вызова; есть при ok=true. */
+        /** The result of a single call; present when ok=true. */
         public readonly ?PayoutItem $result = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

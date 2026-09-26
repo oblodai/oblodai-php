@@ -7,7 +7,7 @@ declare(strict_types=1);
 namespace Oblodai\Generated\Enum;
 
 /**
- * Коды ошибок, которыми отвечают операции этого документа.
+ * Error codes returned by the operations of this document.
  *
  * A value this SDK does not know yet is read as a plain string wherever the enum appears.
  */
@@ -73,6 +73,16 @@ enum ErrorCode: string
     case CheckoutcfgDisabled = 'checkoutcfg.disabled';
     case CheckoutcfgUrlTooLong = 'checkoutcfg.url_too_long';
     case ChequeTokenRequired = 'cheque.token_required';
+    case CliAccessDenied = 'cli.access_denied';
+    case CliAuthorizationPending = 'cli.authorization_pending';
+    case CliBadName = 'cli.bad_name';
+    case CliExpiredToken = 'cli.expired_token';
+    case CliInvalidDeviceCode = 'cli.invalid_device_code';
+    case CliNotCliKey = 'cli.not_cli_key';
+    case CliPermissionDenied = 'cli.permission_denied';
+    case CliRateLimited = 'cli.rate_limited';
+    case CliSlowDown = 'cli.slow_down';
+    case CliUnavailable = 'cli.unavailable';
     case ComplianceBlocked = 'compliance.blocked';
     case ComplianceBlockedAddress = 'compliance.blocked_address';
     case ComplianceBlocklistUnavailable = 'compliance.blocklist_unavailable';
@@ -159,7 +169,9 @@ enum ErrorCode: string
     case MerchantBadId = 'merchant.bad_id';
     case MerchantBadSignature = 'merchant.bad_signature';
     case MerchantEmailTaken = 'merchant.email_taken';
+    case MerchantKeyExpired = 'merchant.key_expired';
     case MerchantKeyModeMismatch = 'merchant.key_mode_mismatch';
+    case MerchantKeyNotFound = 'merchant.key_not_found';
     case MerchantNoPersonalWallet = 'merchant.no_personal_wallet';
     case MerchantNotFound = 'merchant.not_found';
     case MerchantProjectMismatch = 'merchant.project_mismatch';

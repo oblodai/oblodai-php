@@ -46,45 +46,45 @@ final class StaticWalletView extends Model
      */
     public function __construct(
         /**
-         * Постоянный адрес для пополнений. На XRP — классический r-адрес ОБЩЕГО кошелька;
-         * пополнение обязано нести destination_tag. На XLM — G-адрес; пополнение обязано нести
-         * memo.
+         * A permanent deposit address. On XRP — the classic r-address of a SHARED wallet; a deposit
+         * must carry destination_tag. On XLM — a G-address; a deposit must carry memo.
          */
         public readonly string $address,
         /**
-         * true — кошелёк заблокирован: пополнения на этот адрес НЕ зачисляются (уходят в карантин
-         * оператору, без вебхука и без автовозврата). Публиковать такой адрес нельзя.
+         * true — the wallet is blocked: deposits to this address are NOT credited (they go to
+         * operator quarantine, with no webhook and no auto-refund). Do not publish such an address.
          */
         public readonly bool $blocked,
-        /** Валюта пополнений. */
+        /** Deposit currency. */
         public readonly string $currency,
         /**
-         * Подписанная ссылка на PDF-справку о реквизитах. Пусто, когда рендер документов выключен.
+         * A signed link to the PDF payment details certificate. Empty when document rendering is
+         * disabled.
          */
         public readonly string $document_url,
-        /** Сеть блокчейна. */
+        /** Blockchain network. */
         public readonly string $network,
         /**
-         * Ваш идентификатор клиента, за которым закреплён адрес (часть тройки идемпотентности
-         * currency+network+order_id).
+         * Your customer identifier the address is assigned to (part of the
+         * currency+network+order_id idempotency triple).
          */
         public readonly string $order_id,
-        /** Зарезервировано (обычно пусто). */
+        /** Reserved (usually empty). */
         public readonly string $url,
-        /** Идентификатор статического кошелька. */
+        /** Static wallet id. */
         public readonly string $uuid,
-        /** Только XLM: адрес и memo одной строкой (muxed M…, SEP-23). */
+        /** XLM only: address and memo in one string (muxed M…, SEP-23). */
         public readonly ?string $address_muxed = null,
-        /** Только XRP: адрес и тег одной строкой (X-address, XLS-5). */
+        /** XRP only: address and tag in one string (X-address, XLS-5). */
         public readonly ?string $address_xaddress = null,
         /**
-         * Только XRP: числовой destination tag этого кошелька — клиент обязан указывать его в
-         * каждом переводе.
+         * XRP only: this wallet's numeric destination tag — the customer must specify it in every
+         * transfer.
          */
         public readonly ?string $destination_tag = null,
         /**
-         * Только XLM: числовой memo (тип ID) этого кошелька — клиент обязан указывать его в каждом
-         * переводе.
+         * XLM only: this wallet's numeric memo (ID type) — the customer must specify it in every
+         * transfer.
          */
         public readonly ?string $memo = null,
         /** Fields newer than this SDK, exactly as received. */

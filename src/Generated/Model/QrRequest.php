@@ -23,7 +23,7 @@ final class QrRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Произвольный адрес для рендера в QR-код (PNG как data:-URI). */
+        /** An arbitrary address to render into a QR code (PNG as a data: URI). */
         public readonly string $address,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

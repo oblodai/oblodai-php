@@ -163,7 +163,7 @@ true` в теле. Никогда не двигайте по нему деньг
 генератор:
 
 <!-- sdkgen:methods -->
-16 ресурсов, 120 методов.
+17 ресурсов, 123 метода.
 
 | Ресурс | Методы |
 | --- | --- |
@@ -183,6 +183,7 @@ true` в теле. Никогда не двигайте по нему деньг
 | `documents` | `getSigned` · `getBalance` · `getFees` · `getLedger` · `getSplit` · `getPayoutLinkCheque` · `getStatement` · `getBatch` · `getPaymentLink` · `getWalletStatement` · `getReferrals` · `createJob` · `getJob` · `downloadJobFile` |
 | `checkout` | `getSourceOfFundsForm` · `submitSourceOfFunds` · `getPublicPaymentLink` · `paymentLink` · `listCurrencies` · `get` · `selectMethod` · `startOnramp` · `getOnramp` · `getQr` |
 | `sandbox` | `onboardStore` · `faucet` · `simulateDeposit` · `reset` · `listWebhooks` · `replayWebhook` |
+| `cliLogin` | `start` · `poll` · `logoutCli` |
 <!-- /sdkgen:methods -->
 
 Каждый метод принимает необязательный последний аргумент `RequestOptions` — см.

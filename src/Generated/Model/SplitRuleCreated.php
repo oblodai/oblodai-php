@@ -19,7 +19,7 @@ final class SplitRuleCreated extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['percent', 'rule_id'];
 
-    /** Сохранённая доля в процентах, два знака после точки. */
+    /** The saved share in percent, two digits after the point. */
     public readonly string $percent;
 
     /**
@@ -27,9 +27,9 @@ final class SplitRuleCreated extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сохранённая доля в процентах, два знака после точки. */
+        /** The saved share in percent, two digits after the point. */
         string|int|float $percent,
-        /** Идентификатор правила. */
+        /** Rule id. */
         public readonly string $rule_id,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

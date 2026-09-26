@@ -23,11 +23,11 @@ final class SendEmailRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Кому отправить. По умолчанию — payer_email, заданный у платежа. */
+        /** Whom to send to. Defaults to the payer_email set on the payment. */
         public readonly ?string $email = null,
-        /** Ваша ссылка на заказ. */
+        /** Your order reference. */
         public readonly ?string $order_id = null,
-        /** Идентификатор платежа в Oblodai. Нужен uuid или order_id. */
+        /** The payment id in Oblodai. Either uuid or order_id is required. */
         public readonly ?string $uuid = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

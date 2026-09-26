@@ -25,8 +25,8 @@ final class PayoutLinkBatchRequest extends Model
      */
     public function __construct(
         /**
-         * До 500 ссылок за вызов; каждая проходит или падает независимо, ответ выровнен по индексам
-         * запроса. reference обязателен у каждой.
+         * Up to 500 links per call; each succeeds or fails independently, the response is aligned
+         * with the request indices. reference is required on each.
          */
         public readonly array $items,
         /** Fields newer than this SDK, exactly as received. */

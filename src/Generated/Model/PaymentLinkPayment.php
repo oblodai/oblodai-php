@@ -20,7 +20,7 @@ final class PaymentLinkPayment extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'created_at', 'currency', 'order_id', 'status', 'uuid'];
 
-    /** Цена счёта в валюте цены ссылки. */
+    /** The invoice price in the link's price currency. */
     public readonly string $amount;
 
     /**
@@ -28,17 +28,17 @@ final class PaymentLinkPayment extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Цена счёта в валюте цены ссылки. */
+        /** The invoice price in the link's price currency. */
         string|int|float $amount,
-        /** Когда создан (UTC). */
+        /** When created (UTC). */
         public readonly string $created_at,
-        /** Валюта цены. */
+        /** Price currency. */
         public readonly string $currency,
-        /** Статус платежа. */
+        /** Payment status. */
         public readonly PaymentStatus|string $status,
-        /** Идентификатор платежа. */
+        /** Payment id. */
         public readonly string $uuid,
-        /** Номер заказа магазина, если виджет его передал. */
+        /** The store's order number, if the widget passed one. */
         public readonly ?string $order_id = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -23,13 +23,13 @@ final class Pagination extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Есть ли записи дальше этой страницы. */
+        /** Whether there are records beyond this page. */
         public readonly bool $has_pages,
-        /** Смещение этой страницы. */
+        /** The offset of this page. */
         public readonly int $offset,
-        /** Размер страницы, которую отдали. */
+        /** The size of the page returned. */
         public readonly int $per_page,
-        /** Всего записей по фильтру (на всех страницах). */
+        /** Total records matching the filter (across all pages). */
         public readonly int $total,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

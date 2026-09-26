@@ -23,7 +23,7 @@ final class SetWebhookActiveResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Включена ли теперь доставка. */
+        /** Whether delivery is now enabled. */
         public readonly bool $active,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

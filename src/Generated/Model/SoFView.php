@@ -24,9 +24,9 @@ final class SoFView extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Срок ссылки вышел — анкету уже не принять. */
+        /** The link has expired — the questionnaire can no longer be accepted. */
         public readonly bool $expired,
-        /** Статус анкеты. */
+        /** Questionnaire status. */
         public readonly SoFStatus|string $status,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

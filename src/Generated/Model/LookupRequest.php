@@ -23,9 +23,11 @@ final class LookupRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Ваша ссылка на заказ. */
+        /** Your order reference. */
         public readonly ?string $order_id = null,
-        /** Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid. */
+        /**
+         * The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.
+         */
         public readonly ?string $uuid = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

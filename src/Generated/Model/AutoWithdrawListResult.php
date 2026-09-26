@@ -24,7 +24,7 @@ final class AutoWithdrawListResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Правила автовывода, по одному на актив. */
+        /** Auto-withdrawal rules, one per asset. */
         public readonly array $items,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

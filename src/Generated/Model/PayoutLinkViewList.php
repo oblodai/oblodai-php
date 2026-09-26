@@ -24,9 +24,9 @@ final class PayoutLinkViewList extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Записи этой страницы. */
+        /** The records of this page. */
         public readonly array $items,
-        /** Блок пагинации. */
+        /** Pagination block. */
         public readonly Pagination $paginate,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

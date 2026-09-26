@@ -49,31 +49,31 @@ final class BatchInfoResponse extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор батча. */
+        /** Batch id. */
         public readonly string $batch_id,
-        /** Время создания батча (ISO 8601, UTC). */
+        /** Batch creation time (ISO 8601, UTC). */
         public readonly string $created_at,
-        /** Завершилось ошибкой (при on_error stop сюда попадают и пропущенные элементы). */
+        /** Failed (with on_error stop, skipped items are counted here too). */
         public readonly int $failed,
-        /** Страница элементов с результатом или ошибкой по каждому. */
+        /** A page of items with the result or error for each. */
         public readonly array $items,
-        /** Вид батча: payment | refund | payout | transfer. */
+        /** Batch kind: payment | refund | payout | transfer. */
         public readonly BatchKind|string $kind,
-        /** Режим обработки ошибок, с которым батч был отправлен: continue | stop. */
+        /** The error handling mode the batch was submitted with: continue | stop. */
         public readonly BatchOnError|string $on_error,
         /**
-         * Статус батча: pending | processing | completed | stopped. ТЕРМИНАЛЬНЫЕ — completed И
-         * stopped (опрашивайте до одного из них, не только до completed): completed = обработка
-         * дошла до конца, stopped = батч с on_error=stop остановился на первой ошибке (остальные
-         * элементы пропущены и учтены в failed). Ни один не значит «всё успешно» — смотрите
+         * Batch status: pending | processing | completed | stopped. TERMINAL ones are completed AND
+         * stopped (poll until either of them, not only completed): completed = processing reached
+         * the end, stopped = a batch with on_error=stop halted at the first error (the remaining
+         * items were skipped and counted in failed). Neither means "everything succeeded" — check
          * succeeded/failed.
          */
         public readonly BatchStatus|string $status,
-        /** Успешно обработано. */
+        /** Processed successfully. */
         public readonly int $succeeded,
-        /** Всего элементов в батче; считается по всему батчу и от пагинации не зависит. */
+        /** Total items in the batch; counted over the whole batch, independent of pagination. */
         public readonly int $total,
-        /** Время последнего изменения (ISO 8601, UTC). */
+        /** Time of the last change (ISO 8601, UTC). */
         public readonly string $updated_at,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

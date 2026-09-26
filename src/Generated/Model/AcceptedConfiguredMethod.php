@@ -24,15 +24,15 @@ final class AcceptedConfiguredMethod extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Можно ли платить этим методом здесь. */
+        /** Whether this method can be used to pay here. */
         public readonly bool $available,
-        /** Код актива. */
+        /** Asset code. */
         public readonly string $currency,
-        /** Сеть актива. */
+        /** The asset's network. */
         public readonly string $network,
         /**
-         * Почему недоступен: not_served_here — развёртывание не принимает этот метод,
-         * unknown_method — метода нет в каталоге; у доступного ключа нет.
+         * Why it is unavailable: not_served_here — the deployment does not accept this method,
+         * unknown_method — the method is not in the catalog; an available one has no such key.
          */
         public readonly AcceptedReason|string|null $reason = null,
         /** Fields newer than this SDK, exactly as received. */

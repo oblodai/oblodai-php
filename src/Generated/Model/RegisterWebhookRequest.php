@@ -23,7 +23,7 @@ final class RegisterWebhookRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** HTTPS-URL коллбэка. SSRF-проверка: приватные и локальные адреса запрещены. */
+        /** HTTPS callback URL. SSRF check: private and local addresses are forbidden. */
         public readonly string $url,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

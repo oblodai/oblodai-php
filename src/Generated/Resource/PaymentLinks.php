@@ -27,33 +27,37 @@ use Oblodai\Generated\Routes;
 use Oblodai\Generated\Wire;
 
 /**
- * Многоразовые ссылки на оплату: одна ссылка — много платежей.
+ * Reusable payment links: one link, many payments.
  */
 final class PaymentLinks extends Resource
 {
     /**
-     * Создать платёжную ссылку
+     * Create a payment link
      *
-     * Переиспользуемая ссылка (как страница доната): по ней платят много людей, каждый платёж —
-     * свой инвойс со своим адресом. `amount_mode`: `fixed` (сумма задана в `amount_fixed`), `open`
-     * (клиент вводит любую сумму, опц. `amount_min`), `range` (клиент вводит в диапазоне
-     * `amount_min`…`amount_max`). `currency` — валюта цены (крипто-тикер, напр. `USDT`).
+     * A reusable link (like a donation page): many people pay through it, each payment is its own
+     * invoice with its own address. `amount_mode`: `fixed` (the amount is set in `amount_fixed`),
+     * `open` (the customer enters any amount, optionally `amount_min`), `range` (the customer
+     * enters an amount between `amount_min` and `amount_max`). `currency` — the price currency (a
+     * crypto ticker, e.g. `USDT`).
      *
-     * Валюту/сеть оплаты можно **закрепить** (`pinned_currency` + `pinned_network`) или оставить
-     * пустыми — тогда клиент выбирает их на странице оплаты. `expires_in` — срок жизни ссылки в
-     * секундах (0 = **бессрочно**; сами инвойсы при этом живут обычный короткий срок). В ответе —
-     * `link_id` и `url` для клиента.
+     * The payment currency/network can be **pinned** (`pinned_currency` + `pinned_network`) or left
+     * empty — then the customer picks them on the payment page. `expires_in` — the link lifetime in
+     * seconds (0 = **never expires**; the invoices themselves still have the usual short lifetime).
+     * The response contains `link_id` and the `url` for the customer.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/link`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.acceptance_blocked, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * paylink.bad_amount, paylink.bad_max, paylink.bad_min, paylink.bad_mode, paylink.bad_range,
-     * paylink.disabled, paylink.expires_in_negative, paylink.expires_in_too_large,
-     * paylink.not_positive, request.bad_json, request.body_read, request.control_char,
-     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-     * request.too_deep, request.unknown_currency
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.acceptance_blocked, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, paylink.bad_amount,
+     * paylink.bad_max, paylink.bad_min, paylink.bad_mode, paylink.bad_range, paylink.disabled,
+     * paylink.expires_in_negative, paylink.expires_in_too_large, paylink.not_positive,
+     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
+     * request.unknown_currency
      *
      * @param PaymentLinkCreateRequest|array{
      *     amount_fixed?: string,
@@ -81,17 +85,20 @@ final class PaymentLinks extends Resource
     }
 
     /**
-     * Список ссылок
+     * List links
      *
-     * Ваши платёжные ссылки, новые сверху.
+     * Your payment links, newest first.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payment/link/list`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, paylink.disabled,
-     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, paylink.disabled, request.bad_json,
+     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep
      *
      * @param PageRequest|array{limit?: int, offset?: int} $params
      *
@@ -108,18 +115,21 @@ final class PaymentLinks extends Resource
     }
 
     /**
-     * Ссылка + её платежи
+     * Link and its payments
      *
-     * По `link_id`: конфиг ссылки и собранные по ней платежи (`payments[]`).
+     * By `link_id`: the link configuration and the payments collected through it (`payments[]`).
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payment/link/info`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, paylink.bad_id,
-     * paylink.disabled, paylink.not_found, request.bad_json, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, paylink.bad_id, paylink.disabled,
+     * paylink.not_found, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      *
      * @param PaymentLinkLookupRequest|array{limit?: int, link_id: string, offset?: int} $params
      */
@@ -136,18 +146,21 @@ final class PaymentLinks extends Resource
     }
 
     /**
-     * Включить/выключить ссылку
+     * Enable/disable a link
      *
-     * `{link_id, active}`. Выключенная ссылка не принимает новые платежи.
+     * `{link_id, active}`. A disabled link does not accept new payments.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/link/toggle`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, paylink.bad_id,
-     * paylink.disabled, paylink.not_found, request.bad_json, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, paylink.bad_id, paylink.disabled,
+     * paylink.not_found, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      *
      * @param PaymentLinkToggleRequest|array{active: bool, link_id: string} $params
      */

@@ -24,23 +24,23 @@ final class SplitRuleRequest extends Model
      */
     public function __construct(
         /**
-         * Доля от каждого платежа, строкой: "10" = 10 %, "2.5" = 2.5 %. Больше 0 и не больше 100,
-         * шаг 0.01 %; сумма всех правил не может превышать 100 %.
+         * The share of each payment, as a string: "10" = 10 %, "2.5" = 2.5 %. Greater than 0 and at
+         * most 100, in steps of 0.01 %; the sum of all rules cannot exceed 100 %.
          */
         public readonly string $percent,
         /**
-         * Внешний криптоадрес партнёра; доля уходит реальной транзакцией в блокчейне — необратимо.
-         * Ровно один вариант получателя: либо address+network, либо merchant_id.
+         * The partner's external crypto address; the share is sent as a real on-chain transaction —
+         * irreversibly. Exactly one recipient option: either address+network or merchant_id.
          */
         public readonly ?string $address = null,
         /**
-         * Идентификатор мерчанта-партнёра внутри Oblodai; доля движется по внутреннему учёту и при
-         * возврате отзывается обратно.
+         * The id of the partner merchant within Oblodai; the share moves within internal accounting
+         * and is clawed back on refund.
          */
         public readonly ?string $merchant_id = null,
-        /** Сеть адреса. Обязательна вместе с address. */
+        /** The address network. Required together with address. */
         public readonly ?string $network = null,
-        /** Комментарий для себя (виден в списке правил). */
+        /** A note for yourself (visible in the rule list). */
         public readonly ?string $note = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -23,12 +23,12 @@ final class TestWebhookRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Статус в теле. По умолчанию paid */
+        /** The status in the body. Default paid */
         public readonly ?string $status = null,
         /**
-         * Куда отправить пробное тело. Не передан — доставка уходит на зарегистрированный endpoint
-         * проекта; без endpoint — ошибка webhook.no_endpoint. Подпись — секретом endpoint'а
-         * проекта, в том числе при явном url
+         * Where to send the sample body. If omitted, the delivery goes to the project's registered
+         * endpoint; without an endpoint — the webhook.no_endpoint error. Signed with the project
+         * endpoint's secret, including when url is given explicitly
          */
         public readonly ?string $url = null,
         /** Fields newer than this SDK, exactly as received. */

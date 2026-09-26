@@ -17,35 +17,50 @@ final class ErrorError extends Model
     public const REQUIRED = ['code', 'retryable'];
 
     /** Every wire key this model knows; the rest land in `extra`. */
-    public const FIELDS = ['code', 'field', 'message', 'request_id', 'retry_after', 'retryable'];
+    public const FIELDS = [
+        'code',
+        'details',
+        'field',
+        'message',
+        'request_id',
+        'retry_after',
+        'retryable',
+    ];
 
     /**
+     * @param array<string, string>|null $details
      * @param array<string, mixed> $extra
      */
     public function __construct(
         /**
-         * Стабильный машинный код `<область>.<причина>` — единственное поле, по которому можно
-         * ветвиться. Список известных кодов — ErrorCode; новые коды добавляются без смены версии,
-         * поэтому клиент обязан переживать незнакомый код.
+         * A stable machine code `<area>.<reason>` — the only field you may branch on. The list of
+         * known codes is ErrorCode; new codes are added without a version change, so a client must
+         * tolerate an unknown code.
          */
         public readonly string $code,
         /**
-         * true — повтор того же запроса без изменений может пройти, когда условие снимется; false —
-         * повторять бессмысленно без правки запроса.
+         * true — repeating the same request unchanged may succeed once the condition clears; false
+         * — retrying is pointless without changing the request.
          */
         public readonly bool $retryable,
         /**
-         * Имя поля запроса, к которому относится ошибка, в присланном написании. Отсутствует, если
-         * ошибка не про конкретное поле.
+         * Machine-readable facts about this refusal, with keys documented by its code (e.g.
+         * `cli.permission_denied` carries `required_role` and `role`). Absent when the code has
+         * none.
+         */
+        public readonly ?array $details = null,
+        /**
+         * The name of the request field the error refers to, spelled as sent. Absent if the error
+         * is not about a specific field.
          */
         public readonly ?string $field = null,
-        /** Человекочитаемое пояснение. Текст не является контрактом и может меняться. */
+        /** A human-readable explanation. The text is not part of the contract and may change. */
         public readonly ?string $message = null,
-        /**
-         * Идентификатор запроса (дублирует X-Request-ID) — приложите его к обращению в поддержку.
-         */
+        /** The request id (duplicates X-Request-ID) — include it when contacting support. */
         public readonly ?string $request_id = null,
-        /** Подсказка, через сколько секунд повторять (дублирует заголовок Retry-After). */
+        /**
+         * A hint of how many seconds to wait before retrying (duplicates the Retry-After header).
+         */
         public readonly ?int $retry_after = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],
@@ -58,6 +73,7 @@ final class ErrorError extends Model
         return new self(
             code: Wire::str(Wire::req($data, 'code')),
             retryable: Wire::bool(Wire::req($data, 'retryable')),
+            details: isset($data['details']) ? Wire::mapOf($data['details'], Wire::str(...)) : null,
             field: isset($data['field']) ? Wire::str($data['field']) : null,
             message: isset($data['message']) ? Wire::str($data['message']) : null,
             request_id: isset($data['request_id']) ? Wire::str($data['request_id']) : null,
@@ -72,6 +88,9 @@ final class ErrorError extends Model
         $out = [];
         $out['code'] = Wire::dump($this->code);
         $out['retryable'] = Wire::dump($this->retryable);
+        if ($this->details !== null) {
+            $out['details'] = Wire::dump($this->details);
+        }
         if ($this->field !== null) {
             $out['field'] = Wire::dump($this->field);
         }

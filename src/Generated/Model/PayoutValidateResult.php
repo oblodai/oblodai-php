@@ -39,13 +39,13 @@ final class PayoutValidateResult extends Model
         'valid',
     ];
 
-    /** Сколько спишется с баланса. */
+    /** How much will be debited from the balance. */
     public readonly string $amount;
 
-    /** Сетевая комиссия. */
+    /** Network fee. */
     public readonly string $commission;
 
-    /** Сколько дойдёт получателю. */
+    /** How much will reach the recipient. */
     public readonly string $payer_amount;
 
     /**
@@ -55,25 +55,25 @@ final class PayoutValidateResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сколько спишется с баланса. */
+        /** How much will be debited from the balance. */
         string|int|float $amount,
-        /** Сетевая комиссия. */
+        /** Network fee. */
         string|int|float $commission,
-        /** Валюта выплаты. */
+        /** Payout currency. */
         public readonly string $currency,
-        /** Кто платит сетевую комиссию. */
+        /** Who pays the network fee. */
         public readonly PayoutFeeBearer|string $fee_bearer,
-        /** Что именно проверено по балансу и что проверится при исполнении. */
+        /** What exactly was checked against the balance and what will be checked at execution. */
         public readonly string $maturity_note,
-        /** Сеть выплаты в каноническом написании. */
+        /** The payout network in canonical spelling. */
         public readonly string $network,
-        /** Сколько дойдёт получателю. */
+        /** How much will reach the recipient. */
         string|int|float $payer_amount,
-        /** Всегда true: не прошедшая проверка отвечает ошибкой с кодом причины. */
+        /** Always true: a failed check responds with an error carrying the reason code. */
         public readonly bool $valid,
         /**
-         * Валюта, конвертацией которой профинансируется выплата (from_currency); есть только у
-         * такой выплаты.
+         * The currency whose conversion funds the payout (from_currency); present only on such a
+         * payout.
          */
         public readonly ?string $funded_by = null,
         /** Fields newer than this SDK, exactly as received. */

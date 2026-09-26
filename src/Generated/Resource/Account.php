@@ -23,22 +23,25 @@ use Oblodai\Generated\Routes;
 use Oblodai\Generated\Wire;
 
 /**
- * Балансы мерчанта и курсы обмена.
+ * Merchant balances and exchange rates.
  */
 final class Account extends Resource
 {
     /**
-     * Баланс мерчанта
+     * Merchant balance
      *
-     * Ваши доступные балансы по каждой валюте. Тело — пустой `{}`.
+     * Your available balances per currency. The body is an empty `{}`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/balance`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep, request.unknown_currency
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep, request.unknown_currency
      */
     public function getBalance(?RequestOptions $options = null): BalanceResult
     {
@@ -51,20 +54,22 @@ final class Account extends Resource
     }
 
     /**
-     * Итоги за период
+     * Period totals
      *
-     * Оборот окна `[from, to)` по монете оплаты (оплаченное по счетам в `paid`/`paid_over`,
-     * созданным в окне) и число выплат в работе прямо сейчас (без возвратов). Считается по всем
-     * записям, а не по странице истории.
+     * Turnover for the `[from, to)` window per payment coin (amounts paid on invoices in
+     * `paid`/`paid_over` created within the window) and the number of payouts in progress right now
+     * (excluding refunds). Computed over all records, not over a history page.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/summary`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
-     * summary.bad_window
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, invoice.corrupt_pay_asset, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep, summary.bad_window
      *
      * @param SummaryRequest|array{from: string, to: string} $params
      */
@@ -81,9 +86,9 @@ final class Account extends Resource
     }
 
     /**
-     * Курсы обмена к USDT
+     * Exchange rates to USDT
      *
-     * Список курсов. Необязательный `currency_from` фильтрует по исходной валюте.
+     * List of rates. The optional `currency_from` filters by source currency.
      *
      * `POST /v1/exchange-rate/list`
      *

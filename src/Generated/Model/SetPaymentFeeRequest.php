@@ -24,9 +24,8 @@ final class SetPaymentFeeRequest extends Model
      */
     public function __construct(
         /**
-         * Доля НАШЕЙ комиссии, которую платит покупатель: 0 — платит мерчант (как сейчас), 100 —
-         * платит покупатель, счёт выставляется с наценкой. Действует на счета, созданные ПОСЛЕ
-         * изменения.
+         * The share of OUR fee paid by the buyer: 0 — the merchant pays (as now), 100 — the buyer
+         * pays, the invoice is issued with a markup. Applies to invoices created AFTER the change.
          */
         public readonly int $payer_pays_percent,
         /** Fields newer than this SDK, exactly as received. */

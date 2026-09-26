@@ -24,8 +24,8 @@ final class SetWebhookActiveRequest extends Model
      */
     public function __construct(
         /**
-         * true — доставка возобновляется, false — прекращается (очередь по этому проекту больше не
-         * наполняется).
+         * true — delivery resumes, false — it stops (the queue for this project is no longer
+         * filled).
          */
         public readonly ?bool $active = null,
         /** Fields newer than this SDK, exactly as received. */

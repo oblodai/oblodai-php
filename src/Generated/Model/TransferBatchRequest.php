@@ -26,13 +26,13 @@ final class TransferBatchRequest extends Model
      */
     public function __construct(
         /**
-         * Массив от 1 до 5000 элементов — те же поля, что у POST /v1/transfer/to-user; у каждого
-         * элемента обязательны order_id (ключ идемпотентности) и to_user_id (UUID пользователя).
+         * An array of 1 to 5000 items — the same fields as in POST /v1/transfer/to-user; each item
+         * requires order_id (the idempotency key) and to_user_id (the user's UUID).
          */
         public readonly array $transfers,
         /**
-         * Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop —
-         * прекратить обработку после первой ошибки.
+         * What to do when an item fails: continue (default) — process the rest; stop — stop
+         * processing after the first error.
          */
         public readonly BatchOnError|string|null $on_error = null,
         /** Fields newer than this SDK, exactly as received. */

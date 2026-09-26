@@ -33,24 +33,26 @@ use Oblodai\Generated\Routes;
 use Oblodai\Generated\Wire;
 
 /**
- * Регистрация endpoint'а для коллбэков, тест и переотправка.
+ * Registering the callback endpoint, test deliveries and resends.
  */
 final class Webhooks extends Resource
 {
     /**
-     * Переотправить вебхук по платежу
+     * Resend the payment webhook
      *
-     * Заново поставит в очередь коллбэк по платежу (по `uuid`/`order_id`). Полезно, если ваш сервер
-     * был недоступен.
+     * Re-queues the payment callback (by `uuid`/`order_id`). Useful if your server was unavailable.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/resend`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * onramp.suppresses, payment.bad_uuid, payment.no_lookup, payment.not_found, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, webhook.no_endpoint
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, invoice.corrupt_pay_asset, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, onramp.suppresses,
+     * payment.bad_uuid, payment.no_lookup, payment.not_found, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, webhook.no_endpoint
      *
      * @param LookupRequest|array{order_id?: string, uuid?: string} $params
      */
@@ -67,19 +69,22 @@ final class Webhooks extends Resource
     }
 
     /**
-     * Зарегистрировать endpoint для коллбэков
+     * Register the callback endpoint
      *
-     * Задаёт URL проекта, куда слать вебхуки, и возвращает `secret` (показывается один раз) для
-     * проверки подписи `X-Webhook-Signature`. Проверив подпись, обработчик ОБЯЗАН отбросить тело с
-     * `test: true` — это репетиция с тестовой ручки, а не событие.
+     * Sets the project URL to send webhooks to and returns the `secret` (shown once) for verifying
+     * the `X-Webhook-Signature`. After verifying the signature, your handler MUST discard a body
+     * with `test: true` — it is a rehearsal from the test endpoint, not an event.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/webhooks`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, webhook.bad_url, webhook.no_url
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, webhook.bad_url, webhook.no_url
      *
      * @param RegisterWebhookRequest|array{url: string} $params
      */
@@ -96,19 +101,23 @@ final class Webhooks extends Resource
     }
 
     /**
-     * Журнал доставок вебхуков
+     * Webhook delivery log
      *
-     * Последние доставки: URL, статус, число попыток, последняя ошибка — для отладки. Статусы:
-     * `pending` (в очереди или ждёт ретрая), `delivered`, `dead` (ретраи исчерпаны), `cancelled`
-     * (эндпоинт выключили, пока доставка ждала в очереди; причина — в `cancel_reason`).
+     * Recent deliveries: URL, status, attempt count, last error — for debugging. Statuses:
+     * `pending` (queued or waiting for a retry), `delivered`, `dead` (retries exhausted),
+     * `cancelled` (the endpoint was disabled while the delivery was waiting in the queue; the
+     * reason is in `cancel_reason`).
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/webhooks/deliveries`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param PageRequest|array{limit?: int, offset?: int} $params
      *
@@ -127,23 +136,26 @@ final class Webhooks extends Resource
     }
 
     /**
-     * Переотправить доставку из журнала
+     * Resend a delivery from the log
      *
-     * Возвращает в очередь вашу доставку в статусе `dead` (ретраи исчерпаны) или `cancelled`
-     * (эндпоинт выключали): новая лестница ретраев, подпись текущим секретом. Тело доставки то же,
-     * что было в журнале, — для отправки ТЕКУЩЕГО состояния платежа есть `POST /v1/payment/resend`.
-     * Повтор вызова безопасен: доставка, уже стоящая в очереди или доставленная, возвращается как
-     * есть с `ok: false`. Чужая доставка — 404 `webhook.delivery_not_found`; выключенный эндпоинт —
-     * 409 `webhook.endpoint_disabled` (сначала включите его).
+     * Re-queues your delivery in status `dead` (retries exhausted) or `cancelled` (the endpoint was
+     * disabled): a fresh retry schedule, signed with the current secret. The delivery body is the
+     * same as in the log — to send the CURRENT state of a payment use `POST /v1/payment/resend`.
+     * Repeating the call is safe: a delivery already queued or delivered is returned as is with
+     * `ok: false`. Someone else's delivery — 404 `webhook.delivery_not_found`; a disabled endpoint
+     * — 409 `webhook.endpoint_disabled` (enable it first).
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/webhooks/deliveries/requeue`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_id,
-     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
-     * webhook.delivery_not_found, webhook.endpoint_disabled
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_id, request.bad_json,
+     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep, webhook.delivery_not_found,
+     * webhook.endpoint_disabled
      *
      * @param RequeueWebhookDeliveryRequest|array{id: string} $params
      */
@@ -160,21 +172,24 @@ final class Webhooks extends Resource
     }
 
     /**
-     * Тестовый вебхук на URL (старый вариант)
+     * Test webhook to a URL (legacy)
      *
-     * Шлёт пробное тело на указанный `url` — проверить, что ваш обработчик работает. Тело репетиции
-     * несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём
-     * всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело
-     * с `test: true`, даже если подпись верна.
+     * Sends a sample body to the given `url` — to check that your handler works. The rehearsal body
+     * carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its
+     * `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a
+     * body with `test: true` even if the signature is valid.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/testing-webhook`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, webhook.bad_currency,
-     * webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_endpoint
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, webhook.bad_currency, webhook.bad_status,
+     * webhook.bad_url, webhook.bad_uuid, webhook.no_endpoint
      *
      * @param TestWebhookRequest|array{status?: string, url?: string} $params
      */
@@ -191,21 +206,24 @@ final class Webhooks extends Resource
     }
 
     /**
-     * Тестовый вебхук ПЛАТЕЖА
+     * Test PAYMENT webhook
      *
-     * Доставит пробный вебхук типа payment на `url_callback`. Тело репетиции несёт `"test": true`
-     * (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое
-     * событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`,
-     * даже если подпись верна.
+     * Delivers a sample webhook of type payment to `url_callback`. The rehearsal body carries
+     * `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its
+     * `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a
+     * body with `test: true` even if the signature is valid.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/test-webhook/payment`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, webhook.bad_currency,
-     * webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_url, webhook.test_failed
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, webhook.bad_currency, webhook.bad_status,
+     * webhook.bad_url, webhook.bad_uuid, webhook.no_url, webhook.test_failed
      *
      * @param TestWebhookKindRequest|array{
      *     currency?: string,
@@ -229,21 +247,24 @@ final class Webhooks extends Resource
     }
 
     /**
-     * Тестовый вебхук КОШЕЛЬКА
+     * Test WALLET webhook
      *
-     * Доставит пробный вебхук типа wallet (пополнение статик-кошелька). Тело репетиции несёт
-     * `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда
-     * 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с
-     * `test: true`, даже если подпись верна.
+     * Delivers a sample webhook of type wallet (a static wallet deposit). The rehearsal body
+     * carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its
+     * `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a
+     * body with `test: true` even if the signature is valid.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/test-webhook/wallet`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, webhook.bad_currency,
-     * webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_url, webhook.test_failed
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, webhook.bad_currency, webhook.bad_status,
+     * webhook.bad_url, webhook.bad_uuid, webhook.no_url, webhook.test_failed
      *
      * @param TestWebhookKindRequest|array{
      *     currency?: string,
@@ -267,21 +288,24 @@ final class Webhooks extends Resource
     }
 
     /**
-     * Тестовый вебхук ВЫПЛАТЫ
+     * Test PAYOUT webhook
      *
-     * Доставит пробный вебхук типа payout. Тело репетиции несёт `"test": true` (внутри подписи) и
-     * заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков
-     * НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись
-     * верна.
+     * Delivers a sample webhook of type payout. The rehearsal body carries `"test": true` (inside
+     * the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live
+     * event NEVER carries these markers: your handler must ignore a body with `test: true` even if
+     * the signature is valid.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/test-webhook/payout`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, webhook.bad_currency,
-     * webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_url, webhook.test_failed
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, webhook.bad_currency, webhook.bad_status,
+     * webhook.bad_url, webhook.bad_uuid, webhook.no_url, webhook.test_failed
      *
      * @param TestWebhookKindRequest|array{
      *     currency?: string,
@@ -305,22 +329,26 @@ final class Webhooks extends Resource
     }
 
     /**
-     * Тестовый вебхук КОНВЕРТАЦИИ
+     * Test CONVERSION webhook
      *
-     * Доставит пробный вебхук типа conversion (события `conversion.completed` /
-     * `conversion.refunded` по заявкам режима economy; `status` — completed или refunded, по
-     * умолчанию completed). Тело репетиции несёт `"test": true` (внутри подписи) и заголовок
-     * `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков НЕ несёт
-     * никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись верна.
+     * Delivers a sample webhook of type conversion (the `conversion.completed` /
+     * `conversion.refunded` events for economy-mode orders; `status` — completed or refunded,
+     * default completed). The rehearsal body carries `"test": true` (inside the signature) and the
+     * `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries
+     * these markers: your handler must ignore a body with `test: true` even if the signature is
+     * valid.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/test-webhook/conversion`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, webhook.bad_currency,
-     * webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_url, webhook.test_failed
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, webhook.bad_currency, webhook.bad_status,
+     * webhook.bad_url, webhook.bad_uuid, webhook.no_url, webhook.test_failed
      *
      * @param TestWebhookKindRequest|array{
      *     currency?: string,
@@ -344,19 +372,22 @@ final class Webhooks extends Resource
     }
 
     /**
-     * Перевыпустить секрет подписи вебхуков
+     * Rotate the webhook signing secret
      *
-     * Единственный момент, когда новый секрет показывается. До `previous_secret_valid_until`
-     * доставки дополнительно несут `X-Webhook-Signature-Prev` со старым секретом — время докатить
-     * замену без потери проверки.
+     * The only time the new secret is shown. Until `previous_secret_valid_until`, deliveries
+     * additionally carry `X-Webhook-Signature-Prev` signed with the old secret — time to roll out
+     * the change without losing verification.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/webhooks/rotate-secret`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep, webhook.no_endpoint, webhook.rotation_in_overlap
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep, webhook.no_endpoint, webhook.rotation_in_overlap
      */
     public function rotateSecret(?RequestOptions $options = null): RotateWebhookSecretResult
     {
@@ -369,24 +400,26 @@ final class Webhooks extends Resource
     }
 
     /**
-     * Включить или выключить доставку вебхуков
+     * Enable or disable webhook delivery
      *
-     * Выключенный эндпоинт перестаёт получать доставки: новые события по этому проекту в очередь не
-     * ставятся, а уже стоящие в очереди отменяются (статус `cancelled`) и после включения сами не
-     * уходят. Нужен, когда приёмник выведен из эксплуатации, — иначе каждое событие ретраилось бы
-     * ~3 суток и уходило в dead-letter бессрочно. Секрет и URL сохраняются: включение возвращает
-     * всё как было. Эндпоинт, у которого 3 суток подряд не прошла ни одна попытка, выключается
-     * автоматически — очередь отменяется, владельцу магазина уходит письмо; после починки приёмника
-     * включите его этой ручкой.
+     * A disabled endpoint stops receiving deliveries: new events for this project are not queued,
+     * and those already queued are cancelled (status `cancelled`) and are not sent automatically
+     * after re-enabling. Needed when a receiver is decommissioned — otherwise every event would be
+     * retried for ~3 days and end up in the dead-letter queue indefinitely. The secret and URL are
+     * kept: enabling restores everything as it was. An endpoint for which not a single attempt has
+     * succeeded for 3 days in a row is disabled automatically — its queue is cancelled and the
+     * store owner gets an email; after fixing the receiver, enable it with this endpoint.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/webhooks/active`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, webhook.no_active,
-     * webhook.no_endpoint
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, webhook.no_active, webhook.no_endpoint
      *
      * @param SetWebhookActiveRequest|array{active: bool|null} $params
      */

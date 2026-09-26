@@ -23,7 +23,7 @@ final class ReplayRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор доставки из GET /v1/sandbox/webhooks. */
+        /** The delivery id from GET /v1/sandbox/webhooks. */
         public readonly string $delivery_id,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

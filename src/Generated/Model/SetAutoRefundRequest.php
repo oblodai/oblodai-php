@@ -23,9 +23,9 @@ final class SetAutoRefundRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Возвращать излишек при переплате (paid_over) */
+        /** Refund the excess of an overpayment (paid_over) */
         public readonly bool $overpay,
-        /** Возвращать средства при истёкшей недоплате (wrong_amount) */
+        /** Refund the funds of an expired underpayment (wrong_amount) */
         public readonly bool $underpay,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

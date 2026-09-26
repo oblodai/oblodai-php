@@ -23,13 +23,13 @@ final class RegisterWebhookResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор эндпоинта. */
+        /** Endpoint id. */
         public readonly string $endpoint_id,
-        /** Зарегистрированный URL коллбэка. */
+        /** The registered callback URL. */
         public readonly string $url,
         /**
-         * Секрет подписи — только в ответе на ПЕРВУЮ регистрацию, показывается один раз; при смене
-         * URL его нет (потеряли — перевыпустите: /v1/webhooks/rotate-secret).
+         * The signing secret — only in the response to the FIRST registration, shown once; absent
+         * when the URL changes (lost it? reissue it: /v1/webhooks/rotate-secret).
          */
         public readonly ?string $secret = null,
         /** Fields newer than this SDK, exactly as received. */

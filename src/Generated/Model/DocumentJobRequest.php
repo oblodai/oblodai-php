@@ -24,19 +24,20 @@ final class DocumentJobRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Вид отчёта: statement (операции), fees (комиссии) или ledger (движения баланса). */
+        /** Report kind: statement (operations), fees (fees) or ledger (balance movements). */
         public readonly DocumentJobKind|string $kind,
         /**
-         * Формат файла: pdf (по умолчанию) или csv. CSV собирается без вёрстки — для тяжёлых
-         * выписок дешевле и грузится в Excel/1С.
+         * File format: pdf (default) or csv. CSV is built without layout — cheaper for heavy
+         * statements and imports into Excel/1C.
          */
         public readonly ?string $format = null,
-        /** Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца). */
+        /** Start of the period, YYYY-MM-DD (defaults to the first day of the current month). */
         public readonly ?string $from = null,
-        /** Язык документа (по умолчанию en). */
+        /** Document language (en by default). */
         public readonly ?string $lang = null,
         /**
-         * Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня). Период — до двух лет.
+         * End of the period, inclusive, YYYY-MM-DD (defaults to today). The period is up to two
+         * years.
          */
         public readonly ?string $to = null,
         /** Fields newer than this SDK, exactly as received. */

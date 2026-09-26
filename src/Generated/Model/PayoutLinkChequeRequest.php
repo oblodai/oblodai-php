@@ -24,13 +24,13 @@ final class PayoutLinkChequeRequest extends Model
      */
     public function __construct(
         /**
-         * Секрет получения из ответа создания выплатной ссылки. Хранится только хешем и повторно не
-         * выдаётся — чек можно напечатать, лишь пока токен у вас.
+         * The claim secret from the payout link creation response. Stored only as a hash and not
+         * issued again — the cheque can be printed only while you still have the token.
          */
         public readonly string $claim_token,
         /**
-         * Язык документа — один из 41 поддерживаемого кода (en по умолчанию); полный список — в
-         * ошибке document.unknown_lang.
+         * Document language — one of the 41 supported codes (en by default); the full list is in
+         * the document.unknown_lang error.
          */
         public readonly ?string $lang = null,
         /** Fields newer than this SDK, exactly as received. */

@@ -24,20 +24,20 @@ final class CheckoutConfigRequest extends Model
      */
     public function __construct(
         /**
-         * Слать ли покупателю чек на почту после оплаты. Чек уходит только если покупатель оставил
-         * адрес. По умолчанию — да.
+         * Whether to email the buyer a receipt after payment. The receipt is sent only if the buyer
+         * left an address. Defaults to yes.
          */
         public readonly ?bool $email_receipts = null,
         /**
-         * Куда вернуть покупателя, если он ушёл с оплаты. Пустая строка — никуда не отправлять.
-         * Поле можно не присылать — тогда прежнее значение сохранится. Подставляется только в те
-         * счета, где url_return не задан.
+         * Where to send the buyer if they left the payment page. An empty string — do not redirect.
+         * The field may be omitted — then the previous value is kept. Applied only to invoices
+         * where url_return is not set.
          */
         public readonly ?string $fail_url = null,
         /**
-         * Куда вернуть покупателя после успешной оплаты. Пустая строка — никуда не отправлять. Поле
-         * можно не присылать — тогда прежнее значение сохранится. Подставляется только в те счета,
-         * где url_success не задан.
+         * Where to send the buyer after a successful payment. An empty string — do not redirect.
+         * The field may be omitted — then the previous value is kept. Applied only to invoices
+         * where url_success is not set.
          */
         public readonly ?string $success_url = null,
         /** Fields newer than this SDK, exactly as received. */

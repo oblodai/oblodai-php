@@ -24,9 +24,9 @@ final class MassPayoutRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Массив до 100 элементов; поля каждого — как в POST /v1/payout. */
+        /** An array of up to 100 items; the fields of each are as in POST /v1/payout. */
         public readonly array $payouts,
-        /** Метка происхождения, применяется ко всем элементам без своего source. */
+        /** The origin label, applied to all items without their own source. */
         public readonly ?string $source = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

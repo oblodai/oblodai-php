@@ -23,11 +23,11 @@ final class CreateWalletRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Символ валюты приёма (USDT, BTC, ETH, …) */
+        /** The symbol of the accepted currency (USDT, BTC, ETH, …) */
         public readonly string $currency,
-        /** Сеть приёма (tron, ethereum, bitcoin, …) */
+        /** The receiving network (tron, ethereum, bitcoin, …) */
         public readonly string $network,
-        /** Ваш идентификатор клиента/заказа. Закрепляет отдельный постоянный адрес за клиентом */
+        /** Your customer/order identifier. Assigns a dedicated permanent address to the customer */
         public readonly ?string $order_id = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

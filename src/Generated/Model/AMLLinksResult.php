@@ -24,7 +24,7 @@ final class AMLLinksResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** По ссылке на каждый заблокированный депозит платежа; пусто — блокировать нечего. */
+        /** One link per blocked deposit of the payment; empty — nothing is blocked. */
         public readonly array $items,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

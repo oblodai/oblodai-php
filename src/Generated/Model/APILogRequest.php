@@ -23,17 +23,17 @@ final class APILogRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Начало периода, YYYY-MM-DD, включительно. */
+        /** Start of the period, YYYY-MM-DD, inclusive. */
         public readonly ?string $from = null,
-        /** Размер страницы, 1..200; по умолчанию 20. */
+        /** Page size, 1..200; default 20. */
         public readonly ?int $limit = null,
-        /** Страница, с 1. */
+        /** Page, starting from 1. */
         public readonly ?int $page = null,
-        /** Подстрока по «МЕТОД путь» — то, что человек видит в таблице. */
+        /** A substring of "METHOD path" — what a person sees in the table. */
         public readonly ?string $q = null,
-        /** Точный код ответа; 0 — все. */
+        /** The exact response code; 0 — all. */
         public readonly ?int $status = null,
-        /** Конец периода, YYYY-MM-DD, ВКЛЮЧИТЕЛЬНО (день целиком). */
+        /** End of the period, YYYY-MM-DD, INCLUSIVE (the whole day). */
         public readonly ?string $to = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

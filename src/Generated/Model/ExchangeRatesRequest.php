@@ -20,8 +20,9 @@ final class ExchangeRatesRequest extends Model
     public const FIELDS = ['amount', 'currency_from', 'currency_to', 'limit', 'offset'];
 
     /**
-     * Сумма в currency_from. Вместе с currency_from и currency_to добавляет в ответ блок modes: обе
-     * цены конвертации (instant/economy) с доступностью каждого режима
+     * The amount in currency_from. Together with currency_from and currency_to it adds a modes
+     * block to the response: both conversion prices (instant/economy) with the availability of each
+     * mode
      */
     public readonly ?string $amount;
 
@@ -31,23 +32,24 @@ final class ExchangeRatesRequest extends Model
      */
     public function __construct(
         /**
-         * Сумма в currency_from. Вместе с currency_from и currency_to добавляет в ответ блок modes:
-         * обе цены конвертации (instant/economy) с доступностью каждого режима
+         * The amount in currency_from. Together with currency_from and currency_to it adds a modes
+         * block to the response: both conversion prices (instant/economy) with the availability of
+         * each mode
          */
         string|int|float|null $amount = null,
         /**
-         * Код валюты. Если задан — вернётся курс только по нему. Если пусто или тело {} — по всем
-         * валютам
+         * Currency code. If set, only its rate is returned. If empty or the body is {} — rates for
+         * all currencies
          */
         public readonly ?string $currency_from = null,
         /**
-         * Валюта котировки: по умолчанию USDT; любой прайсинговый актив, включая фиаты с прямым
-         * фидом (EUR, RUB, …)
+         * Quote currency: USDT by default; any pricing asset, including fiat currencies with a
+         * direct feed (EUR, RUB, …)
          */
         public readonly ?string $currency_to = null,
-        /** Размер страницы, 1–100; по умолчанию 25 */
+        /** Page size, 1–100; default 25 */
         public readonly ?int $limit = null,
-        /** Смещение от начала списка; по умолчанию 0 */
+        /** Offset from the start of the list; default 0 */
         public readonly ?int $offset = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

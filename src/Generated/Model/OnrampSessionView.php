@@ -24,13 +24,13 @@ final class OnrampSessionView extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Срок жизни сессии (UTC). */
+        /** Session lifetime (UTC). */
         public readonly string $expires_at,
-        /** Причина отказа провайдера дословно; пусто, если её нет. */
+        /** The provider's rejection reason, verbatim; empty if there is none. */
         public readonly string $reason,
-        /** Идентификатор он-рамп-сессии. */
+        /** On-ramp session id. */
         public readonly string $session_id,
-        /** Состояние сессии. */
+        /** Session state. */
         public readonly OnrampStatus|string $status,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

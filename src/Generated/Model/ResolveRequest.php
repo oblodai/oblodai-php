@@ -23,20 +23,20 @@ final class ResolveRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** accept — принять частичную оплату, refund — вернуть плательщику. */
+        /** accept — accept the partial payment, refund — return it to the payer. */
         public readonly string $action,
         /**
-         * Только для refund: адрес возврата. По умолчанию — записанный payer_address платежа; если
-         * он пуст (Bitcoin/UTXO), адрес обязателен, иначе refund.no_address.
+         * Only for refund: the refund address. Defaults to the payment's recorded payer_address; if
+         * that is empty (Bitcoin/UTXO), the address is required, otherwise refund.no_address.
          */
         public readonly ?string $address = null,
-        /** Только для refund: сеть возврата, по умолчанию — сеть платежа. */
+        /** Only for refund: the refund network, defaults to the payment's network. */
         public readonly ?string $network = null,
-        /** Ваш идентификатор платежа. */
+        /** Your payment identifier. */
         public readonly ?string $order_id = null,
-        /** Только для refund: ваш ключ дедупликации возврата. */
+        /** Only for refund: your refund deduplication key. */
         public readonly ?string $reference = null,
-        /** UUID платежа. Нужен uuid или order_id. */
+        /** Payment UUID. Either uuid or order_id is required. */
         public readonly ?string $uuid = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

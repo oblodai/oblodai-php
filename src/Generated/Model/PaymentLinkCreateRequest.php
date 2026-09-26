@@ -31,10 +31,10 @@ final class PaymentLinkCreateRequest extends Model
         'title',
     ];
 
-    /** Верхняя граница — для range; обязательна в этом режиме */
+    /** Upper bound — for range; required in this mode */
     public readonly ?string $max_amount;
 
-    /** Нижняя граница: необязательный «пол» для open, обязательный минимум для range */
+    /** Lower bound: an optional "floor" for open, a required minimum for range */
     public readonly ?string $min_amount;
 
     /**
@@ -43,28 +43,28 @@ final class PaymentLinkCreateRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Режим суммы: fixed | open | range */
+        /** Amount mode: fixed | open | range */
         public readonly AmountMode|string $amount_mode,
         /**
-         * Валюта цены — фиат (USD, EUR, RUB, …) или монета; список — pricing_currencies из GET
-         * /v1/currencies
+         * The price currency — fiat (USD, EUR, RUB, …) or a coin; the list is pricing_currencies
+         * from GET /v1/currencies
          */
         public readonly string $currency,
-        /** Сумма — для режима fixed; обязательна в этом режиме */
+        /** Amount — for fixed mode; required in this mode */
         public readonly ?string $amount_fixed = null,
-        /** Описание на странице оплаты */
+        /** Description on the payment page */
         public readonly ?string $description = null,
-        /** Срок жизни ссылки, секунд от момента создания; 0 (по умолчанию) — ссылка бессрочная */
+        /** The link lifetime, in seconds from creation; 0 (default) — the link never expires */
         public readonly ?int $expires_in_seconds = null,
-        /** Верхняя граница — для range; обязательна в этом режиме */
+        /** Upper bound — for range; required in this mode */
         string|int|float|null $max_amount = null,
-        /** Нижняя граница: необязательный «пол» для open, обязательный минимум для range */
+        /** Lower bound: an optional "floor" for open, a required minimum for range */
         string|int|float|null $min_amount = null,
-        /** Валюта расчёта (монета), закреплённая за ссылкой; пусто — монету выбирает покупатель */
+        /** The settlement currency (coin) pinned to the link; empty — the buyer chooses the coin */
         public readonly ?string $pinned_currency = null,
-        /** Сеть расчёта, закреплённая за ссылкой; пусто — сеть выбирает покупатель */
+        /** The settlement network pinned to the link; empty — the buyer chooses the network */
         public readonly ?string $pinned_network = null,
-        /** Заголовок на странице оплаты */
+        /** Title on the payment page */
         public readonly ?string $title = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

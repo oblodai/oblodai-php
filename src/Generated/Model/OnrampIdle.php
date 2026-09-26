@@ -24,7 +24,7 @@ final class OnrampIdle extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Пустая строка: живой он-рамп-сессии по счёту нет. */
+        /** An empty string: there is no live on-ramp session for the invoice. */
         public readonly OnrampIdleStatus|string $status,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

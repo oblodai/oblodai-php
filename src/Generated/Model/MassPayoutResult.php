@@ -24,7 +24,7 @@ final class MassPayoutResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Элементы в порядке запроса. */
+        /** Items in request order. */
         public readonly array $items,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -23,11 +23,11 @@ final class SoFSubmitRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Откуда средства. */
+        /** Where the funds come from. */
         public readonly string $origin,
-        /** Как связаться для уточнений. */
+        /** How to get in touch for clarifications. */
         public readonly ?string $contact = null,
-        /** Чем подтверждается: ссылки на выписки, идентификаторы транзакций. */
+        /** What supports it: links to statements, transaction ids. */
         public readonly ?string $evidence = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

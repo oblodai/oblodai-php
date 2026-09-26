@@ -23,11 +23,11 @@ final class AutoRefundPolicyResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** false — политику не задавали, действует умолчание (обе включены). */
+        /** false — no policy has been set, the default applies (both enabled). */
         public readonly bool $configured,
-        /** Возвращается ли излишек при переплате (paid_over). */
+        /** Whether the excess of an overpayment (paid_over) is refunded. */
         public readonly bool $overpay,
-        /** Возвращаются ли средства при истёкшей недоплате (wrong_amount). */
+        /** Whether the funds of an expired underpayment (wrong_amount) are refunded. */
         public readonly bool $underpay,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

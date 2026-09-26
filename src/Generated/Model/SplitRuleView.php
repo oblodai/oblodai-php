@@ -28,7 +28,7 @@ final class SplitRuleView extends Model
         'rule_id',
     ];
 
-    /** Доля от каждого платежа в процентах. */
+    /** The share of each payment, in percent. */
     public readonly string $percent;
 
     /**
@@ -36,24 +36,24 @@ final class SplitRuleView extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Правило действует. */
+        /** The rule is active. */
         public readonly bool $active,
-        /** Комментарий из создания. */
+        /** The note from creation. */
         public readonly string $note,
-        /** Доля от каждого платежа в процентах. */
+        /** The share of each payment, in percent. */
         string|int|float $percent,
         /**
-         * true — доля движется по внутреннему учёту и отзывается при возврате; false — уходит в
-         * блокчейн необратимо.
+         * true — the share moves within internal accounting and is clawed back on refund; false —
+         * it goes on-chain irreversibly.
          */
         public readonly bool $reversible,
-        /** Идентификатор правила. */
+        /** Rule id. */
         public readonly string $rule_id,
-        /** Внешний адрес партнёра; есть у внешнего получателя. */
+        /** The partner's external address; present for an external recipient. */
         public readonly ?string $address = null,
-        /** Мерчант-партнёр внутри Oblodai; есть у внутреннего получателя. */
+        /** A partner merchant within Oblodai; present for an internal recipient. */
         public readonly ?string $merchant_id = null,
-        /** Сеть внешнего адреса; есть у внешнего получателя. */
+        /** The external address's network; present for an external recipient. */
         public readonly ?string $network = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

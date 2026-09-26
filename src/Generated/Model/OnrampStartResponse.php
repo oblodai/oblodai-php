@@ -40,27 +40,27 @@ final class OnrampStartResponse extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Срок жизни сессии, RFC3339 (UTC). */
+        /** Session lifetime, RFC3339 (UTC). */
         public readonly string $expires_at,
         /**
-         * Сколько спишется с карты, в целых единицах фиата; пусто, если провайдер суммы не назвал.
-         * Оценка: курс и комиссия провайдера двигаются.
+         * How much will be charged to the card, in whole fiat units; empty if the provider did not
+         * name an amount. An estimate: the provider's rate and fee move.
          */
         public readonly string $fiat_amount,
-        /** Валюта списания. */
+        /** Debit currency. */
         public readonly string $fiat_currency,
-        /** Идентификатор он-рамп-сессии. */
+        /** On-ramp session id. */
         public readonly string $session_id,
-        /** Состояние сессии. */
+        /** Session state. */
         public readonly OnrampStatus|string $status,
         /**
-         * Подписанная ссылка на виджет покупки. Пустая, если покупка уже идёт: тогда смотрите
-         * status.
+         * A signed link to the purchase widget. Empty if a purchase is already in progress: then
+         * check status.
          */
         public readonly string $url,
-        /** Какой рамп дал лучшую котировку на момент открытия. */
+        /** Which on-ramp gave the best quote at the time of opening. */
         public readonly ?string $provider = null,
-        /** Причина отказа провайдера, дословно, когда она есть. */
+        /** The provider's rejection reason, verbatim, when there is one. */
         public readonly ?string $reason = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

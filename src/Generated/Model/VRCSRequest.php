@@ -24,8 +24,8 @@ final class VRCSRequest extends Model
      */
     public function __construct(
         /**
-         * true — включить автоконвертацию волатильных поступлений в USDT, false — выключить; без
-         * поля — только прочитать текущее состояние.
+         * true — enable auto-conversion of volatile incoming funds to USDT, false — disable it;
+         * without the field — only read the current state.
          */
         public readonly ?bool $enabled = null,
         /** Fields newer than this SDK, exactly as received. */

@@ -19,7 +19,7 @@ final class FaucetRequest extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'asset', 'idempotency_key'];
 
-    /** Сумма тестовых денег, строкой; потолок 1000000 за вызов. */
+    /** The amount of test money, as a string; capped at 1000000 per call. */
     public readonly string $amount;
 
     /**
@@ -27,11 +27,11 @@ final class FaucetRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сумма тестовых денег, строкой; потолок 1000000 за вызов. */
+        /** The amount of test money, as a string; capped at 1000000 per call. */
         string|int|float $amount,
-        /** Актив пополнения (USDT, BTC, …). */
+        /** Deposit asset (USDT, BTC, …). */
         public readonly string $asset,
-        /** Ключ безопасного повтора; пусто — каждый вызов даёт новое пополнение. */
+        /** The safe-retry key; empty — every call creates a new top-up. */
         public readonly ?string $idempotency_key = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

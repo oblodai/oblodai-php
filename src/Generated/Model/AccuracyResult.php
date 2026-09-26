@@ -23,9 +23,9 @@ final class AccuracyResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Допуск в процентах, 1–5; 0 — допуск выключен (нужна точная сумма). */
+        /** Tolerance in percent, 1–5; 0 — tolerance disabled (the exact amount is required). */
         public readonly int $accuracy_percent,
-        /** Включён ли допуск. */
+        /** Whether the tolerance is enabled. */
         public readonly bool $enabled,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

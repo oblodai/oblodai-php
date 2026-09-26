@@ -23,9 +23,9 @@ final class ConversionModes extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Конвертация через партию ликвидации. */
+        /** Conversion via a liquidation batch. */
         public readonly ConversionEconomyQuote $economy,
-        /** Мгновенная конвертация по спред-курсу. */
+        /** Instant conversion at the spread rate. */
         public readonly ConversionInstantQuote $instant,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

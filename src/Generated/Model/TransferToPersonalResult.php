@@ -33,7 +33,7 @@ final class TransferToPersonalResult extends Model
         'uuid',
     ];
 
-    /** Сумма перевода. */
+    /** Transfer amount. */
     public readonly string $amount;
 
     /**
@@ -41,17 +41,17 @@ final class TransferToPersonalResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сумма перевода. */
+        /** Transfer amount. */
         string|int|float $amount,
-        /** Актив перевода. */
+        /** Transfer asset. */
         public readonly string $currency,
-        /** Направление: to_personal. */
+        /** Direction: to_personal. */
         public readonly string $direction,
-        /** Ссылка на PDF-документ перевода; пусто, если документы выключены. */
+        /** A link to the transfer PDF document; empty if documents are disabled. */
         public readonly string $document_url,
-        /** Баланс личного кошелька владельца после перевода. */
+        /** The balance of the owner's personal wallet after the transfer. */
         public readonly string $personal_balance,
-        /** Идентификатор проводки перевода. */
+        /** The transfer posting id. */
         public readonly string $uuid,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

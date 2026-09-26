@@ -44,13 +44,16 @@ final class PayoutClaimed extends Model
         'status',
     ];
 
-    /** Сумма ссылки — обещание получателю. */
+    /** The link amount — a promise to the recipient. */
     public readonly string $amount;
 
-    /** Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение). */
+    /** Network fee; null — cannot be estimated right now (zero would mean the claim is free). */
     public readonly ?string $commission;
 
-    /** Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму). */
+    /**
+     * How much will reach the recipient; null — cannot be said (the fee was not estimated or ate
+     * the amount).
+     */
     public readonly ?string $payer_amount;
 
     /**
@@ -60,28 +63,29 @@ final class PayoutClaimed extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Адрес получателя. */
+        /** Recipient address. */
         public readonly string $address,
-        /** Сумма ссылки — обещание получателю. */
+        /** The link amount — a promise to the recipient. */
         string|int|float $amount,
-        /** Актив выплаты. */
+        /** Payout asset. */
         public readonly string $currency,
-        /** Кто платит сетевую комиссию. */
+        /** Who pays the network fee. */
         public readonly PayoutLinkFeeBearer|string $fee_bearer,
-        /** exact — комиссия зафиксирована; estimated — оценка по текущей сети. */
+        /** exact — the fee is fixed; estimated — an estimate based on the current network. */
         public readonly FeeType|string $fee_type,
-        /** Сеть выплаты. */
+        /** Payout network. */
         public readonly string $network,
-        /** Выплата получателю. */
+        /** The payout to the recipient. */
         public readonly string $payout_id,
-        /** Состояние ссылки после получения. */
+        /** The link state after the claim. */
         public readonly PayoutLinkStatus|string $status,
         /**
-         * Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение).
+         * Network fee; null — cannot be estimated right now (zero would mean the claim is free).
          */
         string|int|float|null $commission = null,
         /**
-         * Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму).
+         * How much will reach the recipient; null — cannot be said (the fee was not estimated or
+         * ate the amount).
          */
         string|int|float|null $payer_amount = null,
         /** Fields newer than this SDK, exactly as received. */

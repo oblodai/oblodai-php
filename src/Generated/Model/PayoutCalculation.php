@@ -37,13 +37,13 @@ final class PayoutCalculation extends Model
         'payer_amount',
     ];
 
-    /** Сколько спишется с баланса; null — неизвестно (комиссию не оценить). */
+    /** How much will be debited from the balance; null — unknown (the fee cannot be estimated). */
     public readonly ?string $amount;
 
-    /** Сетевая комиссия; null — не оценить сейчас. */
+    /** Network fee; null — cannot be estimated right now. */
     public readonly ?string $commission;
 
-    /** Сколько получит адрес; null — неизвестно. */
+    /** How much the address will receive; null — unknown. */
     public readonly ?string $payer_amount;
 
     /**
@@ -53,19 +53,23 @@ final class PayoutCalculation extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Актив выплаты. */
+        /** Payout asset. */
         public readonly string $currency,
-        /** Кто платит комиссию: gateway, merchant или recipient. */
+        /** Who pays the fee: gateway, merchant or recipient. */
         public readonly PayoutFeeBearer|string $fee_bearer,
-        /** exact — комиссия договорная (шлюз её берёт на себя); estimated — оценка оракула. */
+        /**
+         * exact — the fee is contractual (the gateway absorbs it); estimated — an oracle estimate.
+         */
         public readonly FeeType|string $fee_type,
-        /** Сеть — как пришла в запросе. */
+        /** The network — as it came in the request. */
         public readonly string $network,
-        /** Сколько спишется с баланса; null — неизвестно (комиссию не оценить). */
+        /**
+         * How much will be debited from the balance; null — unknown (the fee cannot be estimated).
+         */
         string|int|float|null $amount = null,
-        /** Сетевая комиссия; null — не оценить сейчас. */
+        /** Network fee; null — cannot be estimated right now. */
         string|int|float|null $commission = null,
-        /** Сколько получит адрес; null — неизвестно. */
+        /** How much the address will receive; null — unknown. */
         string|int|float|null $payer_amount = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

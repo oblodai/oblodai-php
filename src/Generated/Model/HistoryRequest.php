@@ -25,20 +25,20 @@ final class HistoryRequest extends Model
      */
     public function __construct(
         /**
-         * Только для /v1/payout/history: true — вместе с выплатами вернуть и возвраты (прежнее
-         * поведение ленты без kind). По умолчанию false: возвраты — отдельно, kind=refund.
+         * Only for /v1/payout/history: true — return refunds together with payouts (the former
+         * behavior of the feed without kind). Default false: refunds are separate, kind=refund.
          */
         public readonly ?bool $include_refunds = null,
         /**
-         * Только для /v1/payout/history: payout — обычные выплаты, refund — возвраты; пусто —
-         * обычные выплаты (с include_refunds=true — всё вместе).
+         * Only for /v1/payout/history: payout — regular payouts, refund — refunds; empty — regular
+         * payouts (with include_refunds=true — everything together).
          */
         public readonly PayoutKind|string|null $kind = null,
-        /** Размер страницы, 1–100; вне диапазона — 25. */
+        /** Page size, 1–100; out of range — 25. */
         public readonly ?int $limit = null,
-        /** Смещение от начала списка (новые сверху). */
+        /** Offset from the start of the list (newest first). */
         public readonly ?int $offset = null,
-        /** Фильтр по статусу (точное значение из словаря статусов); пусто — все. */
+        /** Filter by status (an exact value from the status vocabulary); empty — all. */
         public readonly ?string $status = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

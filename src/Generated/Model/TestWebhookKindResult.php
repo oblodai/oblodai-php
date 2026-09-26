@@ -23,11 +23,11 @@ final class TestWebhookKindResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Всегда true: тело доставлено. */
+        /** Always true: the body was delivered. */
         public readonly bool $ok,
-        /** Тело подписано секретом endpoint'а проекта. */
+        /** The body is signed with the project endpoint's secret. */
         public readonly bool $signed,
-        /** HTTP-статус, которым ответил ваш endpoint. */
+        /** The HTTP status your endpoint responded with. */
         public readonly int $status_code,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

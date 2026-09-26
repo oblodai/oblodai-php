@@ -23,13 +23,13 @@ final class BlockedRefundRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Адрес назначения возврата. */
+        /** Refund destination address. */
         public readonly string $address,
-        /** Идентификатор статического кошелька (из ответа /v1/wallet). */
+        /** The static wallet id (from the /v1/wallet response). */
         public readonly string $uuid,
         /**
-         * Тег/мемо назначения (XRP destination tag, XLM memo id, TON comment). Обязателен для
-         * классического адреса на tag/memo-сети, если тег не встроен в X-/M-адрес.
+         * Destination tag/memo (XRP destination tag, XLM memo id, TON comment). Required for a
+         * classic address on a tag/memo network unless the tag is embedded in an X-/M-address.
          */
         public readonly ?string $memo = null,
         /** Fields newer than this SDK, exactly as received. */

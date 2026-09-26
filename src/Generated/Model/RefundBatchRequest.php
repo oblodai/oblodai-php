@@ -26,13 +26,13 @@ final class RefundBatchRequest extends Model
      */
     public function __construct(
         /**
-         * Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payment/refund; у каждого
-         * элемента обязательны reference (ключ идемпотентности) и uuid либо order_id платежа.
+         * An array of 1 to 5000 items — the same fields as in POST /v1/payment/refund; each item
+         * requires reference (the idempotency key) and the payment's uuid or order_id.
          */
         public readonly array $refunds,
         /**
-         * Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop —
-         * прекратить обработку после первой ошибки.
+         * What to do when an item fails: continue (default) — process the rest; stop — stop
+         * processing after the first error.
          */
         public readonly BatchOnError|string|null $on_error = null,
         /** Fields newer than this SDK, exactly as received. */

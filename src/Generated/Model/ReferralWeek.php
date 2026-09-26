@@ -24,9 +24,9 @@ final class ReferralWeek extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Заработано за 7 дней по активам, десятичными строками. */
+        /** Earned over 7 days per asset, as decimal strings. */
         public readonly array $earnings_by_asset,
-        /** Приглашено за 7 дней. */
+        /** Invited over 7 days. */
         public readonly int $referred_count,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

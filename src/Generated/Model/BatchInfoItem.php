@@ -33,33 +33,34 @@ final class BatchInfoItem extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Порядковый номер элемента в исходном массиве (с нуля). */
+        /** The item's index in the original array (zero-based). */
         public readonly int $idx,
-        /** Статус элемента: pending | processing | done | error. */
+        /** Item status: pending | processing | done | error. */
         public readonly BatchItemStatus|string $status,
         /**
-         * Машиночитаемый код ошибки — тот же, что вернул бы одиночный вызов (payment.below_minimum,
-         * payout.address_network_mismatch, …); batch.stopped / batch.key_revoked — элемент не
-         * выполнялся; только при status «error». Пусто у элементов, завершённых до ввода поля.
+         * The machine-readable error code — the same one a single call would return
+         * (payment.below_minimum, payout.address_network_mismatch, …); batch.stopped /
+         * batch.key_revoked — the item was not executed; only with status "error". Empty for items
+         * completed before the field was introduced.
          */
         public readonly ?string $error_code = null,
         /**
-         * HTTP-статус, которым ответил бы одиночный вызов (400, 409, …); отсутствует, если элемент
-         * не дошёл до обработчика (batch.stopped, batch.key_revoked).
+         * The HTTP status a single call would have returned (400, 409, …); absent if the item never
+         * reached the handler (batch.stopped, batch.key_revoked).
          */
         public readonly ?int $http_status = null,
-        /** Человекочитаемое сообщение об ошибке; только при status «error». */
+        /** A human-readable error message; only with status "error". */
         public readonly ?string $message = null,
         /**
-         * Итог элемента: true при status «done», false при status «error»; отсутствует, пока
-         * элемент не обработан.
+         * The item outcome: true with status "done", false with status "error"; absent until the
+         * item has been processed.
          */
         public readonly ?bool $ok = null,
-        /** order_id элемента, если вы его задавали; присутствует не всегда. */
+        /** The item's order_id, if you set one; not always present. */
         public readonly ?string $order_id = null,
         /**
-         * Результат успешной операции — тот же объект, что вернул бы одиночный вызов; только при
-         * status «done».
+         * The result of a successful operation — the same object a single call would return; only
+         * with status "done".
          */
         public readonly mixed $result = null,
         /** Fields newer than this SDK, exactly as received. */

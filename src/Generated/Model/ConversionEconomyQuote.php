@@ -19,10 +19,10 @@ final class ConversionEconomyQuote extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['available', 'fee_percent', 'min_out', 'reason', 'window_minutes'];
 
-    /** Комиссия режима в процентах. */
+    /** The mode's fee, in percent. */
     public readonly string $fee_percent;
 
-    /** Гарантированный минимум к получению, в валюте котировки. */
+    /** The guaranteed minimum to receive, in the quote currency. */
     public readonly string $min_out;
 
     /**
@@ -31,15 +31,15 @@ final class ConversionEconomyQuote extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Доступен ли режим сейчас. */
+        /** Whether the mode is available right now. */
         public readonly bool $available,
-        /** Комиссия режима в процентах. */
+        /** The mode's fee, in percent. */
         string|int|float $fee_percent,
-        /** Гарантированный минимум к получению, в валюте котировки. */
+        /** The guaranteed minimum to receive, in the quote currency. */
         string|int|float $min_out,
-        /** Почему недоступен: no_route; пусто — доступен. */
+        /** Why it is unavailable: no_route; empty — available. */
         public readonly string $reason,
-        /** За сколько минут исполняется заявка. */
+        /** How many minutes the order takes to execute. */
         public readonly int $window_minutes,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

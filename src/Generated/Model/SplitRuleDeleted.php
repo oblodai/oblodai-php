@@ -23,7 +23,7 @@ final class SplitRuleDeleted extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Правило удалено; неудача отвечает ошибкой. */
+        /** The rule has been deleted; a failure responds with an error. */
         public readonly bool $ok,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

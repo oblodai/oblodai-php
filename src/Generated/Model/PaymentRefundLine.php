@@ -28,7 +28,7 @@ final class PaymentRefundLine extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['address', 'amount', 'created_at', 'is_final', 'status', 'txid', 'uuid'];
 
-    /** Сумма возврата в монете платежа. */
+    /** The refund amount in the payment coin. */
     public readonly string $amount;
 
     /**
@@ -36,19 +36,19 @@ final class PaymentRefundLine extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Куда возвращено. */
+        /** Where the refund went. */
         public readonly string $address,
-        /** Сумма возврата в монете платежа. */
+        /** The refund amount in the payment coin. */
         string|int|float $amount,
-        /** Когда создан (RFC 3339). */
+        /** When created (RFC 3339). */
         public readonly string $created_at,
-        /** Статус возврата окончательный. */
+        /** The refund status is final. */
         public readonly bool $is_final,
-        /** Статус выплаты-возврата. */
+        /** The status of the refund payout. */
         public readonly PayoutStatus|string $status,
-        /** Хэш транзакции возврата; пусто, пока не отправлен. */
+        /** The refund transaction hash; empty until sent. */
         public readonly string $txid,
-        /** Идентификатор возврата (это выплата). */
+        /** The refund id (it is a payout). */
         public readonly string $uuid,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

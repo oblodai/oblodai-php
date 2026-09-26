@@ -45,23 +45,26 @@ use Oblodai\Generated\Routes;
 use Oblodai\Generated\Wire;
 
 /**
- * Настройки магазина: допуск сумм, скидки, автовозвраты, валюты, авто-вывод.
+ * Store settings: amount tolerance, discounts, auto-refunds, currencies, auto-withdrawal.
  */
 final class Settings extends Resource
 {
     /**
-     * Настроить допуск недо/переплаты
+     * Configure underpayment/overpayment tolerance
      *
-     * «Точность платежей»: `enabled` + `accuracy_percent` 1–5. В пределах допуска платёж считается
-     * оплаченным. Выключено — нужна точная сумма.
+     * "Payment accuracy": `enabled` + `accuracy_percent` 1–5. Within the tolerance a payment counts
+     * as paid. Disabled — the exact amount is required.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/accuracy/set`
      *
      * Error codes: accuracy.out_of_range, auth.bad_timestamp, auth.body_too_large,
-     * auth.ip_not_allowed, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep
+     * auth.ip_not_allowed, cli.permission_denied, internal, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep
      *
      * @param SetAccuracyRequest|array{accuracy_percent?: int, enabled: bool} $params
      */
@@ -78,15 +81,18 @@ final class Settings extends Resource
     }
 
     /**
-     * Прочитать допуск сумм
+     * Read the amount tolerance
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payment/accuracy/get`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      */
     public function getAccuracy(?RequestOptions $options = null): AccuracyResult
     {
@@ -99,19 +105,22 @@ final class Settings extends Resource
     }
 
     /**
-     * Настроить автовозвраты
+     * Configure auto-refunds
      *
-     * `overpay` — авто-возврат излишка переплаты; `underpay` — авто-возврат при истёкшей недоплате.
-     * Оба по умолчанию ВКЛ. Возврат идёт на адрес плательщика (EVM/Tron/TON/Solana; на Bitcoin/UTXO
-     * — вручную).
+     * `overpay` — auto-refund of the overpaid excess; `underpay` — auto-refund of an expired
+     * underpayment. Both are ON by default. The refund goes to the payer's address
+     * (EVM/Tron/TON/Solana; on Bitcoin/UTXO — manually).
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/autorefund/set`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param SetAutoRefundRequest|array{overpay: bool, underpay: bool} $params
      */
@@ -128,15 +137,18 @@ final class Settings extends Resource
     }
 
     /**
-     * Прочитать настройку автовозвратов
+     * Read the auto-refund settings
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payment/autorefund/get`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      */
     public function getAutoRefund(?RequestOptions $options = null): AutoRefundPolicyResult
     {
@@ -149,21 +161,24 @@ final class Settings extends Resource
     }
 
     /**
-     * Скидка/наценка на способ оплаты
+     * Discount/surcharge for a payment method
      *
-     * Положительный `discount_percent` — скидка плательщику за оплату этой монетой; отрицательный —
-     * наценка. Пустая `currency` задаёт правило по умолчанию для всех монет, пустая `network` — для
-     * любой сети выбранной монеты. В ответе — сохранённое правило в КАНОНИЧЕСКОМ виде (символ
-     * монеты в верхнем регистре, сеть в нижнем).
+     * A positive `discount_percent` is a discount to the payer for paying with this coin; a
+     * negative one is a surcharge. An empty `currency` sets the default rule for all coins, an
+     * empty `network` — for any network of the chosen coin. The response contains the saved rule in
+     * CANONICAL form (coin symbol uppercase, network lowercase).
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/discount/set`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * discount.network_required, discount.out_of_range, discount.unsupported_network, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, request.unknown_currency
+     * cli.permission_denied, discount.network_required, discount.out_of_range,
+     * discount.unsupported_network, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, request.unknown_currency
      *
      * @param SetDiscountRequest|array{
      *     currency?: string,
@@ -184,19 +199,22 @@ final class Settings extends Resource
     }
 
     /**
-     * Список скидок/наценок
+     * List discounts/surcharges
      *
-     * Настроенные правила: `items` (по одному на пару «монета+сеть») + блок `paginate` (`total`,
-     * `per_page`, `offset`, `has_pages`). Поля правила — те же, что отдаёт
+     * Configured rules: `items` (one per coin+network pair) plus a `paginate` block (`total`,
+     * `per_page`, `offset`, `has_pages`). Rule fields are the same as returned by
      * `/v1/payment/discount/set`.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payment/discount/list`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param PageRequest|array{limit?: int, offset?: int} $params
      *
@@ -215,21 +233,23 @@ final class Settings extends Resource
     }
 
     /**
-     * Лог запросов вашего ключа
+     * Request log for your key
      *
-     * Дата, метод с путём, код ответа, длительность и IP — по вашему мерчанту и только по нему.
-     * Строки живут 90 дней (`retention_days` в ответе). Строка запроса (query) НЕ хранится: в ней
-     * ездят идентификаторы того, что фильтровали, а вторая копия чужих платёжных идентификаторов —
-     * это обязательство, а не удобство. `to` включает день целиком.
+     * Date, method with path, response code, duration and IP — for your merchant and only for it.
+     * Rows are kept for 90 days (`retention_days` in the response). The query string is NOT stored:
+     * it carries identifiers of what was filtered, and a second copy of someone else's payment
+     * identifiers is a liability, not a convenience. `to` includes the whole day.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payment/api-log`
      *
      * Error codes: apilog.bad_date, apilog.bad_status, apilog.count, apilog.disabled, apilog.list,
-     * auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+     * internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep
      *
      * @param APILogRequest|array{
      *     from?: string,
@@ -253,19 +273,22 @@ final class Settings extends Resource
     }
 
     /**
-     * Авто-конвертация выручки: текущий приказ
+     * Revenue auto-conversion: current order
      *
-     * `configured:false` — приказа нет, остальные поля тогда пустые/умолчания. `min_usd_cents` —
-     * пол одной конвертации: ниже него спред стоит дороже, чем сводить.
+     * `configured:false` — there is no order; the other fields are then empty/defaults.
+     * `min_usd_cents` — the floor for a single conversion: below it the spread costs more than the
+     * conversion is worth.
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payment/autoconvert/get`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * autoconvert.disabled, autoconvert.scan, internal, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
-     * merchant.suspended, merchant.unknown_key, request.body_read, request.control_char,
-     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-     * request.too_deep
+     * autoconvert.disabled, autoconvert.scan, cli.permission_denied, internal,
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep
      */
     public function getAutoConvert(?RequestOptions $options = null): AutoConvertResult
     {
@@ -278,26 +301,29 @@ final class Settings extends Resource
     }
 
     /**
-     * Авто-конвертация выручки: задать приказ
+     * Revenue auto-conversion: set the order
      *
-     * Сводит перечисленные монеты в `target` фоновым сводом, не в момент зачисления депозита. ⚠
-     * ИСТОЧНИКИ — ПО МОНЕТЕ, А НЕ ПО ПАРЕ «МОНЕТА+СЕТЬ»: обязательства мерчанта ведутся по активу,
-     * и у принимающего USDT в Tron и в BSC баланс USDT ОДИН — включить свод для одной пары и не
-     * включить для второй нечего. Целевая монета проверяется на возможность ликвидации ЗДЕСЬ, при
-     * сохранении: отказ в момент выбора можно исправить, отказ через неделю в фоне — это выручка,
-     * которая молча не сводилась. В ответе — СОХРАНЁННЫЙ приказ: монеты, которые свод не примет
-     * (сама цель, дубли), из него убраны.
+     * Converts the listed coins into `target` in a background sweep, not at the moment a deposit is
+     * credited. ⚠ SOURCES ARE PER COIN, NOT PER COIN+NETWORK PAIR: merchant liabilities are tracked
+     * per asset, and a merchant accepting USDT on Tron and on BSC has ONE USDT balance — there is
+     * nothing to enable the sweep for one pair and not the other. The target coin is checked for
+     * liquidity HERE, on save: a rejection at selection time can be fixed, a rejection a week later
+     * in the background is revenue that silently was not converted. The response contains the SAVED
+     * order: coins the sweep will not accept (the target itself, duplicates) are removed from it.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/autoconvert/set`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
      * autoconvert.bad_floor, autoconvert.disabled, autoconvert.no_target, autoconvert.scan,
      * autoconvert.source_unsupported, autoconvert.target_unsupported, autoconvert.upsert,
-     * autoconvert.vanished, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-     * request.invalid_mode, request.nul_byte, request.overloaded, request.rate_limited,
-     * request.too_deep, request.unknown_currency, treasury.no_ccy_map
+     * autoconvert.vanished, cli.permission_denied, internal, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+     * request.body_read, request.control_char, request.duplicate_field, request.invalid_mode,
+     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
+     * request.unknown_currency, treasury.no_ccy_map
      *
      * @param SetAutoConvertRequest|array{
      *     enabled?: bool|null,
@@ -320,18 +346,21 @@ final class Settings extends Resource
     }
 
     /**
-     * Настроить принимаемые валюты магазина
+     * Configure the store's accepted currencies
      *
-     * Задаёт, какие валюты/сети магазин принимает.
+     * Sets which currencies/networks the store accepts.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/accepted/set`
      *
      * Error codes: accepted.no_network, accepted.unknown_method, auth.bad_timestamp,
-     * auth.body_too_large, auth.ip_not_allowed, internal, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
-     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep, request.unknown_currency
+     * auth.body_too_large, auth.ip_not_allowed, cli.permission_denied, internal,
+     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
+     * request.unknown_currency
      *
      * @param AcceptedSetRequest|array{accepted: list<AcceptedMethod|array<string, mixed>>} $params
      */
@@ -348,15 +377,18 @@ final class Settings extends Resource
     }
 
     /**
-     * Список принимаемых валют
+     * List accepted currencies
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payment/accepted/list`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param PageRequest|array{limit?: int, offset?: int} $params
      *
@@ -375,18 +407,21 @@ final class Settings extends Resource
     }
 
     /**
-     * Кто платит сетевую комиссию выплаты
+     * Who pays the payout network fee
      *
-     * `fee_on_recipient: true` — комиссию сети платит получатель (ему приходит сумма минус
-     * комиссия).
+     * `fee_on_recipient: true` — the network fee is paid by the recipient (they receive the amount
+     * minus the fee).
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payout/fee-config/set`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param SetPayoutFeeRequest|array{fee_on_recipient: bool} $params
      */
@@ -403,15 +438,18 @@ final class Settings extends Resource
     }
 
     /**
-     * Прочитать настройку комиссии выплат
+     * Read the payout fee setting
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payout/fee-config/get`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      */
     public function getPayoutFeeConfig(?RequestOptions $options = null): PayoutFeeResult
     {
@@ -424,18 +462,21 @@ final class Settings extends Resource
     }
 
     /**
-     * Кто платит нашу комиссию при возврате
+     * Who pays our fee on a refund
      *
-     * `fee_on_customer: true` — при возврате нашу комиссию несёт клиент (возврат за вычетом
-     * комиссии); false — несёт мерчант.
+     * `fee_on_customer: true` — on a refund our fee is borne by the customer (refund minus the
+     * fee); false — borne by the merchant.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payout/refund-fee-config/set`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param SetRefundFeeRequest|array{fee_on_customer: bool} $params
      */
@@ -452,15 +493,18 @@ final class Settings extends Resource
     }
 
     /**
-     * Прочитать настройку комиссии возврата
+     * Read the refund fee setting
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/payout/refund-fee-config/get`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      */
     public function getRefundFeeConfig(?RequestOptions $options = null): RefundFeeResult
     {
@@ -473,20 +517,23 @@ final class Settings extends Resource
     }
 
     /**
-     * Кто платит нашу комиссию при приёме платежа
+     * Who pays our fee when accepting a payment
      *
-     * `payer_pays_percent: 0` — комиссию платит мерчант (по умолчанию); `100` — платит покупатель:
-     * счёт выставляется с наценкой, и мерчант получает ровно ту сумму, которую назвал.
-     * Промежуточные значения делят комиссию. Действует на счета, созданные ПОСЛЕ изменения;
-     * параметр `subtract` в самом счёте перекрывает эту настройку.
+     * `payer_pays_percent: 0` — the fee is paid by the merchant (default); `100` — paid by the
+     * buyer: the invoice is issued with a markup, and the merchant receives exactly the amount they
+     * specified. Intermediate values split the fee. Applies to invoices created AFTER the change;
+     * the `subtract` parameter of an invoice overrides this setting.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/fee-config/set`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_fee_bearer, merchant.bad_signature, merchant.key_mode_mismatch,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_fee_bearer, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+     * request.overloaded, request.rate_limited, request.too_deep
      *
      * @param SetPaymentFeeRequest|array{payer_pays_percent: int} $params
      */
@@ -503,20 +550,23 @@ final class Settings extends Resource
     }
 
     /**
-     * Прочитать, кто платит комиссию за приём
+     * Read who pays the acceptance fee
      *
-     * Также возвращает ваш тариф: `fee_percent` — ставка, которую зафиксирует СЛЕДУЮЩИЙ созданный
-     * счёт; `fee_fixed_usd` — фиксированный сбор с платежа, USD строкой ("0.30"; прежнее
-     * `fee_fixed_usd_cents` — то же в центах числом, устарело); `fee_individual: true` — тариф
-     * назначен вам индивидуально, false — действует тариф платформы.
+     * Also returns your pricing: `fee_percent` — the rate the NEXT created invoice will lock in;
+     * `fee_fixed_usd` — the fixed per-payment fee, USD as a string ("0.30"; the former
+     * `fee_fixed_usd_cents` is the same in cents as a number, deprecated); `fee_individual: true` —
+     * the pricing is assigned to you individually, false — the platform pricing applies.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/payment/fee-config/get`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.not_found,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      */
     public function getPaymentFeeConfig(?RequestOptions $options = null): PaymentFeeResult
     {
@@ -529,21 +579,23 @@ final class Settings extends Resource
     }
 
     /**
-     * Настроить авто-вывод
+     * Configure auto-withdrawal
      *
-     * Автоматически выводить поступления на заданный адрес.
+     * Automatically withdraw incoming funds to a given address.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/auto-withdraw/set`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
      * autowithdraw.bad_min, autowithdraw.missing, autowithdraw.network_required,
-     * autowithdraw.unsupported_network, internal, merchant.bad_signature,
-     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
-     * merchant.suspended, merchant.unknown_key, payout.address_network_mismatch,
-     * payout.bad_address, payout.bad_memo, payout.memo_conflict, payout.memo_required,
-     * payout.memo_too_long, request.bad_json, request.body_read, request.control_char,
-     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-     * request.too_deep, request.unknown_currency
+     * autowithdraw.unsupported_network, cli.permission_denied, internal, merchant.bad_signature,
+     * merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+     * payout.address_network_mismatch, payout.bad_address, payout.bad_memo, payout.memo_conflict,
+     * payout.memo_required, payout.memo_too_long, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, request.unknown_currency
      *
      * @param AutoWithdrawSetRequest|array{
      *     address: string,
@@ -565,15 +617,18 @@ final class Settings extends Resource
     }
 
     /**
-     * Список правил авто-вывода
+     * List auto-withdrawal rules
+     *
+     * Requires role: Viewer when called with a CLI key.
      *
      * `POST /v1/auto-withdraw/list`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-     * request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.too_deep
      */
     public function listAutoWithdrawRules(?RequestOptions $options = null): AutoWithdrawListResult
     {
@@ -586,15 +641,18 @@ final class Settings extends Resource
     }
 
     /**
-     * Удалить правило авто-вывода
+     * Delete an auto-withdrawal rule
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/auto-withdraw/delete`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep
      *
      * @param AutoWithdrawDeleteRequest|array{currency: string} $params
      */
@@ -611,17 +669,20 @@ final class Settings extends Resource
     }
 
     /**
-     * Авто-конверт волатильных монет в USDT (VRCS)
+     * Auto-convert volatile coins to USDT (VRCS)
      *
-     * Включает автоматическую конвертацию поступающих волатильных монет в стейбл USDT.
+     * Enables automatic conversion of incoming volatile coins into the USDT stablecoin.
+     *
+     * Requires role: Finance when called with a CLI key.
      *
      * `POST /v1/vrcs`
      *
-     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-     * merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-     * merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-     * request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-     * request.overloaded, request.rate_limited, request.too_deep, vrcs.read
+     * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+     * cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+     * request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+     * request.rate_limited, request.too_deep, vrcs.read
      *
      * @param VRCSRequest|array{enabled?: bool|null} $params
      */

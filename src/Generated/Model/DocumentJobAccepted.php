@@ -46,27 +46,27 @@ final class DocumentJobAccepted extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Когда задача поставлена (UTC). */
+        /** When the job was queued (UTC). */
         public readonly string $created_at,
-        /** Формат файла: pdf или csv. */
+        /** File format: pdf or csv. */
         public readonly string $format,
-        /** Идентификатор задачи. */
+        /** Job id. */
         public readonly string $job_id,
-        /** Вид отчёта. */
+        /** Report kind. */
         public readonly DocumentJobKind|string $kind,
-        /** Язык документа. */
+        /** Document language. */
         public readonly string $lang,
-        /** Период отчёта. */
+        /** Report period. */
         public readonly DocumentJobPeriod $period,
-        /** Статус задачи: queued, processing, done, failed или expired. */
+        /** Job status: queued, processing, done, failed or expired. */
         public readonly DocumentJobStatus|string $status,
-        /** Когда задача менялась последний раз (UTC). */
+        /** When the job last changed (UTC). */
         public readonly string $updated_at,
-        /** Почему файла нет; есть у задачи в статусе failed или expired. */
+        /** Why there is no file; present on a job in status failed or expired. */
         public readonly ?DocumentJobError $error = null,
-        /** Готовый файл; есть у задачи в статусе done. */
+        /** The finished file; present on a job in status done. */
         public readonly ?DocumentJobFile $file = null,
-        /** Срок готовности; есть, пока задача в очереди или в работе. */
+        /** The readiness deadline; present while the job is queued or in progress. */
         public readonly ?string $ready_within = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

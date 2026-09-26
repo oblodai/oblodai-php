@@ -19,7 +19,7 @@ final class TransferRequest extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'currency', 'order_id'];
 
-    /** Сумма перевода в currency. */
+    /** The transfer amount in currency. */
     public readonly string $amount;
 
     /**
@@ -27,13 +27,13 @@ final class TransferRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сумма перевода в currency. */
+        /** The transfer amount in currency. */
         string|int|float $amount,
-        /** Код валюты (криптовалюта). */
+        /** Currency code (cryptocurrency). */
         public readonly string $currency,
         /**
-         * Ключ идемпотентности: повтор с тем же order_id — no-op. Настоятельно передавайте всегда,
-         * иначе повтор запроса при сетевом таймауте создаст второй перевод.
+         * Idempotency key: a retry with the same order_id is a no-op. Always pass it, otherwise
+         * retrying the request after a network timeout creates a second transfer.
          */
         public readonly ?string $order_id = null,
         /** Fields newer than this SDK, exactly as received. */

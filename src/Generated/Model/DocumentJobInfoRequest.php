@@ -23,7 +23,7 @@ final class DocumentJobInfoRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Идентификатор задачи из ответа создания. */
+        /** The job id from the creation response. */
         public readonly string $job_id,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

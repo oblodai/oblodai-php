@@ -46,13 +46,13 @@ final class PaymentLinkView extends Model
         'url',
     ];
 
-    /** Сумма для режима fixed. */
+    /** The amount for fixed mode. */
     public readonly ?string $amount_fixed;
 
-    /** Верхняя граница для range. */
+    /** Upper bound for range. */
     public readonly ?string $max_amount;
 
-    /** Нижняя граница для open/range. */
+    /** Lower bound for open/range. */
     public readonly ?string $min_amount;
 
     /**
@@ -62,37 +62,38 @@ final class PaymentLinkView extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Ссылка принимает оплату. */
+        /** The link accepts payments. */
         public readonly bool $active,
-        /** Режим суммы. */
+        /** Amount mode. */
         public readonly AmountMode|string $amount_mode,
-        /** Когда создана (UTC). */
+        /** When created (UTC). */
         public readonly string $created_at,
-        /** Валюта цены. */
+        /** Price currency. */
         public readonly string $currency,
-        /** Описание на странице оплаты. */
+        /** Description on the payment page. */
         public readonly string $description,
         /**
-         * Подписанная ссылка на PDF-плакат с QR оплаты; пусто, когда рендер документов не включён.
+         * A signed link to a PDF poster with the payment QR code; empty when document rendering is
+         * not enabled.
          */
         public readonly string $document_url,
-        /** Идентификатор ссылки. */
+        /** Link id. */
         public readonly string $link_id,
-        /** Заголовок страницы оплаты. */
+        /** Payment page title. */
         public readonly string $title,
-        /** Публичный URL страницы оплаты; пусто, если публичный адрес не настроен. */
+        /** The public URL of the payment page; empty if the public address is not configured. */
         public readonly string $url,
-        /** Сумма для режима fixed. */
+        /** The amount for fixed mode. */
         string|int|float|null $amount_fixed = null,
-        /** Когда ссылка истекает (UTC); нет — бессрочная. */
+        /** When the link expires (UTC); absent — never expires. */
         public readonly ?string $expires_at = null,
-        /** Верхняя граница для range. */
+        /** Upper bound for range. */
         string|int|float|null $max_amount = null,
-        /** Нижняя граница для open/range. */
+        /** Lower bound for open/range. */
         string|int|float|null $min_amount = null,
-        /** Закреплённая валюта оплаты. */
+        /** The pinned payment currency. */
         public readonly ?string $pinned_currency = null,
-        /** Закреплённая сеть оплаты. */
+        /** The pinned payment network. */
         public readonly ?string $pinned_network = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

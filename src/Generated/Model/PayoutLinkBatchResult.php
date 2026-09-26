@@ -24,7 +24,7 @@ final class PayoutLinkBatchResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Элементы в порядке запроса; result — ответ одиночного POST /v1/payout/link. */
+        /** Items in request order; result — the response of a single POST /v1/payout/link. */
         public readonly array $items,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

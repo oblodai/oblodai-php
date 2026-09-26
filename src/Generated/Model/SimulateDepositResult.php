@@ -19,7 +19,7 @@ final class SimulateDepositResult extends Model
     /** Every wire key this model knows; the rest land in `extra`. */
     public const FIELDS = ['amount', 'confirmations', 'invoice_id', 'txid'];
 
-    /** Сумма депозита в валюте счёта. */
+    /** The deposit amount in the invoice currency. */
     public readonly string $amount;
 
     /**
@@ -27,15 +27,15 @@ final class SimulateDepositResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сумма депозита в валюте счёта. */
+        /** The deposit amount in the invoice currency. */
         string|int|float $amount,
-        /** С каким числом подтверждений депозит отдан конвейеру. */
+        /** The number of confirmations with which the deposit was handed to the pipeline. */
         public readonly int $confirmations,
-        /** Оплачиваемый тестовый счёт. */
+        /** The test invoice being paid. */
         public readonly string $invoice_id,
         /**
-         * Транзакция депозита (с префиксом песочницы); повтор того же txid проверяет вашу
-         * идемпотентность.
+         * The deposit transaction (with a sandbox prefix); repeating the same txid tests your
+         * idempotency.
          */
         public readonly string $txid,
         /** Fields newer than this SDK, exactly as received. */

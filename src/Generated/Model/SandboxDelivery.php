@@ -44,23 +44,23 @@ final class SandboxDelivery extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сделано попыток. */
+        /** Attempts made. */
         public readonly int $attempts,
-        /** Когда поставлена, RFC 3339 UTC. */
+        /** When queued, RFC 3339 UTC. */
         public readonly string $created_at,
-        /** Событие в теле. */
+        /** The event in the body. */
         public readonly string $event_type,
-        /** Идентификатор доставки (для replay). */
+        /** Delivery id (for replay). */
         public readonly string $id,
-        /** Ошибка последней попытки; пусто, если её не было. */
+        /** The error of the last attempt; empty if there was none. */
         public readonly string $last_error,
-        /** Тело вебхука ровно так, как оно подписано и отправлено. */
+        /** The webhook body exactly as it was signed and sent. */
         public readonly mixed $payload,
-        /** Состояние доставки. */
+        /** Delivery state. */
         public readonly WebhookDeliveryStatus|string $status,
-        /** Последнее изменение, RFC 3339 UTC. */
+        /** Last change, RFC 3339 UTC. */
         public readonly string $updated_at,
-        /** Куда доставляется. */
+        /** Where it is delivered. */
         public readonly string $url,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

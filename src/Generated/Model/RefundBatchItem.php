@@ -27,7 +27,7 @@ final class RefundBatchItem extends Model
         'uuid',
     ];
 
-    /** Частичная сумма. По умолчанию — вся полученная. */
+    /** A partial amount. Defaults to the full received amount. */
     public readonly ?string $amount;
 
     /**
@@ -36,27 +36,28 @@ final class RefundBatchItem extends Model
      */
     public function __construct(
         /**
-         * Необязательный ключ идемпотентности возврата: различает два разных возврата с одинаковыми
-         * (платёж, адрес, сумма); повтор с тем же значением дедуплицируется. Это не order_id.
+         * An optional refund idempotency key: distinguishes two different refunds with the same
+         * (payment, address, amount); a retry with the same value is deduplicated. This is not
+         * order_id.
          */
         public readonly string $reference,
         /**
-         * Адрес назначения возврата. По умолчанию — payer_address платежа; обязателен только для
+         * Refund destination address. Defaults to the payment's payer_address; required only for
          * Bitcoin/UTXO.
          */
         public readonly ?string $address = null,
-        /** Частичная сумма. По умолчанию — вся полученная. */
+        /** A partial amount. Defaults to the full received amount. */
         string|int|float|null $amount = null,
         /**
-         * Профинансировать возврат конвертацией баланса: только USDT → валюта платежа. Нужен, когда
-         * монета платежа уже сведена автообменом.
+         * Fund the refund by converting balance: USDT → the payment currency only. Needed when the
+         * payment coin has already been converted by auto-exchange.
          */
         public readonly ?string $from_currency = null,
-        /** Сеть. */
+        /** Network. */
         public readonly ?string $network = null,
-        /** Ваша ссылка на заказ платежа. Нужен uuid или order_id. */
+        /** Your order reference of the payment. Either uuid or order_id is required. */
         public readonly ?string $order_id = null,
-        /** Идентификатор платежа. Нужен uuid или order_id. */
+        /** Payment id. Either uuid or order_id is required. */
         public readonly ?string $uuid = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

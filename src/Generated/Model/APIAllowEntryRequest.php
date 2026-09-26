@@ -23,7 +23,7 @@ final class APIAllowEntryRequest extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** IP или подсеть в CIDR (203.0.113.7 или 203.0.113.0/24). */
+        /** An IP or a CIDR subnet (203.0.113.7 or 203.0.113.0/24). */
         public readonly string $cidr,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

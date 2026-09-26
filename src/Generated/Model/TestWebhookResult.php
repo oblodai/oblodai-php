@@ -23,17 +23,17 @@ final class TestWebhookResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Сколько длилась доставка, мс. */
+        /** How long the delivery took, ms. */
         public readonly int $duration_ms,
-        /** Доставка состоялась (endpoint ответил, любым статусом). */
+        /** The delivery took place (the endpoint responded, with any status). */
         public readonly bool $ok,
-        /** Тело подписано секретом endpoint'а проекта. */
+        /** The body is signed with the project endpoint's secret. */
         public readonly bool $signed,
-        /** Куда ушло пробное тело. */
+        /** Where the sample body was sent. */
         public readonly string $url,
-        /** Почему доставка не состоялась; только при ok=false. */
+        /** Why the delivery did not take place; only when ok=false. */
         public readonly ?string $error = null,
-        /** HTTP-статус ответа endpoint'а; только при ok=true. */
+        /** The HTTP status returned by the endpoint; only when ok=true. */
         public readonly ?int $status_code = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

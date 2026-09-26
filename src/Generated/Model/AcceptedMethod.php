@@ -23,9 +23,9 @@ final class AcceptedMethod extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Код актива. */
+        /** Asset code. */
         public readonly string $currency,
-        /** Сеть актива. */
+        /** The asset's network. */
         public readonly string $network,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

@@ -24,11 +24,11 @@ final class AMLLinkView extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** До какого момента ссылка действует (UTC). */
+        /** Until when the link is valid (UTC). */
         public readonly string $expired_at,
-        /** Ссылка на анкету — передайте её плательщику. */
+        /** The questionnaire link — hand it to the payer. */
         public readonly string $link,
-        /** Статус заполнения анкеты. */
+        /** Questionnaire completion status. */
         public readonly SoFStatus|string $status,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

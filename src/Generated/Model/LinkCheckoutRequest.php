@@ -20,8 +20,8 @@ final class LinkCheckoutRequest extends Model
     public const FIELDS = ['amount', 'currency', 'network', 'order_id', 'payer_email'];
 
     /**
-     * Сумма, которую ввёл покупатель, в валюте цены ссылки; обязательна для open и range, для fixed
-     * игнорируется
+     * The amount the buyer entered, in the link's price currency; required for open and range,
+     * ignored for fixed
      */
     public readonly ?string $amount;
 
@@ -31,23 +31,23 @@ final class LinkCheckoutRequest extends Model
      */
     public function __construct(
         /**
-         * Сумма, которую ввёл покупатель, в валюте цены ссылки; обязательна для open и range, для
-         * fixed игнорируется
+         * The amount the buyer entered, in the link's price currency; required for open and range,
+         * ignored for fixed
          */
         string|int|float|null $amount = null,
         /**
-         * Валюта расчёта — монета, которой платит покупатель; нужна, только если ссылка не
-         * закрепила pinned_currency
+         * The settlement currency — the coin the buyer pays with; needed only if the link did not
+         * pin pinned_currency
          */
         public readonly ?string $currency = null,
-        /** Сеть расчёта; нужна, только если ссылка не закрепила pinned_network */
+        /** The settlement network; needed only if the link did not pin pinned_network */
         public readonly ?string $network = null,
         /**
-         * Номер заказа магазина из встроенного виджета (data-oblodai-order-id); переносится на счёт
-         * и в вебхук для сопоставления с заказом; не ключ идемпотентности
+         * The store's order number from the embedded widget (data-oblodai-order-id); carried over
+         * to the invoice and the webhook for matching with the order; not an idempotency key
          */
         public readonly ?string $order_id = null,
-        /** Email покупателя — на него автоматически уйдёт чек после оплаты */
+        /** The buyer's email — a receipt is sent to it automatically after payment */
         public readonly ?string $payer_email = null,
         /** Fields newer than this SDK, exactly as received. */
         public readonly array $extra = [],

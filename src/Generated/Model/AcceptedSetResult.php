@@ -24,11 +24,11 @@ final class AcceptedSetResult extends Model
      * @param array<string, mixed> $extra
      */
     public function __construct(
-        /** Набор сохранён. */
+        /** The set has been saved. */
         public readonly bool $ok,
         /**
-         * Сохранённые, но неизвестные каталогу пары — оставлены как были; ключа нет, когда таких
-         * нет.
+         * Saved pairs that the catalog does not know — kept as they were; no key when there are
+         * none.
          */
         public readonly ?array $unknown = null,
         /** Fields newer than this SDK, exactly as received. */
