@@ -241,8 +241,7 @@ final class Documents extends Resource
      * again, so the cheque can only be printed while you still have the token. ⚠ The document is
      * money: anyone who has it can claim the funds. The response is `application/pdf`.
      *
-     * With a CLI key: only the store owner's own key (role Owner); other team members use the
-     * dashboard, where each such operation is confirmed with 2FA.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payout/link/cheque`
      *

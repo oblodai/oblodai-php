@@ -7,8 +7,10 @@ namespace Oblodai\Tests\Unit;
 use Oblodai\Core\Signer;
 use Oblodai\Exception\SignatureException;
 use Oblodai\Exception\WebhookPayloadException;
+use Oblodai\Generated\Enum\WebhookEventName;
 use Oblodai\Generated\Facts;
 use Oblodai\Generated\Model\ConversionWebhook;
+use Oblodai\Generated\Model\PaymentWebhook;
 use Oblodai\Generated\Signing;
 use Oblodai\Tests\Support\Samples;
 use Oblodai\Webhook\Verifier;
@@ -77,6 +79,21 @@ final class WebhookTest extends TestCase
         $conversion = ['type' => 'conversion'] + Samples::of(ConversionWebhook::class, ['type' => 'conversion']);
         self::assertTrue(Verifier::isKnownEvent($conversion));
         self::assertInstanceOf(ConversionWebhook::class, Verifier::model($conversion));
+    }
+
+    /** invoice.reversed is a payment event; reversal is optional (a core before it omits it). */
+    public function testInvoiceReversedIsAPaymentEventAndReversalIsOptional(): void
+    {
+        self::assertSame('invoice.reversed', WebhookEventName::InvoiceReversed->value);
+        self::assertSame('payment', Facts::WEBHOOK_EVENTS['invoice.reversed']);
+        $older = Samples::of(PaymentWebhook::class, ['type' => 'payment', 'sequence' => 3]);
+        unset($older['reversal']);
+        $model = Verifier::model($older);
+        self::assertInstanceOf(PaymentWebhook::class, $model);
+        self::assertNull($model->reversal);
+        $reversed = Verifier::model(['status' => 'expired', 'reversal' => true, 'txid' => ''] + $older);
+        self::assertInstanceOf(PaymentWebhook::class, $reversed);
+        self::assertTrue($reversed->reversal);
     }
 
     public function testAnUnknownTypeHasNoModel(): void

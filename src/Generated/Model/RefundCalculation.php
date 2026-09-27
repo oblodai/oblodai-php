@@ -65,8 +65,11 @@ final class RefundCalculation extends Model
     public readonly string $amount_paid;
 
     /**
-     * The Oblodai commission withheld from the refund: the payment's commission when
-     * commission_bearer is customer, 0 when it is merchant (you then pay it from your balance).
+     * What is withheld from the refund besides the surcharge: with commission_bearer customer, the
+     * Oblodai commission as it was taken from each deposit (rounded up on each), plus the cost of
+     * collecting a swept deposit when there was one — together, what the payment did not credit
+     * you; 0 with merchant (you then pay the commission from your balance). amount_paid − surcharge
+     * − commission = refundable.
      */
     public readonly string $commission;
 
@@ -86,7 +89,8 @@ final class RefundCalculation extends Model
 
     /**
      * The payer's network surcharge inside amount_paid: the cost of accepting the deposit, never
-     * refunded from your balance.
+     * refunded from your balance. Counted per deposit, as the deposits were credited (rounded up on
+     * each), so amount_paid − surcharge − commission = refundable.
      */
     public readonly string $surcharge;
 
@@ -134,8 +138,11 @@ final class RefundCalculation extends Model
         /** What the buyer paid in total, including the network surcharge. */
         string|int|float $amount_paid,
         /**
-         * The Oblodai commission withheld from the refund: the payment's commission when
-         * commission_bearer is customer, 0 when it is merchant (you then pay it from your balance).
+         * What is withheld from the refund besides the surcharge: with commission_bearer customer,
+         * the Oblodai commission as it was taken from each deposit (rounded up on each), plus the
+         * cost of collecting a swept deposit when there was one — together, what the payment did
+         * not credit you; 0 with merchant (you then pay the commission from your balance).
+         * amount_paid − surcharge − commission = refundable.
          */
         string|int|float $commission,
         /**
@@ -165,7 +172,8 @@ final class RefundCalculation extends Model
         string|int|float $remaining,
         /**
          * The payer's network surcharge inside amount_paid: the cost of accepting the deposit,
-         * never refunded from your balance.
+         * never refunded from your balance. Counted per deposit, as the deposits were credited
+         * (rounded up on each), so amount_paid − surcharge − commission = refundable.
          */
         string|int|float $surcharge,
         /** The payment id. */

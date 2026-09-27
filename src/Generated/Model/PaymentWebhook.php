@@ -13,10 +13,11 @@ use Oblodai\Generated\Enum\PaymentStatus;
 use Oblodai\Generated\Wire;
 
 /**
- * Sent when a payment moves to paid, paid_over, wrong_amount, expired or under_review, and when it
- * rolls back from them (a chain reorganization). The current status — any value from the vocabulary
- * — can be requested again: POST /v1/payment/resend. Match it to the order by order_id/uuid and to
- * the blockchain by txid and network.
+ * Sent when a payment moves to paid, paid_over, wrong_amount, expired, cancelled or under_review. A
+ * chain reorganization that removes a counted deposit is sent as invoice.reversed (reversal = true,
+ * txid empty) with the status after it. The current status — any value from the vocabulary — can be
+ * requested again: POST /v1/payment/resend. Match it to the order by order_id/uuid and to the
+ * blockchain by txid and network.
  */
 final class PaymentWebhook extends Model
 {
@@ -56,6 +57,7 @@ final class PaymentWebhook extends Model
         'payer_amount',
         'payer_currency',
         'payment_amount',
+        'reversal',
         'sequence',
         'status',
         'test',
@@ -135,6 +137,13 @@ final class PaymentWebhook extends Model
          */
         public readonly ?string $event_id = null,
         /**
+         * true — a chain reorganization removed a previously counted deposit (event
+         * invoice.reversed); status and payment_amount are the state after it, txid is empty.
+         * Absent = false: cores before this version do not send the field; newer cores always send
+         * it.
+         */
+        public readonly ?bool $reversal = null,
+        /**
          * Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always
          * true — inside the signature. A live event never carries this field: your handler must
          * ignore a body with test: true even if the signature is valid. This field, not the
@@ -171,6 +180,7 @@ final class PaymentWebhook extends Model
             type: Wire::str(Wire::req($data, 'type')),
             uuid: Wire::str(Wire::req($data, 'uuid')),
             event_id: isset($data['event_id']) ? Wire::str($data['event_id']) : null,
+            reversal: isset($data['reversal']) ? Wire::bool($data['reversal']) : null,
             test: isset($data['test']) ? Wire::bool($data['test']) : null,
             extra: Wire::extra($data, self::FIELDS),
         );
@@ -199,6 +209,9 @@ final class PaymentWebhook extends Model
         $out['uuid'] = Wire::dump($this->uuid);
         if ($this->event_id !== null) {
             $out['event_id'] = Wire::dump($this->event_id);
+        }
+        if ($this->reversal !== null) {
+            $out['reversal'] = Wire::dump($this->reversal);
         }
         if ($this->test !== null) {
             $out['test'] = Wire::dump($this->test);

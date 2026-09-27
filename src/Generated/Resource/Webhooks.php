@@ -381,7 +381,7 @@ final class Webhooks extends Resource
      * additionally carry `X-Webhook-Signature-Prev` signed with the old secret — time to roll out
      * the change without losing verification.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/webhooks/rotate-secret`
      *
@@ -413,7 +413,7 @@ final class Webhooks extends Resource
      * succeeded for 3 days in a row is disabled automatically — its queue is cancelled and the
      * store owner gets an email; after fixing the receiver, enable it with this endpoint.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/webhooks/active`
      *

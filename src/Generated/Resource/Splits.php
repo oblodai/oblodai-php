@@ -54,8 +54,7 @@ final class Splits extends Resource
      * cannot be recovered (top up your balance); an on-platform partner's share is clawed back
      * automatically.
      *
-     * With a CLI key: only the store owner's own key (role Owner); other team members use the
-     * dashboard, where each such operation is confirmed with 2FA.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/split/rule`
      *
@@ -128,7 +127,7 @@ final class Splits extends Resource
      *
      * `{rule_id}`. Does not affect shares already sent.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/split/rule/delete`
      *
@@ -164,7 +163,7 @@ final class Splits extends Resource
      * after sending. Range 0–7776000 (up to 90 days); the field is required — send `0` explicitly
      * if shares should be sent immediately.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/split/config/set`
      *
@@ -222,7 +221,7 @@ final class Splits extends Resource
      * disabled, nobody can create an internal split rule with you as the recipient. Disabling does
      * not revoke rules already created (money keeps arriving under them), but blocks new ones.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/split/recipient/optin`
      *

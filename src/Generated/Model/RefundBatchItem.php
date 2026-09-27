@@ -47,8 +47,8 @@ final class RefundBatchItem extends Model
     public function __construct(
         /**
          * An optional refund idempotency key: distinguishes two different refunds with the same
-         * (payment, address, amount); a retry with the same value is deduplicated. This is not
-         * order_id.
+         * (payment, address, amount); a retry with the same value returns the refund already made,
+         * also when amount is omitted. This is not order_id.
          */
         public readonly string $reference,
         /**

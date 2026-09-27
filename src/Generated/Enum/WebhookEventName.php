@@ -20,6 +20,7 @@ enum WebhookEventName: string
     case InvoiceExpired = 'invoice.expired';
     case InvoiceCancelled = 'invoice.cancelled';
     case InvoiceUnderReview = 'invoice.under_review';
+    case InvoiceReversed = 'invoice.reversed';
     case PayoutApproved = 'payout.approved';
     case PayoutAwaitingCosign = 'payout.awaiting_cosign';
     case PayoutBroadcasting = 'payout.broadcasting';

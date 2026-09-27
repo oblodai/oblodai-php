@@ -111,7 +111,7 @@ final class Settings extends Resource
      * underpayment. Both are ON by default. The refund goes to the payer's address
      * (EVM/Tron/TON/Solana; on Bitcoin/UTXO — manually).
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payment/autorefund/set`
      *
@@ -412,7 +412,7 @@ final class Settings extends Resource
      * `fee_on_recipient: true` — the network fee is paid by the recipient (they receive the amount
      * minus the fee).
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payout/fee-config/set`
      *
@@ -473,7 +473,7 @@ final class Settings extends Resource
      * credited. Without this setting your refunds follow the gateway default (the get method shows
      * it), while the automatic refunds deduct the commission.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payout/refund-fee-config/set`
      *
@@ -592,8 +592,7 @@ final class Settings extends Resource
      *
      * Automatically withdraw incoming funds to a given address.
      *
-     * With a CLI key: only the store owner's own key (role Owner); other team members use the
-     * dashboard, where each such operation is confirmed with 2FA.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/auto-withdraw/set`
      *
@@ -653,8 +652,7 @@ final class Settings extends Resource
     /**
      * Delete an auto-withdrawal rule
      *
-     * With a CLI key: only the store owner's own key (role Owner); other team members use the
-     * dashboard, where each such operation is confirmed with 2FA.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/auto-withdraw/delete`
      *

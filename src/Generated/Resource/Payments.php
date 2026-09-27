@@ -271,7 +271,7 @@ final class Payments extends Resource
      * (`invoice.already_paid` / `invoice.deposit_pending`): such an invoice must be settled or
      * refunded, not cancelled.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payment/cancel`
      *
@@ -308,7 +308,7 @@ final class Payments extends Resource
      * `email.rate_limited`, 429). A payment receipt is sent automatically to `payer_email` once the
      * payment is received.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payment/send-email`
      *
@@ -350,7 +350,7 @@ final class Payments extends Resource
      * string in a redirect means "do not redirect". The URL must be http(s); it is validated on
      * write, not on display.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/checkout-config/set`
      *
@@ -415,7 +415,7 @@ final class Payments extends Resource
      * `link` (hand it to the payer), `expired_at`, `status` (`init|pending|completed|expired`). The
      * questionnaire contents are not shown to you: they are your customer's data, not yours.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payment/aml-links`
      *
@@ -454,8 +454,7 @@ final class Payments extends Resource
      * refunded. It moves money — it is signed with your API key like everything else: a merchant
      * has one key and it has full access.
      *
-     * With a CLI key: only the store owner's own key (role Owner); other team members use the
-     * dashboard, where each such operation is confirmed with 2FA.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payment/resolve`
      *

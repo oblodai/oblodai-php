@@ -45,7 +45,7 @@ final class PaymentLinks extends Resource
      * seconds (0 = **never expires**; the invoices themselves still have the usual short lifetime).
      * The response contains `link_id` and the `url` for the customer.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payment/link`
      *
@@ -150,7 +150,7 @@ final class PaymentLinks extends Resource
      *
      * `{link_id, active}`. A disabled link does not accept new payments.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payment/link/toggle`
      *

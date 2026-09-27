@@ -74,8 +74,8 @@ final class RefundRequest extends Model
         public readonly ?string $order_id = null,
         /**
          * An optional refund idempotency key: distinguishes two different refunds with the same
-         * (payment, address, amount); a retry with the same value is deduplicated. This is not
-         * order_id.
+         * (payment, address, amount); a retry with the same value returns the refund already made,
+         * also when amount is omitted. This is not order_id.
          */
         public readonly ?string $reference = null,
         /** Payment id. Either uuid or order_id is required. */

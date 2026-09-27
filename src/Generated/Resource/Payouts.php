@@ -62,8 +62,7 @@ final class Payouts extends Resource
      *
      * Also: `memo` (tag/memo for TON), `url_callback` (your own webhook URL for this payout).
      *
-     * With a CLI key: only the store owner's own key (role Owner); other team members use the
-     * dashboard, where each such operation is confirmed with 2FA.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payout`
      *
@@ -126,8 +125,7 @@ final class Payouts extends Resource
      * stop the rest, and a result is returned for each. Idempotent on `order_id`, like a regular
      * payout.
      *
-     * With a CLI key: only the store owner's own key (role Owner); other team members use the
-     * dashboard, where each such operation is confirmed with 2FA.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payout/mass`
      *
@@ -298,36 +296,40 @@ final class Payouts extends Resource
     /**
      * Validate a payout without creating it (dry run)
      *
-     * Runs all payout-creation checks — currency, amount, network, address, memo, address
-     * screening, fee, freeze/daily limit and balance sufficiency — but reserves and sends nothing.
-     * The response is `valid: true` with the amounts (`amount`, `commission`, `payer_amount`,
-     * `fee_bearer`), the destination `address`, and for a `from_currency` payout the USDT the
-     * funding conversion would spend (`from_amount`, at the current rate), or the same error that
-     * creation would return. The body is the same as for POST /v1/payout (order_id is optional for
-     * validation).
+     * Runs the payout-creation checks — currency, amount, network, address, memo, sanctions lists
+     * and blocklist, fee, payout freeze, destination activation, your freeze/daily limit/per-payout
+     * limit and balance sufficiency — but reserves and sends nothing, and costs nothing: the paid
+     * AML screening of the address runs only when the payout is created, so `compliance.blocked` is
+     * the one refusal validation cannot foresee. The response is `valid: true` with the amounts
+     * (`amount`, `commission`, `payer_amount`, `fee_bearer`), the destination `address`, and for a
+     * `from_currency` payout the USDT the funding conversion would spend (`from_amount`, at the
+     * current rate), or the same error that creation would return. The body is the same as for POST
+     * /v1/payout (order_id is optional for validation).
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payout/validate`
      *
      * Error codes: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-     * cli.permission_denied, compliance.blocked, compliance.blocked_address,
-     * compliance.blocklist_unavailable, compliance.no_destination, compliance.no_network,
-     * compliance.sanctioned_address, compliance.sanctions_unavailable, internal,
-     * merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
-     * merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-     * payout.above_limit, payout.address_network_mismatch, payout.amount_below_fee,
+     * cli.permission_denied, compliance.blocked_address, compliance.blocklist_unavailable,
+     * compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
+     * compliance.sanctions_unavailable, internal, merchant.bad_signature, merchant.key_expired,
+     * merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+     * merchant.suspended, merchant.unknown_key, payout.above_limit,
+     * payout.address_network_mismatch, payout.amount_below_fee, payout.asset_mismatch,
      * payout.bad_address, payout.bad_amount, payout.bad_memo, payout.bad_url_callback,
      * payout.cap_unpriceable, payout.convert_bad_amount, payout.convert_insufficient,
      * payout.convert_no_rate, payout.convert_same_asset, payout.convert_unsupported,
-     * payout.daily_cap, payout.destination_internal, payout.from_currency_unsupported,
-     * payout.insufficient_funds, payout.memo_conflict, payout.memo_required, payout.memo_too_long,
-     * payout.merchant_frozen, payout.network_required, payout.reserved_reference,
-     * payout.unsupported_network, rates.deviation, rates.no_source, rates.non_positive,
-     * request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-     * request.nul_byte, request.overloaded, request.rate_limited, request.reference_invalid,
-     * request.reference_too_long, request.too_deep, request.unknown_currency,
-     * sandbox.convert_not_available, wallet.static_not_found, webhook.no_endpoint
+     * payout.daily_cap, payout.destination_internal, payout.destination_not_activated,
+     * payout.fee_asset_mismatch, payout.freeze_unknown, payout.from_currency_unsupported,
+     * payout.frozen, payout.insufficient_funds, payout.memo_conflict, payout.memo_required,
+     * payout.memo_too_long, payout.merchant_frozen, payout.network_required, payout.no_destination,
+     * payout.reserved_reference, payout.unsupported_network, rates.deviation, rates.no_source,
+     * rates.non_positive, request.bad_json, request.body_read, request.control_char,
+     * request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+     * request.reference_invalid, request.reference_too_long, request.too_deep,
+     * request.unknown_currency, sandbox.convert_not_available, wallet.static_not_found,
+     * webhook.no_endpoint
      *
      * @param PayoutValidateRequest|array{
      *     address: string,
@@ -362,7 +364,7 @@ final class Payouts extends Resource
      * also a payout, so this same method rejects a refund that has not been sent yet. Only your own
      * payout.
      *
-     * Requires role: Finance when called with a CLI key.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/payout/cancel`
      *
@@ -506,8 +508,7 @@ final class Payouts extends Resource
      * fee, instant, off-chain). The recipient is addressed by user id; a username is resolved by
      * the dashboard's public endpoint /public/users/{username}.
      *
-     * With a CLI key: only the store owner's own key (role Owner); other team members use the
-     * dashboard, where each such operation is confirmed with 2FA.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/transfer/to-user`
      *
@@ -553,8 +554,7 @@ final class Payouts extends Resource
      * An asynchronous batch of internal transfers: {"transfers":[<as in /v1/transfer/to-user>...],
      * "on_error":"continue"}. Status and per-row results — POST /v1/batch/info.
      *
-     * With a CLI key: only the store owner's own key (role Owner); other team members use the
-     * dashboard, where each such operation is confirmed with 2FA.
+     * Not available to CLI keys: call it with the integration key.
      *
      * `POST /v1/transfer/batch`
      *
