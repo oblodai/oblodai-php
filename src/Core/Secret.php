@@ -25,7 +25,7 @@ final class Secret implements JsonSerializable, Stringable
     /** @var WeakMap<self, string>|null */
     private static ?WeakMap $values = null;
 
-    public function __construct(string $value)
+    public function __construct(#[\SensitiveParameter] string $value)
     {
         self::values()[$this] = $value;
     }

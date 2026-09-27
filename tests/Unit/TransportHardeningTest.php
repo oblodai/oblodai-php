@@ -142,28 +142,55 @@ final class TransportHardeningTest extends TestCase
     }
 
     /**
-     * The admin token provisions merchants; it is a secret with no business on a payment route,
-     * and a caller-supplied one must not travel either.
+     * The SDK never sends an admin token: the option is ignored, a caller header of that name is
+     * dropped, and an operator-only route is refused before any request.
      */
-    public function testTheAdminTokenRidesOnlyOnOnboardRoutesAndNeverFromACallerHeader(): void
+    public function testTheAdminTokenIsNeverSentAndOperatorRoutesFailBeforeTheNetwork(): void
     {
-        $fake = new FakeHttpClient([
-            FakeHttpClient::sample('createPayment', ['uuid' => 'p']),
-            FakeHttpClient::sample('onboardSandboxStore'),
-        ]);
+        $fake = new FakeHttpClient([FakeHttpClient::sample('createPayment', ['uuid' => 'p'])]);
+        $logger = new class () implements \Oblodai\Log\Logger {
+            /** @var list<string> */
+            public array $warnings = [];
+
+            public function debug(string $message, array $fields = []): void
+            {
+            }
+
+            public function info(string $message, array $fields = []): void
+            {
+            }
+
+            public function warning(string $message, array $fields = []): void
+            {
+                $this->warnings[] = $message;
+            }
+
+            public function error(string $message, array $fields = []): void
+            {
+            }
+        };
         $ob = new Oblodai(
             ...self::CREDS,
             adminToken: 'adm',
             http: $fake,
             headers: ['x-admin-token' => 'forged'],
+            logger: $logger,
             env: [],
         );
 
-        $ob->payments->create(['amount' => '1', 'currency' => 'USDT']);
-        self::assertNull($fake->header(0, 'X-Admin-Token'), 'a payment route must not carry the admin token');
+        try {
+            $ob->sandbox->onboardStore('m-1');
+            self::fail('expected a ConfigException');
+        } catch (ConfigException $e) {
+            self::assertSame(ConfigException::OPERATOR_CHANNEL_UNSUPPORTED, $e->errorCode);
+            self::assertStringContainsString('operator channel is not supported by the SDK; use the dashboard', $e->getMessage());
+        }
+        self::assertSame(0, $fake->count(), 'refused before the network');
 
-        $ob->sandbox->onboardStore('m-1');
-        self::assertSame('adm', $fake->header(1, 'X-Admin-Token'));
+        $ob->payments->create(['amount' => '1', 'currency' => 'USDT']);
+        self::assertNull($fake->header(0, 'X-Admin-Token'));
+        self::assertStringNotContainsString('adm', (string) json_encode($ob->config));
+        self::assertCount(1, array_filter($logger->warnings, static fn (string $w): bool => str_contains($w, 'deprecated and ignored')));
     }
 
     /** @return iterable<string, array{string}> */

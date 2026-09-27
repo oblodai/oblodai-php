@@ -48,6 +48,7 @@ final class ReadmeTest extends TestCase
                 'OBLODAI_PUBLIC_ID' => 'test_oblodai_readme',
                 'OBLODAI_SECRET' => str_repeat('s', 32),
                 'OBLODAI_BASE_URL' => $baseUrl,
+                'OBLODAI_ALLOW_INSECURE' => '1',
                 'OBLODAI_WEBHOOK_SECRET' => 'whsec-readme',
             ]);
         } finally {

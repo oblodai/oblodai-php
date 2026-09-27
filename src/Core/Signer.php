@@ -50,6 +50,7 @@ final class Signer
     }
 
     public static function sign(
+        #[\SensitiveParameter]
         string $secret,
         int $ts,
         string $method,
@@ -69,7 +70,7 @@ final class Signer
      * The payload is signed verbatim, so verifiers must use the raw request bytes, never a
      * re-encoded parse of them.
      */
-    public static function signWebhook(string $secret, int $ts, string $payload): string
+    public static function signWebhook(#[\SensitiveParameter] string $secret, int $ts, string $payload): string
     {
         $canonical = self::join(Signing::WEBHOOK_CANONICAL_ORDER, Signing::WEBHOOK_CANONICAL_SEPARATOR, [
             'ts' => (string) $ts,

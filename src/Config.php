@@ -15,25 +15,25 @@ use Oblodai\Log\Logger;
  * Client configuration: explicit options merged with the environment, validated up front so a
  * misconfiguration fails at construction rather than on the first payout.
  *
- * Environment: `OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`, `OBLODAI_ADMIN_TOKEN`, `OBLODAI_BASE_URL`,
- * `OBLODAI_LOG`, `OBLODAI_ALLOW_INSECURE`.
+ * Environment: `OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`, `OBLODAI_BASE_URL`, `OBLODAI_LOG`,
+ * `OBLODAI_ALLOW_INSECURE`. (`OBLODAI_ADMIN_TOKEN` is deprecated and ignored.)
  */
 final class Config implements JsonSerializable
 {
     public const DEFAULT_BASE_URL = 'https://api.oblodai.com';
 
-    /** Admin token of a self-hosted gateway; sent as `X-Admin-Token` on `onboard` routes only. */
-    public readonly ?Secret $adminToken;
-
+    /**
+     * @param Secret|string|null $adminToken deprecated and ignored: the SDK never sends an admin
+     *                                       token (operator-only routes are not supported)
+     */
     public function __construct(
         public readonly string $baseUrl,
         public readonly ?Credentials $credentials = null,
         public readonly ?Logger $logger = null,
+        #[\SensitiveParameter]
         Secret|string|null $adminToken = null,
     ) {
-        $this->adminToken = $adminToken === null || $adminToken === ''
-            ? null
-            : ($adminToken instanceof Secret ? $adminToken : new Secret($adminToken));
+        unset($adminToken); // deprecated and ignored: never stored, never sent
     }
 
     /**
@@ -47,7 +47,6 @@ final class Config implements JsonSerializable
         return [
             'baseUrl' => $this->baseUrl,
             'publicId' => $this->credentials?->publicId,
-            'adminToken' => $this->adminToken === null ? null : Secret::REDACTED,
         ];
     }
 
@@ -61,7 +60,7 @@ final class Config implements JsonSerializable
      * @param array{publicId?: ?string, secret?: ?string, baseUrl?: ?string, adminToken?: ?string, logger?: ?Logger, allowInsecureBaseUrl?: ?bool} $options
      * @param array<string, string>|null $env null reads the process environment
      */
-    public static function resolve(array $options = [], ?array $env = null): self
+    public static function resolve(#[\SensitiveParameter] array $options = [], ?array $env = null): self
     {
         // An empty value means "not set" whether it came from the real environment or from an
         // injected map — otherwise `OBLODAI_SECRET=` would configure a client that signs with ''.
@@ -89,38 +88,53 @@ final class Config implements JsonSerializable
             $logger = new ConsoleLogger($level);
         }
 
+        // Deprecated and ignored: the core accepts operator-only routes over the operator HMAC
+        // channel only, which the SDK does not implement, and a raw admin token is never sent.
+        $adminToken = $options['adminToken'] ?? $read('OBLODAI_ADMIN_TOKEN');
+        // One warning per client configured with it.
+        if ($adminToken !== null && $adminToken !== '' && $logger !== null) {
+            $logger->warning(
+                'adminToken / OBLODAI_ADMIN_TOKEN is deprecated and ignored: the SDK never sends an '
+                    . 'admin token; operator-only routes are not supported, use the dashboard'
+            );
+        }
+
         return new self(
             baseUrl: $baseUrl,
             credentials: $publicId !== null && $secret !== null ? new Credentials($publicId, $secret) : null,
             logger: $logger,
-            adminToken: $options['adminToken'] ?? $read('OBLODAI_ADMIN_TOKEN'),
         );
     }
 
-    /** Plain http is only ever allowed against a loopback core, or when explicitly permitted. */
-    private static function assertBaseUrl(string $baseUrl, bool $allowInsecure): void
+    /**
+     * https only — plain http (loopback included) only when explicitly permitted — and never
+     * `user:password@`: credentials in the URL would ride into every log line and error naming it.
+     */
+    private static function assertBaseUrl(#[\SensitiveParameter] string $baseUrl, bool $allowInsecure): void
     {
         $parts = parse_url($baseUrl);
         if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
+            // Not echoed: an unparsable value may still carry a password.
+            throw new ConfigException(ConfigException::BAD_CONFIG, 'baseUrl is not a valid URL', 'baseUrl');
+        }
+        if (isset($parts['user']) || isset($parts['pass']) || str_contains(explode('/', $baseUrl . '/', 4)[2] ?? '', '@')) {
             throw new ConfigException(
                 ConfigException::BAD_CONFIG,
-                sprintf('baseUrl is not a valid URL: %s', $baseUrl),
+                'baseUrl must not contain user:password@ credentials',
                 'baseUrl'
             );
         }
-        if ($parts['scheme'] === 'https') {
+        if (strtolower($parts['scheme']) === 'https') {
             return;
         }
-        $host = strtolower($parts['host']);
-        $local = in_array($host, ['localhost', '127.0.0.1', '[::1]', '::1'], true);
-        if ($parts['scheme'] === 'http' && ($allowInsecure || $local)) {
+        if (strtolower($parts['scheme']) === 'http' && $allowInsecure) {
             return;
         }
 
         throw new ConfigException(
             ConfigException::BAD_CONFIG,
             sprintf(
-                'baseUrl must use https (got %s://%s); set allowInsecureBaseUrl for a local core',
+                'baseUrl must use https (got %s://%s); set allowInsecureBaseUrl (OBLODAI_ALLOW_INSECURE=1) for a local core',
                 $parts['scheme'],
                 $parts['host']
             ),

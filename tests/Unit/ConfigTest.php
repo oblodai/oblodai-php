@@ -26,31 +26,42 @@ final class ConfigTest extends TestCase
         self::assertSame('https://x.test', $config->baseUrl);
     }
 
-    public function testRefusesPlainHttpExceptForLocalhostOrWhenAllowed(): void
+    public function testRefusesPlainHttpUnlessExplicitlyAllowedLoopbackIncluded(): void
     {
-        try {
-            Config::resolve(['baseUrl' => 'http://api.oblodai.com'], []);
-            self::fail('expected a ConfigException');
-        } catch (ConfigException $e) {
-            self::assertMatchesRegularExpression('/https/', $e->getMessage());
+        foreach (['http://api.oblodai.com', 'http://localhost:8093', 'http://127.0.0.1:8093', 'http://[::1]:8093'] as $url) {
+            try {
+                Config::resolve(['baseUrl' => $url], []);
+                self::fail('expected a ConfigException for ' . $url);
+            } catch (ConfigException $e) {
+                self::assertMatchesRegularExpression('/https/', $e->getMessage());
+            }
         }
 
         self::assertSame(
             'http://localhost:8093',
-            Config::resolve(['baseUrl' => 'http://localhost:8093'], [])->baseUrl
+            Config::resolve(['baseUrl' => 'http://localhost:8093', 'allowInsecureBaseUrl' => true], [])->baseUrl
         );
         self::assertSame(
             'http://10.0.0.1',
-            Config::resolve(['baseUrl' => 'http://10.0.0.1', 'allowInsecureBaseUrl' => true], [])->baseUrl
+            Config::resolve(['baseUrl' => 'http://10.0.0.1'], ['OBLODAI_ALLOW_INSECURE' => '1'])->baseUrl
+        );
+        self::assertSame(
+            'http://[::1]:8093',
+            Config::resolve(['baseUrl' => 'http://[::1]:8093', 'allowInsecureBaseUrl' => true], [])->baseUrl
         );
     }
 
-    public function testAcceptsIpv6Loopback(): void
+    public function testRefusesUserinfoInTheBaseUrlWithoutEchoingIt(): void
     {
-        self::assertSame(
-            'http://[::1]:8093',
-            Config::resolve(['baseUrl' => 'http://[::1]:8093'], [])->baseUrl
-        );
+        foreach (['https://user:hunter2@api.test', 'https://hunter2@api.test'] as $url) {
+            try {
+                Config::resolve(['baseUrl' => $url], []);
+                self::fail('expected a ConfigException for ' . $url);
+            } catch (ConfigException $e) {
+                self::assertStringContainsString('credentials', $e->getMessage());
+                self::assertStringNotContainsString('hunter2', (string) $e);
+            }
+        }
     }
 
     public function testRefusesHalfAKeyPair(): void

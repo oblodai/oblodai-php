@@ -64,8 +64,6 @@ final class Transport
         ?Clock $clock = null,
         ?Logger $logger = null,
         private readonly array $headers = [],
-        /** Sent as `X-Admin-Token` on `onboard` routes only. */
-        private readonly ?Secret $adminToken = null,
         private readonly ?Hooks $hooks = null,
         ?callable $sleep = null,
     ) {
@@ -108,7 +106,6 @@ final class Transport
             clock: $this->clock,
             logger: $this->logger,
             headers: self::mergeHeaders($this->headers, $extraHeaders),
-            adminToken: $this->adminToken,
             hooks: $this->hooks,
             sleep: $this->sleep,
         );
@@ -148,7 +145,9 @@ final class Transport
     public function call(
         RouteSpec $route,
         ?array $body = null,
+        #[\SensitiveParameter]
         array $query = [],
+        #[\SensitiveParameter]
         array $pathParams = [],
         ?RequestOptions $options = null,
     ): mixed {
@@ -168,7 +167,9 @@ final class Transport
     public function callRaw(
         RouteSpec $route,
         ?array $body = null,
+        #[\SensitiveParameter]
         array $query = [],
+        #[\SensitiveParameter]
         array $pathParams = [],
         ?RequestOptions $options = null,
     ): RawResponse {
@@ -221,7 +222,7 @@ final class Transport
             ?? self::headerValue($options->extraHeaders, self::HEADER_REQUEST_ID)
             ?? self::headerValue($this->headers, self::HEADER_REQUEST_ID)
             ?? Util::uuid4();
-        if (preg_match('/^[\x21-\x7e]{1,200}$/', $id) !== 1) {
+        if (preg_match('/^[\x21-\x7e]{1,200}\z/', $id) !== 1) {
             throw new ConfigException(
                 ConfigException::BAD_HEADER,
                 'requestId must be 1-200 printable ASCII characters without spaces',
@@ -252,11 +253,22 @@ final class Transport
     private function execute(
         RouteSpec $route,
         ?array $body,
+        #[\SensitiveParameter]
         array $query,
+        #[\SensitiveParameter]
         array $pathParams,
         RequestOptions $options,
         string $requestId,
     ): HttpResponse {
+        if ($route->auth === 'onboard') {
+            // Operator-only routes: the core accepts them over the operator HMAC channel only, which
+            // the SDK does not implement (and must never fake with a raw admin token). Refused
+            // before any byte leaves the process.
+            throw new ConfigException(
+                ConfigException::OPERATOR_CHANNEL_UNSUPPORTED,
+                sprintf('%s: operator channel is not supported by the SDK; use the dashboard', $route->key())
+            );
+        }
         $serialized = RequestBuilder::serializeBody($body, $route->method);
         $idempotencyKey = $options->idempotencyKey;
         if ($idempotencyKey !== null) {
@@ -292,12 +304,16 @@ final class Transport
 
         $attempt = 0;
         $skewTried = false;
-        $skewBefore = 0;
-        $skewInstalled = 0;
+        // A server-time offset tried on this call only; adopted by the shared clock on a 2xx.
+        $skewCandidate = null;
         for (;;) {
             // Sign with the offset as it stands NOW, and remember which offset that was: another
             // call sharing this client may correct the clock while this request is on the wire.
-            [$ts, $signedOffset] = $this->clock->stamp();
+            if ($skewCandidate !== null) {
+                [$ts, $signedOffset] = [$this->clock->nowWith($skewCandidate), $skewCandidate];
+            } else {
+                [$ts, $signedOffset] = $this->clock->stamp();
+            }
             $request = RequestBuilder::build(
                 baseUrl: $this->baseUrl,
                 route: $route,
@@ -309,15 +325,14 @@ final class Transport
                 ts: $ts,
                 userAgent: $this->userAgent,
                 extraHeaders: $extraHeaders,
-                adminToken: $this->adminToken?->reveal(),
                 maxResponseBytes: $route->bare ? HttpRequest::MAX_FILE_BYTES : HttpRequest::MAX_JSON_BYTES,
                 requestId: $requestId,
             );
             $this->logger->debug('request', ['route' => $label, 'attempt' => $attempt, 'requestId' => $requestId]);
             $info = new RequestInfo(
                 $request->method,
-                $request->url,
-                self::redactHeaders($request->headers),
+                $request->displayUrl,
+                Redactor::headers($request->headers),
                 $attempt + 1,
                 $requestId,
                 $route->operationId,
@@ -350,10 +365,17 @@ final class Transport
             }
 
             if ($response->status >= 200 && $response->status < 300) {
+                // The re-signed attempt got through: the server's time was right, adopt it.
+                if ($skewCandidate !== null) {
+                    $this->clock->correct($skewCandidate);
+                }
                 $this->responded($info, $response->status, $response->headers, $sentAt, null);
 
                 return $response;
             }
+            // Anything but a 2xx after a re-sign: the offset is not proven, so it is dropped and never
+            // reaches the shared clock (a 404 or a 5xx says nothing about whether the time was right).
+            $skewCandidate = null;
 
             $failure = $this->classify($route, $response, $requestId);
             $this->responded($info, $response->status, $response->headers, $sentAt, $failure);
@@ -365,32 +387,27 @@ final class Transport
             ]));
 
             // Clock skew: the core rejected the timestamp/MAC. Learn its time from the `Date`
-            // header, re-sign once, and keep the offset only if that attempt got past auth.
-            if ($response->status === 401 && in_array($failure->errorCode, self::SIGNATURE_FAILURE_CODES, true)) {
-                if (!$skewTried) {
-                    $offset = $this->clock->observeServerDate($response->header('date'));
-                    // Compare against the offset THIS request was signed with, not against whatever
-                    // the shared clock says now: if a concurrent call already corrected it, this
-                    // request simply retries with the corrected time instead of measuring again.
-                    if ($offset !== null && abs($offset - $signedOffset) > Signer::SKEW_SECONDS / 2) {
-                        $this->logger->warning('clock skew detected; re-signing with server time', [
-                            'route' => $label,
-                            'offsetSec' => $offset,
-                        ]);
-                        $skewTried = true;
-                        $skewBefore = $signedOffset;
-                        $skewInstalled = $offset;
-                        $this->clock->correctIfUnchanged($signedOffset, $offset);
+            // header (bounded to ±Clock::MAX_PLAUSIBLE_OFFSET_SECONDS) and re-sign once with it;
+            // the offset is adopted only if that attempt succeeds.
+            if (!$skewTried && $response->status === 401 && in_array($failure->errorCode, self::SIGNATURE_FAILURE_CODES, true)) {
+                $offset = $this->clock->observeServerDate($response->header('date'));
+                // Compare against the offset THIS request was signed with, not against whatever
+                // the shared clock says now: if a concurrent call already corrected it, this
+                // request simply retries with the corrected time instead of measuring again.
+                if ($offset !== null && abs($offset - $signedOffset) > Signer::SKEW_SECONDS / 2) {
+                    $this->logger->warning('clock skew suspected; re-signing once with server time', [
+                        'route' => $label,
+                        'offsetSec' => $offset,
+                    ]);
+                    $skewTried = true;
+                    $skewCandidate = $offset;
 
-                        continue;
-                    }
-                    if ($offset !== null && $signedOffset !== $this->clock->offset()) {
-                        continue; // someone else corrected the clock mid-flight; retry as signed now
-                    }
-                } elseif ($skewInstalled !== $skewBefore) {
-                    // The corrected timestamp did not help. Roll back only while the shared offset
-                    // is still the one this call installed — never undo a later, better correction.
-                    $this->clock->correctIfUnchanged($skewInstalled, $skewBefore);
+                    continue;
+                }
+                if ($offset !== null && $signedOffset !== $this->clock->offset()) {
+                    $skewTried = true;
+
+                    continue; // someone else corrected the clock mid-flight; retry as signed now
                 }
             }
 
@@ -412,23 +429,6 @@ final class Transport
             return;
         }
         ($this->hooks->onResponse)(new ResponseInfo($info, $status, $headers, microtime(true) - $sentAt, $error));
-    }
-
-    /**
-     * @param  array<string, string> $headers
-     * @return array<string, string>
-     */
-    private static function redactHeaders(array $headers): array
-    {
-        $out = [];
-        foreach ($headers as $name => $value) {
-            $lower = strtolower($name);
-            $out[$name] = $lower === strtolower(Signer::HEADER_SIGNATURE) || $lower === strtolower(RequestBuilder::HEADER_ADMIN_TOKEN)
-                ? '[redacted]'
-                : $value;
-        }
-
-        return $out;
     }
 
     /**
@@ -460,7 +460,7 @@ final class Transport
      * never signed for. The signature covers method + request URI, so the body cannot be trusted —
      * it is the same failure as a 3xx, and gets the same error.
      */
-    private function assertNotRedirected(HttpRequest $request, HttpResponse $response, string $requestId): void
+    private function assertNotRedirected(#[\SensitiveParameter] HttpRequest $request, HttpResponse $response, string $requestId): void
     {
         if ($response->finalUrl === null || $response->finalUrl === '' || $response->finalUrl === $request->url) {
             return;
@@ -473,8 +473,8 @@ final class Transport
                 'message' => sprintf(
                     'unexpected redirect: %s answered from %s; the HTTP client is following '
                         . 'redirects, which the SDK never does — check baseUrl and the client config',
-                    $request->url,
-                    $response->finalUrl
+                    $request->displayUrl,
+                    Redactor::url($response->finalUrl)
                 ),
             ],
             $response->body,
@@ -527,7 +527,7 @@ final class Transport
         }
     }
 
-    private function send(HttpRequest $request, RequestOptions $options, float $deadlineAt, string $requestId): HttpResponse
+    private function send(#[\SensitiveParameter] HttpRequest $request, RequestOptions $options, float $deadlineAt, string $requestId): HttpResponse
     {
         $left = ($deadlineAt - Util::nowMs()) / 1000;
         if ($left <= 0) {

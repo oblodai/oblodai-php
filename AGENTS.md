@@ -14,7 +14,8 @@ method as `resource.method` in snake_case (the PHP names are the same in camelCa
   `new RequestOptions(idempotencyKey: …, timeout: …, maxRetries: …, extraHeaders: […], requestId: …)`
   — `timeout` in seconds.
 - **One API key.** `publicId:`/`secret:` (or `OBLODAI_PUBLIC_ID`/`OBLODAI_SECRET`) sign every route.
-  `adminToken:` is a self-hosted gateway's provisioning token, sent only on `sandbox->onboardStore()`.
+  `adminToken:` is deprecated and ignored (never sent); the operator-only `sandbox->onboardStore()`
+  throws `sdk.operator_channel_unsupported` before any request.
 - Idempotency keys are generated automatically on the routes the gateway deduplicates and reused
   across retries. Passing `idempotencyKey` to any other route throws `sdk.idempotency_unsupported`.
 - Paged list methods return `Oblodai\Core\Page`: `items()`/`paginate()`/`first()` is ONE page,
@@ -60,8 +61,10 @@ $event = Verifier::model($delivery->event); // PaymentWebhook|PayoutWebhook|Wall
 
 Verify over the **raw** bytes. `SignatureException` → answer 401; `WebhookPayloadException`
 (`webhook.bad_payload`) → the MAC verified but the body is unreadable, answer 2xx and alert;
-`ConfigException` → your receiver is misconfigured. `$delivery->isTest` marks a rehearsal (never
-money). Deduplicate on `$delivery->eventId`; drop out-of-order events with
+`ConfigException` → your receiver is misconfigured. `$delivery->isTest` (signed body `test: true`)
+marks a rehearsal: always acknowledge and ignore it. Deduplicate on `$delivery->eventKey`
+(`type:objectId:sequence` from the signed body; the X-Webhook-* id/test headers are unsigned and
+live only under `$delivery->unverified`); drop out-of-order events with
 `Verifier::isStale($delivery->event, $lastSequence)`. During a rotation pass `previousSecret:` for
 ≥26 h.
 

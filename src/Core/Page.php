@@ -16,8 +16,9 @@ use IteratorAggregate;
  * - `$page->first()` (or `items()` / `paginate()`) is just the first page;
  * - `$page->all($max)` collects items into an array.
  *
- * `paginate.has_pages` is the gateway's own "there is more" flag; walking stops on it, or on a
- * page shorter than the limit, whichever comes first.
+ * Walking stops on an empty page, or once the offset reaches `paginate.total` — never because a
+ * page came back shorter than the requested limit: the core clamps an out-of-range limit (to 25)
+ * instead of refusing it, so a short page is not the last page.
  *
  * @template T
  *
@@ -88,10 +89,9 @@ final class Page implements IteratorAggregate
             yield $page;
             $got = count($page->items);
             $offset += $got;
-            // Two stops, and both are needed: `has_pages` is the gateway's own answer, and a page
-            // shorter than the limit means the same thing. Without the second one, a server that
-            // always sets `has_pages` (a bug, or a filtered count) would spin forever.
-            if ($got === 0 || $got < $this->limit || !$page->paginate->has_pages) {
+            // Two stops: an empty page, and the offset reaching the reported total (which also ends
+            // a server that keeps answering with pages past the end).
+            if ($got === 0 || $offset >= $page->paginate->total) {
                 return;
             }
             $page = ($this->fetchPage)($this->limit, $offset);

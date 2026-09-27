@@ -134,7 +134,9 @@ abstract class Resource
         RouteSpec $route,
         ?array $body,
         ?RequestOptions $options,
+        #[\SensitiveParameter]
         array $pathParams = [],
+        #[\SensitiveParameter]
         array $query = [],
         ?callable $parse = null,
     ): mixed {
@@ -167,7 +169,9 @@ abstract class Resource
         RouteSpec $route,
         ?array $body,
         ?RequestOptions $options,
+        #[\SensitiveParameter]
         array $pathParams = [],
+        #[\SensitiveParameter]
         array $query = [],
         ?callable $parse = null,
     ): Page {
@@ -239,7 +243,9 @@ abstract class Resource
         RouteSpec $route,
         ?array $body,
         ?RequestOptions $options,
+        #[\SensitiveParameter]
         array $pathParams = [],
+        #[\SensitiveParameter]
         array $query = [],
     ): FileResult {
         $options ??= new RequestOptions();
@@ -302,6 +308,6 @@ abstract class Resource
 
     private static function intOrNull(mixed $value): ?int
     {
-        return is_int($value) || (is_string($value) && preg_match('/^-?\d+$/', $value) === 1) ? (int) $value : null;
+        return is_int($value) || (is_string($value) && preg_match('/^-?\d+\z/', $value) === 1) ? (int) $value : null;
     }
 }

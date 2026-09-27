@@ -19,7 +19,7 @@ use JsonSerializable;
 abstract class Model implements JsonSerializable
 {
     /** Wire keys whose value is shown once and must never reach a log. */
-    public const SECRET_KEYS = ['secret', 'passcode', 'claim_token', 'claim_url'];
+    public const SECRET_KEYS = ['secret', 'passcode', 'claim_token', 'claim_url', 'device_code'];
 
     public const REDACTED = '[redacted]';
 

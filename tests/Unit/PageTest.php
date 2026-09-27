@@ -155,12 +155,18 @@ final class PageTest extends TestCase
      * A server that always claims `has_pages` (a bug, or a count filtered after paging) must not
      * spin the iterator forever: a page shorter than the limit ends the walk.
      */
-    public function testIterationStopsOnAShortPageEvenWhenTheServerKeepsClaimingMore(): void
+    /**
+     * A page shorter than the limit is not the last one — the core clamps an out-of-range limit to
+     * 25 instead of refusing it. Walking goes on until an empty page (or the offset reaches the
+     * total), so nothing is silently dropped.
+     */
+    public function testAShortPageIsNotTheLastPage(): void
     {
         $fake = new FakeHttpClient([
             self::page([self::paymentRow('a'), self::paymentRow('b')], 0, 999, 2, true),
             self::page([self::paymentRow('c')], 2, 999, 2, true),
             self::page([self::paymentRow('d')], 3, 999, 2, true),
+            self::page([], 4, 999, 2, false),
         ]);
         $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
 
@@ -170,8 +176,8 @@ final class PageTest extends TestCase
             $seen[] = $payment->uuid;
         }
 
-        self::assertSame(['a', 'b', 'c'], $seen);
-        self::assertSame(2, $fake->count());
+        self::assertSame(['a', 'b', 'c', 'd'], $seen);
+        self::assertSame(4, $fake->count());
     }
 
     /**
@@ -182,8 +188,8 @@ final class PageTest extends TestCase
     public function testPathParametersReachEveryPage(): void
     {
         $fake = new FakeHttpClient([
-            self::page([['a' => 1]], 0, 4, 1, true),
-            self::page([['b' => 2]], 1, 4, 1, false),
+            self::page([['a' => 1]], 0, 2, 1, true),
+            self::page([['b' => 2]], 1, 2, 1, false),
         ]);
         $ob = new Oblodai(publicId: 'p', secret: 's', baseUrl: 'https://api.test', http: $fake, env: []);
         $probe = new ProbeResource($ob->transport);

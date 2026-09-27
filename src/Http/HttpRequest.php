@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Oblodai\Http;
 
+use Oblodai\Log\Redactor;
+
 /** One outgoing HTTP request, fully formed: nothing is added below this line. */
 final class HttpRequest
 {
@@ -20,11 +22,21 @@ final class HttpRequest
     /** @param array<string, string> $headers */
     public function __construct(
         public readonly string $method,
+        #[\SensitiveParameter]
         public readonly string $url,
+        #[\SensitiveParameter]
         public readonly array $headers = [],
         public readonly ?string $body = null,
         /** Hard ceiling on the response body an implementation may buffer, bytes. */
         public readonly int $maxResponseBytes = self::MAX_JSON_BYTES,
+        /**
+         * The URL as it may be shown in messages and hooks: claim tokens in the path and signed-link
+         * parameters masked ({@see \Oblodai\Log\Redactor::url()}). Defaults to a cleaned `$url`.
+         */
+        ?string $displayUrl = null,
     ) {
+        $this->displayUrl = $displayUrl ?? Redactor::url($url);
     }
+
+    public readonly string $displayUrl;
 }

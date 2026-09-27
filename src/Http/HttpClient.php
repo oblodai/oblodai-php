@@ -20,5 +20,5 @@ interface HttpClient
      *
      * @throws TransportException on timeout or any failure that produced no response
      */
-    public function send(HttpRequest $request, float $timeoutSeconds): HttpResponse;
+    public function send(#[\SensitiveParameter] HttpRequest $request, float $timeoutSeconds): HttpResponse;
 }

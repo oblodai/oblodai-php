@@ -29,7 +29,7 @@ final class Util
     }
 
     /** Constant-time string equality. */
-    public static function constantTimeEquals(string $a, string $b): bool
+    public static function constantTimeEquals(#[\SensitiveParameter] string $a, #[\SensitiveParameter] string $b): bool
     {
         return hash_equals($a, $b);
     }

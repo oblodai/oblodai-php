@@ -26,7 +26,7 @@ final class Money
      * `\d`: with a Unicode-aware `\d` an Arabic-Indic digit would pass the check and then be
      * mangled by the arithmetic below.
      */
-    private const DECIMAL = '/^-?[0-9]+(\.[0-9]+)?$/';
+    private const DECIMAL = '/^-?[0-9]+(\.[0-9]+)?\z/';
 
     /**
      * Longest amount the helpers accept, characters. No asset needs anything close (BTC's total

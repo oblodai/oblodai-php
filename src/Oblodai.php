@@ -39,8 +39,8 @@ use Oblodai\Log\Logger;
  * ]);
  * ```
  *
- * Credentials, base URL and admin token fall back to the environment (`OBLODAI_PUBLIC_ID`,
- * `OBLODAI_SECRET`, `OBLODAI_BASE_URL`, `OBLODAI_ADMIN_TOKEN`). Amounts are always decimal strings.
+ * Credentials and base URL fall back to the environment (`OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`,
+ * `OBLODAI_BASE_URL`). Amounts are always decimal strings.
  * The resource namespaces and their methods are generated from the gateway's OpenAPI contract.
  */
 final class Oblodai
@@ -80,7 +80,9 @@ final class Oblodai
      * @param Retry|null            $retry      retry policy; `new Retry(maxRetries: 0)` disables retries
      * @param Logger|null           $logger     structured logger; `OBLODAI_LOG=debug` picks a console one
      * @param array<string, string> $headers    extra headers on every request
-     * @param string|null           $adminToken admin token of a self-hosted gateway (onboarding routes)
+     * @param string|null           $adminToken deprecated and ignored — the SDK never sends an admin
+     *                                          token; operator-only routes (`sandbox->onboardStore`)
+     *                                          fail with `sdk.operator_channel_unsupported`
      * @param bool|null             $allowInsecureBaseUrl permit plain http:// (local gateway, CI)
      * @param Clock|null            $clock      injectable clock, for tests
      * @param array<string, string>|null $env   environment override, for tests
@@ -88,6 +90,7 @@ final class Oblodai
      */
     public function __construct(
         ?string $publicId = null,
+        #[\SensitiveParameter]
         ?string $secret = null,
         ?string $baseUrl = null,
         ?HttpClient $http = null,
@@ -96,6 +99,7 @@ final class Oblodai
         ?Retry $retry = null,
         ?Logger $logger = null,
         array $headers = [],
+        #[\SensitiveParameter]
         ?string $adminToken = null,
         ?bool $allowInsecureBaseUrl = null,
         ?Clock $clock = null,
@@ -122,7 +126,6 @@ final class Oblodai
             clock: $clock,
             logger: $config->logger,
             headers: $headers,
-            adminToken: $config->adminToken,
             hooks: $hooks,
         ));
     }

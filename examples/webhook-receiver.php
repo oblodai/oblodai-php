@@ -7,10 +7,12 @@ declare(strict_types=1);
  * `webhooks->register()`) at this script; try it locally with
  * `OBLODAI_WEBHOOK_SECRET=… php -S 127.0.0.1:8096 examples/webhook-receiver.php`.
  *
- * Three rules:
+ * Four rules:
  *  1. verify over the RAW request bytes — a re-encoded parse will not match the signature;
- *  2. deduplicate on `$delivery->eventId` (the event id header), stable per state;
- *  3. drop out-of-order deliveries with `Verifier::isStale($event, $lastSequence)`, keeping the
+ *  2. ignore rehearsals (`$delivery->isTest`, the signed body's `test: true`) before anything else;
+ *  3. deduplicate on `$delivery->eventKey` (type:objectId:sequence from the SIGNED body), stable
+ *     per state — never on the X-Webhook-* id headers, which are not signed;
+ *  4. drop out-of-order deliveries with `Verifier::isStale($event, $lastSequence)`, keeping the
  *     last sequence per object: its `type` and `Verifier::objectId($event)` (a payment's `uuid`,
  *     a conversion's `id` — whatever the contract names for the kind).
  *
@@ -47,12 +49,12 @@ try {
     answer(500, 'misconfigured: ' . $err->getMessage());   // no secret here — fix the receiver
 }
 
-$eventId = $delivery->eventId ?? $delivery->id;
-if (DeliveryLog::seen($eventId)) {
-    answer(200, 'duplicate');
-}
 if ($delivery->isTest) {
     answer(200, 'rehearsal - not applied');                // signed like a live one; no money moved
+}
+$eventKey = $delivery->eventKey;                           // from the signed body, not a header
+if (DeliveryLog::seen($eventKey)) {
+    answer(200, 'duplicate');
 }
 // A kind this SDK does not know has no known object id: its deliveries are not ordered.
 $type = is_string($delivery->event['type'] ?? null) ? $delivery->event['type'] : '';   // parse() checked it
@@ -78,7 +80,7 @@ $applied = match (true) {
     default => 'unmodelled type ' . $type,
 };
 $sequence = $delivery->event['sequence'] ?? null;
-DeliveryLog::remember($eventId, $object, is_int($sequence) ? $sequence : null);
+DeliveryLog::remember($eventKey, $object, is_int($sequence) ? $sequence : null);
 answer(200, 'ok: ' . $applied);
 
 /**
@@ -113,9 +115,9 @@ function fulfilOrder(string $orderId, string $amount, string $currency): string
 }
 
 /**
- * Stands in for your database: the handled event ids and the last applied `sequence` per object.
+ * Stands in for your database: the handled event keys and the last applied `sequence` per object.
  * PHP forgets everything between requests, so this keeps them in a JSON file
- * (`OBLODAI_WEBHOOK_LOG`, else one in the temp directory). In production it is a row per event id
+ * (`OBLODAI_WEBHOOK_LOG`, else one in the temp directory). In production it is a row per event key
  * (unique index) and one per object, updated in the transaction that applies the event.
  */
 final class DeliveryLog
@@ -123,9 +125,9 @@ final class DeliveryLog
     /** @var array{events: array<string, true>, sequences: array<string, int>}|null */
     private static ?array $state = null;
 
-    public static function seen(?string $eventId): bool
+    public static function seen(?string $eventKey): bool
     {
-        return $eventId !== null && isset(self::state()['events'][$eventId]);
+        return $eventKey !== null && isset(self::state()['events'][$eventKey]);
     }
 
     public static function lastSequence(string $object): ?int
@@ -133,11 +135,11 @@ final class DeliveryLog
         return self::state()['sequences'][$object] ?? null;
     }
 
-    public static function remember(?string $eventId, ?string $object, ?int $sequence): void
+    public static function remember(?string $eventKey, ?string $object, ?int $sequence): void
     {
         $state = self::state();
-        if ($eventId !== null) {
-            $state['events'][$eventId] = true;
+        if ($eventKey !== null) {
+            $state['events'][$eventKey] = true;
         }
         if ($sequence !== null && $object !== null) {
             $state['sequences'][$object] = $sequence;

@@ -184,7 +184,7 @@ final class TransportTest extends TestCase
 
     public function testResignsOnceWithTheServerClockWhenA401RevealsSkew(): void
     {
-        $serverNow = time() + 3600;
+        $serverNow = time() + 600;
         $fake = new FakeHttpClient([
             FakeHttpClient::error(
                 401,

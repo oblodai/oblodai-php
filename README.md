@@ -34,9 +34,9 @@ models are generated from the gateway's OpenAPI contract, so the SDK always spea
 against.
 
 > **Base URL.** Defaults to `https://api.oblodai.com`. Override `baseUrl` and supply your own keys
-> at initialisation if needed. The scheme must be `https://`; plain `http://` is accepted only for
-> loopback (`http://127.0.0.1:8095`) or with the explicit allow-insecure option
-> (`allowInsecureBaseUrl: true`, or `OBLODAI_ALLOW_INSECURE=1`).
+> at initialisation if needed. The scheme must be `https://`; plain `http://` (loopback included) is
+> accepted only with the explicit allow-insecure option (`allowInsecureBaseUrl: true`, or
+> `OBLODAI_ALLOW_INSECURE=1`), and a `user:password@` base URL is refused.
 
 ## Installation
 
@@ -59,7 +59,7 @@ only ever signs a request, it is never sent.
 | ---------------- | --------------------- | --------------------- | ------------------------------------------------------------------ |
 | **live API key** | `oblodai_<hex>`       | `oblodai_live_<hex>`  | the whole merchant API: money in, money out, settings, documents   |
 | **sandbox key**  | `test_oblodai_<hex>`  | `oblodai_test_<hex>`  | the same API against the sandbox                                   |
-| **admin token**  | —                     | —                     | provisioning on a **self-hosted** gateway: `sandbox->onboardStore()` |
+| operator routes  | —                     | —                     | not supported: `sandbox->onboardStore()` throws `sdk.operator_channel_unsupported` — use the dashboard |
 
 That one pair signs every route the gateway gates — there is nothing to choose per call:
 
@@ -296,7 +296,7 @@ $delivery = Verifier::verify(
     secret: (string) getenv('OBLODAI_WEBHOOK_SECRET'),
 );
 
-if ($delivery->isTest) {                    // a rehearsal delivery — no money moved
+if ($delivery->isTest) {                    // a rehearsal (signed body `test: true`) — no money moved
     http_response_code(200);
 } else {
     $event = Verifier::model($delivery->event);   // PaymentWebhook | PayoutWebhook | WalletWebhook | ConversionWebhook | null
@@ -321,10 +321,13 @@ signature failure and nothing else.** An event `type` this SDK does not model is
 either — `$delivery->event` keeps the body, `Verifier::model()` returns null and
 `Verifier::isKnownEvent()` false.
 
-`$delivery->eventId` (`X-Webhook-Event-Id`) is the id of the STATE a delivery carries — the same for
-every retry and resend of it; keep the ones you handled and skip repeats. `$delivery->id`
-(`X-Webhook-Id`) only identifies one delivery. `Verifier::isStale($delivery->event, $lastSequence)`
-drops out-of-order deliveries. After `webhooks->rotateSecret()` pass `previousSecret:` for at least
+`$delivery->eventKey` (`type:objectId:sequence`, built from the signed body) names the STATE a
+delivery carries — the same for every retry and resend of it; keep the ones you handled and skip
+repeats. The `X-Webhook-Id` / `X-Webhook-Event-Id` / `X-Webhook-Event` / `X-Webhook-Test` headers
+are **not signed** — a replay can carry any values there — so they are reported only under
+`$delivery->unverified` and must never decide whether a delivery is processed; `$delivery->isTest`
+comes from the signed body only, and a rehearsal is always acknowledged and ignored.
+`Verifier::isStale($delivery->event, $lastSequence)` drops out-of-order deliveries. After `webhooks->rotateSecret()` pass `previousSecret:` for at least
 26 hours. An empty `secret` is a `ConfigException`, never a verification against `HMAC('', body)`;
 the freshness window is 300 seconds (`toleranceSec: 0` disables it) and is checked after the MAC,
 so it cannot be used to probe your clock. See [`examples/webhook-receiver.php`](examples/webhook-receiver.php).
@@ -462,29 +465,31 @@ $oblodai = new Oblodai(
 | `logger`               | none                        | structured logger; `OBLODAI_LOG` picks a console one             |
 | `headers`              | `[]`                        | extra headers on every request                                   |
 | `hooks`                | none                        | `new Hooks(onRequest: …, onResponse: …)`                         |
-| `adminToken`           | environment                 | admin token of a self-hosted gateway (onboarding routes)         |
-| `allowInsecureBaseUrl` | `false`                     | permit a plain-http `baseUrl` that is not loopback               |
+| `adminToken`           | —                           | deprecated and ignored (never sent); a warning is logged         |
+| `allowInsecureBaseUrl` | `false`                     | permit a plain-http `baseUrl` (loopback included)                |
 | `clock`, `env`         | real clock, real environment | injectable, for tests                                           |
 
 | variable                    | what it sets                                                        |
 | --------------------------- | ------------------------------------------------------------------- |
 | `OBLODAI_PUBLIC_ID`         | the API key's public id                                             |
 | `OBLODAI_SECRET`            | the API key's secret                                                |
-| `OBLODAI_ADMIN_TOKEN`       | admin token for the provisioning routes of a self-hosted gateway    |
+| `OBLODAI_ADMIN_TOKEN`       | deprecated and ignored (never sent)                                 |
 | `OBLODAI_BASE_URL`          | API origin, default `https://api.oblodai.com`; a path prefix is kept |
 | `OBLODAI_LOG`               | `debug`\|`info`\|`warn`\|`error` — logs to STDERR                    |
-| `OBLODAI_ALLOW_INSECURE`    | `1` permits a plain-http `baseUrl` that is not loopback             |
+| `OBLODAI_ALLOW_INSECURE`    | `1` permits a plain-http `baseUrl` (loopback included)              |
 
 An empty value counts as unset. Explicit constructor arguments always win over the environment, and
 `env: []` in the constructor ignores it entirely (used by the test suite).
 
-**Secrets never reach a log.** Credentials and the admin token keep their value off the object
-itself, so `print_r`/`var_dump`/`json_encode`/`serialize` of the client, its config or its transport
+**Secrets never reach a log.** Credentials keep their value off the object itself, so `print_r`/`var_dump`/`json_encode`/`serialize` of the client, its config or its transport
 show `[redacted]`. The models that carry a one-time secret (a webhook `secret`, a payout link's
 `claim_token`, `claim_url` and `passcode`) mask it in `json_encode`, `var_dump` and `serialize`
 while the property stays readable and `toArray()` returns it as is — but `print_r`/`var_export`
 read public properties directly, so do not `print_r` such a model. Whatever logger you inject is
-wrapped, so redaction happens before the SDK hands anything over.
+wrapped, so redaction happens before the SDK hands anything over. Every parameter that carries a
+secret is marked `#[\SensitiveParameter]`, so exception traces (and the error trackers that read
+them) show `SensitiveParameterValue` instead. Hooks and error messages see claim tokens in the path
+and signed-link `sig`/`exp` masked, and every credential header redacted.
 
 ### HTTP stack
 
@@ -508,10 +513,10 @@ three itself.
 
 ### Self-hosted or local gateway
 
-`baseUrl: 'http://localhost:8093'` works out of the box; any other plain-http host needs
-`allowInsecureBaseUrl: true` (or `OBLODAI_ALLOW_INSECURE=1`). A path prefix in `baseUrl` is kept.
-The provisioning route `sandbox->onboardStore($merchantId)` needs the gateway's `adminToken:` (or
-`OBLODAI_ADMIN_TOKEN`), which is sent as `X-Admin-Token` on that route only.
+A plain-http `baseUrl` — `http://localhost:8093` included — needs `allowInsecureBaseUrl: true` (or
+`OBLODAI_ALLOW_INSECURE=1`). A path prefix in `baseUrl` is kept. The operator-only route
+`sandbox->onboardStore($merchantId)` is not supported by the SDK (the core accepts it over the
+operator channel only): it throws `sdk.operator_channel_unsupported` before any request.
 
 ## Generated code
 

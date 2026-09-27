@@ -128,7 +128,7 @@ final class Envelope
         if ($v === '') {
             return null;
         }
-        if (preg_match('/^[0-9]+$/', $v) === 1) {
+        if (preg_match('/^[0-9]+\z/', $v) === 1) {
             return ApiException::retryAfterSeconds($v);
         }
         $at = Util::parseHttpDate($v);

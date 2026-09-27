@@ -21,12 +21,11 @@ use Oblodai\Generated\Signing;
  *   HEADER_TIMESTAMP: <unix seconds>
  *   HEADER_SIGNATURE: hex(HMAC-SHA256(secret, canonical)) — {@see Signer::signWebhook()}
  *   HEADER_SIGNATURE_PREV: same, with the previous secret — only during a rotation overlap
- *   HEADER_EVENT: the event name ({@see Facts::WEBHOOK_EVENTS}: `invoice.paid`, `payout.sent`, …)
- *   HEADER_ID: stable per delivery (identical across retries of THAT delivery)
- *   HEADER_EVENT_ID: stable per STATE — the same for a resend of a state you already handled,
- *     different as soon as the state differs; this is the idempotency key to keep
- *   HEADER_EVENT_TIME: unix seconds when the state change committed (order events by it)
- *   HEADER_TEST: "true" on a rehearsal delivery (`webhooks.test`, sandbox) — see `Delivery::$isTest`
+ *   HEADER_EVENT, HEADER_ID, HEADER_EVENT_ID, HEADER_EVENT_TIME, HEADER_TEST: advisory and NOT
+ *     signed — reported under {@see Delivery::$unverified} only
+ *
+ * Deduplicate on {@see Delivery::$eventKey} (signed body), order by the body's `sequence`
+ * (signed), and ignore deliveries whose signed body says `test: true` ({@see Delivery::$isTest}).
  *
  * Always verify over the RAW request bytes (`file_get_contents('php://input')`); a re-serialized
  * parse will not match.
@@ -90,7 +89,9 @@ final class Verifier
     public static function verify(
         string $rawBody,
         array $headers,
+        #[\SensitiveParameter]
         string $secret,
+        #[\SensitiveParameter]
         ?string $previousSecret = null,
         int $toleranceSec = self::DEFAULT_TOLERANCE_SECONDS,
         ?int $now = null,
@@ -128,7 +129,7 @@ final class Verifier
             );
         }
         $tsRaw = trim($tsRaw);
-        if (preg_match('/^-?\d+$/', $tsRaw) !== 1) {
+        if (preg_match('/^-?\d+\z/', $tsRaw) !== 1) {
             throw new SignatureException(
                 SignatureException::BAD_SIGNATURE,
                 'timestamp header is not an integer'
@@ -178,13 +179,37 @@ final class Verifier
 
         return new Delivery(
             event: $event,
-            id: Util::header($headers, self::HEADER_ID),
-            eventId: Util::header($headers, self::HEADER_EVENT_ID),
-            eventType: Util::header($headers, self::HEADER_EVENT),
-            eventTime: $eventTime !== null && preg_match('/^\d+$/', trim($eventTime)) === 1 ? (int) trim($eventTime) : null,
+            eventKey: self::eventKey($event),
             sentAt: $ts,
-            isTest: strtolower(trim((string) Util::header($headers, self::HEADER_TEST))) === 'true' || self::isTestEvent($event),
+            isTest: self::isTestEvent($event),
+            unverified: new UnverifiedHeaders(
+                deliveryId: Util::header($headers, self::HEADER_ID),
+                eventId: Util::header($headers, self::HEADER_EVENT_ID),
+                eventType: Util::header($headers, self::HEADER_EVENT),
+                eventTime: $eventTime !== null && preg_match('/^\d+\z/', trim($eventTime)) === 1 ? (int) trim($eventTime) : null,
+                test: strtolower(trim((string) Util::header($headers, self::HEADER_TEST))) === 'true',
+            ),
         );
+    }
+
+    /**
+     * The deduplication key of a delivery, from the signed body only: `<type>:<objectId>:<sequence>`
+     * (`payment:3c4e…:6`). Every retry and resend of one state carries the same key; the next state
+     * of the object carries a higher `sequence` and so a new key. Null when the body has no object
+     * id ({@see Verifier::objectId()}) or no integer `sequence`.
+     *
+     * @param array<string, mixed> $event
+     */
+    public static function eventKey(array $event): ?string
+    {
+        $id = self::objectId($event);
+        $type = $event['type'] ?? null;
+        $sequence = $event['sequence'] ?? null;
+        if ($id === null || !is_string($type) || !is_int($sequence)) {
+            return null;
+        }
+
+        return sprintf('%s:%s:%d', $type, $id, $sequence);
     }
 
     /**
@@ -199,7 +224,7 @@ final class Verifier
         }
         $trimmed = strtolower(trim($value));
 
-        return preg_match('/^[0-9a-f]{2,}$/', $trimmed) === 1 ? $trimmed : null;
+        return preg_match('/^[0-9a-f]{2,}\z/', $trimmed) === 1 ? $trimmed : null;
     }
 
     /**
@@ -276,8 +301,9 @@ final class Verifier
     }
 
     /**
-     * True for a rehearsal delivery (`webhooks->sendTest*`, sandbox). Such a body is signed like a
-     * live one, so a handler must branch on it and never act on it as if money moved.
+     * True for a rehearsal delivery (signed body `test: true`: `webhooks->sendTest*`, sandbox). Such
+     * a body is signed like a live one, so a handler must branch on it and never act on it as if
+     * money moved.
      *
      * @param array<string, mixed> $event
      */

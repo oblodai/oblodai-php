@@ -16,6 +16,7 @@
 /names.lock         export-ignore
 /names.2.0.txt       export-ignore
 /composer.lock      export-ignore
+/contract           export-ignore
 /phpstan.neon       export-ignore
 /phpunit.xml        export-ignore
 /scripts            export-ignore

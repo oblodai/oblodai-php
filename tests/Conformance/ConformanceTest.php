@@ -105,7 +105,7 @@ final class ConformanceTest extends TestCase
             || !is_array($src) || !is_string($src['spec'] ?? null)) {
             throw new RuntimeException(sprintf('%s: no header_names', $name));
         }
-        $names = self::resolve(Backend::json(Backend::conformance() . '/' . $src['spec']), $at['pointer']);
+        $names = self::resolve(Backend::suiteSpec($src['spec']), $at['pointer']);
         if (!is_array($names) || count($names) !== count($at['roles'])) {
             throw new RuntimeException(sprintf('%s: %s does not match the roles', $name, $at['pointer']));
         }
@@ -134,7 +134,7 @@ final class ConformanceTest extends TestCase
         if (!is_string($pointer) || !is_array($src) || !is_string($src['spec'] ?? null)) {
             throw new RuntimeException(sprintf('%s: no header_names.test_pointer', $name));
         }
-        $header = self::resolve(Backend::json(Backend::conformance() . '/' . $src['spec']), $pointer);
+        $header = self::resolve(Backend::suiteSpec($src['spec']), $pointer);
         if (!is_string($header) || $header === '') {
             throw new RuntimeException(sprintf('%s: no rehearsal header name at %s', $name, $pointer));
         }
@@ -170,7 +170,7 @@ final class ConformanceTest extends TestCase
         if (!is_array($src) || !is_string($src['spec'] ?? null) || !is_string($src['pointer'] ?? null)) {
             throw new RuntimeException('conformance suite without a source');
         }
-        $spec = Backend::json(Backend::conformance() . '/' . $src['spec']);
+        $spec = Backend::suiteSpec($src['spec']);
         $cur = self::resolve($spec, $src['pointer']);
         /** @var array<string, mixed> $signing */
         $signing = $spec['x-oblodai-signing'];
@@ -428,7 +428,11 @@ final class ConformanceTest extends TestCase
             $sent[self::testHeader('webhook_delivery')] = 'true';
         }
         $got = Verifier::verify(self::str($delivery, 'payload'), $sent, $secret, now: self::int($delivery, 'ts'));
-        self::assertSame($rehearsal, $got->isTest, 'isTest (the rehearsal header of the spec)');
+        // The rehearsal header is not signed: it is reported under `unverified` only, and `isTest`
+        // follows the signed body's `test` (none of the spec's delivery bodies carry it).
+        self::assertSame($rehearsal, $got->unverified->test, 'unverified->test (the rehearsal header of the spec)');
+        $payload = json_decode(self::str($delivery, 'payload'), true);
+        self::assertSame(is_array($payload) && ($payload['test'] ?? null) === true, $got->isTest, 'isTest comes from the signed body only');
         $kind = self::str($delivery, 'kind');
         self::assertTrue(Verifier::isKnownEvent($got->event), $kind);
         self::assertSame($kind, $got->event['type']);
@@ -441,10 +445,11 @@ final class ConformanceTest extends TestCase
             $header = $names[$role];
             $value = match ($field) {
                 '' => $headers[$header],
-                'id' => $got->id,
-                'event_id' => $got->eventId,
-                'event_type' => $got->eventType,
-                'event_time' => $got->eventTime === null ? null : (string) $got->eventTime,
+                // Every header but the timestamp is unsigned and lives under `unverified`.
+                'id' => $got->unverified->deliveryId,
+                'event_id' => $got->unverified->eventId,
+                'event_type' => $got->unverified->eventType,
+                'event_time' => $got->unverified->eventTime === null ? null : (string) $got->unverified->eventTime,
                 'sent_at' => (string) $got->sentAt,
                 default => throw new RuntimeException(sprintf('the delivery has no field %s for %s', $field, $header)),
             };

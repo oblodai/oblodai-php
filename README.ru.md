@@ -33,9 +33,9 @@ PHP ≥ 8.2 с `ext-json` и `ext-curl`, PSR-4 и `declare(strict_types=1)` ве
 генерируются из OpenAPI-контракта шлюза, поэтому SDK всегда говорит на том API, с которым выпущен.
 
 > **Базовый URL.** По умолчанию `https://api.oblodai.com`. При необходимости укажите свой `baseUrl` и
-> свои ключи при инициализации. Схема должна быть `https://`; обычный `http://` принимается только
-> для петлевого адреса (`http://127.0.0.1:8095`) или с явной опцией разрешения незащищённого
-> соединения (`allowInsecureBaseUrl: true` либо `OBLODAI_ALLOW_INSECURE=1`).
+> свои ключи при инициализации. Схема должна быть `https://`; обычный `http://` (и на петлевом адресе
+> тоже) принимается только с явной опцией разрешения незащищённого соединения
+> (`allowInsecureBaseUrl: true` либо `OBLODAI_ALLOW_INSECURE=1`), а `user:password@` отклоняется.
 
 ## Установка
 
@@ -58,7 +58,7 @@ PHP 8.2 или новее с `ext-json` и `ext-curl`. Composer подтянет
 | -------------------- | --------------------- | --------------------- | -------------------------------------------------------------------- |
 | **боевой API-ключ**  | `oblodai_<hex>`       | `oblodai_live_<hex>`  | весь API мерчанта: приём, выплаты, настройки, документы              |
 | **ключ песочницы**   | `test_oblodai_<hex>`  | `oblodai_test_<hex>`  | тот же API на песочнице                                              |
-| **админ-токен**      | —                     | —                     | подключение на **своём** шлюзе: `sandbox->onboardStore()`            |
+| операции оператора   | —                     | —                     | не поддерживаются: `sandbox->onboardStore()` бросает `sdk.operator_channel_unsupported` — используйте панель |
 
 Эта пара подписывает каждый маршрут, который шлюз закрывает ключом, — выбирать на каждый вызов
 нечего:
@@ -300,7 +300,7 @@ $delivery = Verifier::verify(
     secret: (string) getenv('OBLODAI_WEBHOOK_SECRET'),
 );
 
-if ($delivery->isTest) {                    // a rehearsal delivery — no money moved
+if ($delivery->isTest) {                    // a rehearsal (signed body `test: true`) — no money moved
     http_response_code(200);
 } else {
     $event = Verifier::model($delivery->event);   // PaymentWebhook | PayoutWebhook | WalletWebhook | ConversionWebhook | null
@@ -324,10 +324,13 @@ if ($delivery->isTest) {                    // a rehearsal delivery — no money
 Незнакомый этому SDK `type` события — тоже не отказ: `$delivery->event` хранит тело,
 `Verifier::model()` возвращает null, а `Verifier::isKnownEvent()` — false.
 
-`$delivery->eventId` (`X-Webhook-Event-Id`) — идентификатор СОСТОЯНИЯ, которое несёт доставка:
-одинаков для всех повторов и переотправок; храните обработанные и пропускайте повторы.
-`$delivery->id` (`X-Webhook-Id`) обозначает лишь одну доставку. `Verifier::isStale($delivery->event,
-$lastSequence)` отсеивает доставки не по порядку. После `webhooks->rotateSecret()` передавайте
+`$delivery->eventKey` (`type:objectId:sequence`, из подписанного тела) называет СОСТОЯНИЕ, которое
+несёт доставка: одинаков для всех повторов и переотправок; храните обработанные и пропускайте
+повторы. Заголовки `X-Webhook-Id` / `X-Webhook-Event-Id` / `X-Webhook-Event` / `X-Webhook-Test`
+**не подписаны** — при повторе в них может стоять что угодно, — поэтому они отдаются только в
+`$delivery->unverified` и никогда не должны решать, обрабатывать ли доставку; `$delivery->isTest`
+берётся только из подписанного тела, а репетицию всегда подтверждайте и пропускайте.
+`Verifier::isStale($delivery->event, $lastSequence)` отсеивает доставки не по порядку. После `webhooks->rotateSecret()` передавайте
 `previousSecret:` не меньше 26 часов. Пустой `secret` — это `ConfigException`, а не проверка против
 `HMAC('', body)`; окно свежести — 300 секунд (`toleranceSec: 0` его отключает) и проверяется после
 MAC, поэтому по нему нельзя прощупать ваши часы. См.
@@ -466,29 +469,32 @@ $oblodai = new Oblodai(
 | `logger`               | нет                         | структурный логгер; `OBLODAI_LOG` включает консольный            |
 | `headers`              | `[]`                        | дополнительные заголовки каждого запроса                         |
 | `hooks`                | нет                         | `new Hooks(onRequest: …, onResponse: …)`                         |
-| `adminToken`           | окружение                   | админ-токен своего шлюза (маршруты подключения)                  |
-| `allowInsecureBaseUrl` | `false`                     | разрешить `baseUrl` по http не на петлевом адресе                |
+| `adminToken`           | —                           | устарел и игнорируется (не отправляется); пишется warning        |
+| `allowInsecureBaseUrl` | `false`                     | разрешить `baseUrl` по http (и на петлевом адресе)               |
 | `clock`, `env`         | настоящие часы и окружение  | подменяются в тестах                                             |
 
 | переменная                  | что задаёт                                                          |
 | --------------------------- | ------------------------------------------------------------------- |
 | `OBLODAI_PUBLIC_ID`         | публичный id API-ключа                                              |
 | `OBLODAI_SECRET`            | секрет API-ключа                                                    |
-| `OBLODAI_ADMIN_TOKEN`       | админ-токен маршрутов подключения своего шлюза                      |
+| `OBLODAI_ADMIN_TOKEN`       | устарел и игнорируется (не отправляется)                            |
 | `OBLODAI_BASE_URL`          | адрес API, по умолчанию `https://api.oblodai.com`; префикс сохраняется |
 | `OBLODAI_LOG`               | `debug`\|`info`\|`warn`\|`error` — журнал в STDERR                 |
-| `OBLODAI_ALLOW_INSECURE`    | `1` разрешает `baseUrl` по http не на петлевом адресе               |
+| `OBLODAI_ALLOW_INSECURE`    | `1` разрешает `baseUrl` по http (и на петлевом адресе)              |
 
 Пустое значение считается незаданным. Явные аргументы конструктора всегда важнее окружения, а
 `env: []` в конструкторе его полностью игнорирует (так делают тесты).
 
-**Секреты не попадают в журнал.** Учётные данные и админ-токен не хранят значение на самом объекте,
+**Секреты не попадают в журнал.** Учётные данные не хранят значение на самом объекте,
 поэтому `print_r`/`var_dump`/`json_encode`/`serialize` клиента, его конфигурации и транспорта
 показывают `[redacted]`. Модели с одноразовым секретом (`secret` вебхука, `claim_token`, `claim_url`
 и `passcode` выплатной ссылки) маскируют его в `json_encode`, `var_dump` и `serialize`, при этом
 свойство читается, а `toArray()` возвращает его как есть — но `print_r`/`var_export` читают
 публичные свойства напрямую, поэтому такую модель не печатайте через `print_r`. Переданный вами
-логгер оборачивается, так что маскирование происходит до того, как SDK что-либо ему отдаст.
+логгер оборачивается, так что маскирование происходит до того, как SDK что-либо ему отдаст. Каждый
+параметр с секретом помечен `#[\SensitiveParameter]`, так что трассировки исключений (и трекеры
+ошибок, которые их читают) показывают `SensitiveParameterValue`. Хуки и сообщения об ошибках видят
+токены чеков в пути и `sig`/`exp` подписанных ссылок замаскированными, а заголовки с ключами — скрытыми.
 
 ### HTTP-стек
 
@@ -511,10 +517,10 @@ PSR-18 описывает лишь «отправь запрос — получ�
 
 ### Свой или локальный шлюз
 
-`baseUrl: 'http://localhost:8093'` работает сразу; любой другой http-адрес требует
-`allowInsecureBaseUrl: true` (или `OBLODAI_ALLOW_INSECURE=1`). Префикс пути в `baseUrl` сохраняется.
-Маршрут подключения `sandbox->onboardStore($merchantId)` требует `adminToken:` шлюза (или
-`OBLODAI_ADMIN_TOKEN`); он отправляется как `X-Admin-Token` только на этот маршрут.
+`baseUrl` по http — и `http://localhost:8093` тоже — требует `allowInsecureBaseUrl: true` (или
+`OBLODAI_ALLOW_INSECURE=1`). Префикс пути в `baseUrl` сохраняется. Маршрут оператора
+`sandbox->onboardStore($merchantId)` SDK не поддерживает (ядро принимает его только по каналу
+оператора): он бросает `sdk.operator_channel_unsupported` до любого запроса.
 
 ## Сгенерированный код
 

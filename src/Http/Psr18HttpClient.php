@@ -42,7 +42,7 @@ final class Psr18HttpClient implements HttpClient
     ) {
     }
 
-    public function send(HttpRequest $request, float $timeoutSeconds): HttpResponse
+    public function send(#[\SensitiveParameter] HttpRequest $request, float $timeoutSeconds): HttpResponse
     {
         $psr = $this->requestFactory->createRequest($request->method, $request->url);
         foreach ($request->headers as $name => $value) {
@@ -101,7 +101,7 @@ final class Psr18HttpClient implements HttpClient
                         'response body exceeds the %d-byte ceiling for %s %s and was not read',
                         $limit,
                         $request->method,
-                        $request->url
+                        $request->displayUrl
                     )
                 );
             }

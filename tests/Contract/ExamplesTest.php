@@ -64,6 +64,7 @@ final class ExamplesTest extends TestCase
             'OBLODAI_PUBLIC_ID' => 'test_oblodai_example',
             'OBLODAI_SECRET' => str_repeat('s', 32),
             'OBLODAI_BASE_URL' => self::$baseUrl,
+            'OBLODAI_ALLOW_INSECURE' => '1',
         ]);
 
         self::assertSame(0, $code, $script . " failed:\n" . $out . $err);
@@ -72,7 +73,7 @@ final class ExamplesTest extends TestCase
 
     public function testAnExampleWithoutKeysStopsWithOneLine(): void
     {
-        [$code, $out, $err] = MockGateway::run(['examples/accept-payment.php'], ['OBLODAI_BASE_URL' => self::$baseUrl]);
+        [$code, $out, $err] = MockGateway::run(['examples/accept-payment.php'], ['OBLODAI_BASE_URL' => self::$baseUrl, 'OBLODAI_ALLOW_INSECURE' => '1']);
 
         self::assertSame(1, $code);
         self::assertSame('', $out);
@@ -100,6 +101,18 @@ final class ExamplesTest extends TestCase
                 Signing::HEADER_WEBHOOK_TIMESTAMP => (string) $now, Signing::HEADER_WEBHOOK_SIGNATURE => Signer::signWebhook('whsec-example', $now, $alien),
             ]));
             self::assertSame([200, 'duplicate'], self::post($url, $body, $signed));
+            // A captured delivery replayed with a fresh (unsigned) event id header is still a duplicate.
+            self::assertSame([200, 'duplicate'], self::post($url, $body, [Signing::HEADER_WEBHOOK_EVENT_ID => 'e-forged'] + $signed));
+            // A rehearsal naming a real order, marked paid: signed, acknowledged, never fulfilled.
+            $paidRehearsal = (string) json_encode(Samples::of(PaymentWebhook::class, ['type' => 'payment', 'status' => 'paid', 'order_id' => 'o-8', 'uuid' => 'u-10', 'sequence' => 0, 'test' => true]));
+            self::assertSame([200, 'rehearsal - not applied'], self::post($url, $paidRehearsal, [
+                Signing::HEADER_WEBHOOK_TIMESTAMP => (string) $now, Signing::HEADER_WEBHOOK_SIGNATURE => Signer::signWebhook('whsec-example', $now, $paidRehearsal),
+            ]));
+            // The unsigned rehearsal header cannot make a live payment look like a test.
+            $live = (string) json_encode(Samples::of(PaymentWebhook::class, ['type' => 'payment', 'status' => 'paid', 'order_id' => 'o-11', 'uuid' => 'u-11']));
+            self::assertSame([200, 'ok: order o-11 paid with x x'], self::post($url, $live, [
+                Signing::HEADER_WEBHOOK_TIMESTAMP => (string) $now, Signing::HEADER_WEBHOOK_SIGNATURE => Signer::signWebhook('whsec-example', $now, $live), Signing::HEADER_WEBHOOK_TEST => 'true',
+            ]));
         } finally {
             MockGateway::stop($receiver);
             @unlink($log);

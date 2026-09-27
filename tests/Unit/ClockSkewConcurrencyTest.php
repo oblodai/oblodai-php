@@ -33,7 +33,7 @@ final class ClockSkewConcurrencyTest extends TestCase
     }
 
     /**
-     * A host whose clock is an hour off gets ONE correction, shared by every call in flight.
+     * A host whose clock is ten minutes off gets ONE correction, shared by every call in flight.
      *
      * Fibers make the interleaving real: each call suspends inside the HTTP client — exactly where a
      * real request waits on its socket — so all of them have signed with the old offset before any
@@ -42,7 +42,7 @@ final class ClockSkewConcurrencyTest extends TestCase
      */
     public function testConcurrentCallsConvergeOnOneClockCorrection(): void
     {
-        $skewSeconds = 3600;
+        $skewSeconds = 600;
         $serverNow = 1_800_000_000;
         $localNow = $serverNow - $skewSeconds;
         $clock = new Clock(static fn (): int => $localNow);

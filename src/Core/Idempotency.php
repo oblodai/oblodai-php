@@ -35,7 +35,7 @@ final class Idempotency
         }
         // Header values must be visible ASCII: the key is signed verbatim, so a stray control char
         // or surrounding whitespace would silently change the MAC on one side only.
-        if (preg_match('/^[\x21-\x7e]+$/', $key) !== 1) {
+        if (preg_match('/^[\x21-\x7e]+\z/', $key) !== 1) {
             throw self::invalid('idempotencyKey must be printable ASCII without spaces');
         }
     }

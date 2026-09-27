@@ -120,7 +120,7 @@ final class TransportSafetyTest extends TestCase
 
     public function testRevertsTheCorrectionWhenTheResignedAttemptIsStillRejected(): void
     {
-        $dateFar = gmdate('D, d M Y H:i:s', time() + 4000) . ' GMT';
+        $dateFar = gmdate('D, d M Y H:i:s', time() + 600) . ' GMT';
         $fake = new FakeHttpClient([
             FakeHttpClient::error(401, ['code' => 'merchant.bad_signature', 'retryable' => false], ['date' => $dateFar]),
             FakeHttpClient::error(401, ['code' => 'merchant.bad_signature', 'retryable' => false], ['date' => $dateFar]),

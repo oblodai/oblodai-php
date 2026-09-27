@@ -9,6 +9,7 @@ use Oblodai\Exception\ConfigException;
 use Oblodai\Generated\Facts;
 use Oblodai\Generated\Signing;
 use Oblodai\Http\HttpRequest;
+use Oblodai\Log\Redactor;
 
 /**
  * Builds the outgoing request — URL, headers, body — as a pure function of its inputs, so the
@@ -37,6 +38,7 @@ final class RequestBuilder
         Signing::HEADER_IDEMPOTENCY_KEY,
     ];
 
+    /** Never sent by the SDK; reserved so a caller header of that name is dropped. */
     public const HEADER_ADMIN_TOKEN = 'X-Admin-Token';
 
     /**
@@ -57,15 +59,17 @@ final class RequestBuilder
     public static function build(
         string $baseUrl,
         RouteSpec $route,
+        #[\SensitiveParameter]
         array $pathParams = [],
+        #[\SensitiveParameter]
         array $query = [],
         string $body = '',
+        #[\SensitiveParameter]
         ?Credentials $credentials = null,
         ?string $idempotencyKey = null,
         int $ts = 0,
         string $userAgent = '',
         array $extraHeaders = [],
-        ?string $adminToken = null,
         int $maxResponseBytes = HttpRequest::MAX_JSON_BYTES,
         ?string $requestId = null,
     ): HttpRequest {
@@ -87,13 +91,13 @@ final class RequestBuilder
         if ($idempotencyKey !== null && $idempotencyKey !== '') {
             $headers[Signing::HEADER_IDEMPOTENCY_KEY] = $idempotencyKey;
         }
-        // The admin token provisions merchants on a self-hosted gateway; it is meaningless — and a
-        // secret needlessly exposed — anywhere else, so it rides only on `onboard` routes.
-        if ($adminToken !== null && $adminToken !== '' && $route->auth === 'onboard') {
-            $headers[self::HEADER_ADMIN_TOKEN] = $adminToken;
+        if ($route->auth === 'onboard') {
+            throw new ConfigException(
+                ConfigException::OPERATOR_CHANNEL_UNSUPPORTED,
+                sprintf('%s %s: operator channel is not supported by the SDK; use the dashboard', $route->method, $route->path)
+            );
         }
-
-        if ($route->auth !== 'public' && $route->auth !== 'onboard') {
+        if ($route->auth !== 'public') {
             if ($credentials === null) {
                 throw new ConfigException(
                     ConfigException::MISSING_CREDENTIALS,
@@ -117,7 +121,14 @@ final class RequestBuilder
             );
         }
 
-        return new HttpRequest($route->method, $url, $headers, $hasBody ? $body : null, $maxResponseBytes);
+        return new HttpRequest(
+            $route->method,
+            $url,
+            $headers,
+            $hasBody ? $body : null,
+            $maxResponseBytes,
+            Redactor::url($url, $route->path),
+        );
     }
 
     /** Scheme and authority of the base URL (`https://host:port`). */
@@ -147,7 +158,7 @@ final class RequestBuilder
      *
      * @param array<string, string|int> $params
      */
-    public static function fillPath(string $template, array $params = []): string
+    public static function fillPath(string $template, #[\SensitiveParameter] array $params = []): string
     {
         return (string) preg_replace_callback(
             '/\{([a-zA-Z_]+)\}/',
@@ -161,7 +172,9 @@ final class RequestBuilder
                             'path parameter "%s" for %s must be a non-empty single segment (got %s)',
                             $name,
                             $template,
-                            json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                            preg_match('/^(token|code|passcode)\z/i', $name) === 1
+                                ? Redactor::REDACTED
+                                : json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
                         ),
                         $name
                     );
@@ -227,14 +240,14 @@ final class RequestBuilder
             if (self::reserved($name)) {
                 continue;
             }
-            if (preg_match('/^[\x21-\x7e]+$/', $name) !== 1) {
+            if (preg_match('/^[\x21-\x7e]+\z/', $name) !== 1) {
                 throw new ConfigException(
                     ConfigException::BAD_HEADER,
                     sprintf('header name %s is not a valid HTTP field name', json_encode($name)),
                     $name
                 );
             }
-            if (preg_match('/^[\x20-\x7e\t]*$/', $value) !== 1) {
+            if (preg_match('/^[\x20-\x7e\t]*\z/', $value) !== 1) {
                 throw new ConfigException(
                     ConfigException::BAD_HEADER,
                     sprintf(
@@ -275,7 +288,7 @@ final class RequestBuilder
         self::assertNoStrayFloats($body, '');
 
         try {
-            return json_encode($body, self::JSON_FLAGS);
+            $json = json_encode($body, self::JSON_FLAGS);
         } catch (JsonException $e) {
             throw new ConfigException(
                 ConfigException::BAD_CONFIG,
@@ -283,6 +296,17 @@ final class RequestBuilder
                 'body'
             );
         }
+        // Refused here, before it is signed or sent: the core reads at most MAX_BODY bytes and would
+        // answer a longer body with a confusing parse error.
+        if (strlen($json) > Signing::MAX_BODY) {
+            throw new ConfigException(
+                ConfigException::BODY_TOO_LARGE,
+                sprintf('request body is %d bytes; the gateway reads at most %d', strlen($json), Signing::MAX_BODY),
+                'body'
+            );
+        }
+
+        return $json;
     }
 
     /**

@@ -6,6 +6,50 @@ All notable changes to this package are documented here. The format follows
 
 ## Unreleased
 
+### Security
+
+- Every parameter that carries a secret is marked `#[\SensitiveParameter]` (the API secret, the
+  webhook secret and previous secret, the deprecated admin token, `Config::resolve()` options,
+  `Credentials`, `Secret`, `Signer`, the signed `HttpRequest` in every `HttpClient::send()`, path
+  parameters and queries): exception traces — which PHP records by default and error trackers
+  read — no longer carry them. A forged webhook no longer copies the endpoint secret into the
+  error tracker.
+- **Breaking — webhooks:** `Delivery` no longer reports the unsigned delivery headers as if they
+  were verified. The new `$delivery->eventKey` (`type:objectId:sequence`, also
+  `Verifier::eventKey($event)`) is built from the signed body and is the deduplication key;
+  `$delivery->isTest` now comes from the signed body's `test` only. `id`, `eventId`, `eventType` and
+  `eventTime` moved to `$delivery->unverified` (`deliveryId`, `eventId`, `eventType`, `eventTime`,
+  and `test` for the `X-Webhook-Test` header). The example receiver ignores rehearsals first and
+  deduplicates on `eventKey`.
+- Pagination no longer stops on a page shorter than the requested limit: the core clamps an
+  out-of-range limit to 25, so `limit: 200` used to return 25 records and report success. Walking
+  stops on an empty page or once the offset reaches `paginate.total`.
+- Validation regexes are anchored with `\z`: `Money` no longer accepts `"25\n"` (which made
+  `compare("9\n", "10")` say 9 > 10), and a request id, header name/value or idempotency key with a
+  trailing line feed is refused instead of cutting the request's header section short.
+- **Breaking:** the SDK never sends an admin token. `adminToken:` / `OBLODAI_ADMIN_TOKEN` are
+  deprecated and ignored (a warning is logged when a logger is configured), and the operator-only
+  `sandbox->onboardStore()` throws `sdk.operator_channel_unsupported` ("operator channel is not
+  supported by the SDK; use the dashboard") before any request.
+- Clock-skew correction: a `Date` header more than 900 s away is ignored, and the offset is
+  adopted by the client only after the re-signed attempt succeeds (2xx).
+- Claim/AML tokens in the path and signed-link `sig`/`exp`/`token` values are masked in hook
+  `RequestInfo::$url` and in response-too-large / unexpected-redirect messages; `Authorization`,
+  `Proxy-Authorization`, `X-Api-Key`, `X-Claim-Passcode` and `Cookie` headers are redacted for hooks
+  like the signature; a CLI `device_code` is masked like the other one-time secrets.
+- `CurlHttpClient` no longer prints its cURL options (a proxy password) in `var_dump`, `print_r`,
+  `var_export` or `serialize`.
+- **Breaking:** a base URL with `user:password@` is refused, and plain `http://` needs
+  `allowInsecureBaseUrl: true` (or `OBLODAI_ALLOW_INSECURE=1`) — loopback included.
+- A request body larger than the contract's `MAX_BODY` is refused with `sdk.body_too_large` before
+  it is signed or sent.
+- `FileResult::$filename` is reduced to a safe base name; `saveTo()` writes with mode 0600 and never
+  replaces an existing file unless `overwrite: true` (`sdk.file_exists`).
+- CI and release: third-party actions pinned to commit SHAs, `permissions: contents: read`; the
+  conformance suite runs in CI against a vendored contract snapshot (`contract/`, checked against
+  the backend by `make ci`); the release workflow runs every test tier before creating the GitHub
+  release. `.env*` is git-ignored.
+
 ### Added
 
 - `$client->cliLogin` — `start`, `poll`, `logout`: the browser login of the `oblodai` CLI (OAuth

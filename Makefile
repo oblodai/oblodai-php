@@ -2,7 +2,8 @@
 # The PHP tools run in php:8.3-cli, composer in composer:2; caches live in the git-ignored .cache/.
 # php-cs-fixer runs on the minimum PHP of composer.json (8.2): the rules then cover exactly the
 # syntax every supported PHP accepts, and the fixer supports that PHP without an override.
-# The drift check runs the backend's generator with the host's Go.
+# The drift check runs the backend's generator with the host's Go, and checks the vendored contract
+# snapshot (contract/: the conformance suite and the spec's signing block) that CI tests against.
 #
 #   make ci                                   # vendor, drift, lint, stan, test, package
 #   make ci OBLODAI_BACKEND=/path/to/backend  # the backend checkout (default ../oblodai-backend)
@@ -17,7 +18,7 @@ PHP := $(DOCKER) -v $(OBLODAI_BACKEND):/backend:ro -e OBLODAI_BACKEND=/backend p
 PHP_MIN := $(DOCKER) php:8.2-cli
 COMPOSER := $(DOCKER) -e COMPOSER_HOME=/src/.cache/composer composer:2
 
-.PHONY: ci backend vendor drift lint stan test package live
+.PHONY: ci backend vendor drift contract lint stan test package live
 
 ci: backend vendor drift lint stan test package
 	@echo "all gates green"
@@ -29,8 +30,12 @@ backend:
 vendor:
 	$(COMPOSER) composer install --no-interaction --no-progress --quiet
 
-drift:         ## src/Generated and names.lock match the backend's contract
+drift:         ## src/Generated, names.lock and contract/ match the backend's contract
 	sh scripts/check-generated.sh --require
+	$(PHP) php scripts/sync-contract.php --check
+
+contract:      ## refresh the vendored contract snapshot from the backend
+	$(PHP) php scripts/sync-contract.php
 
 lint:
 	$(PHP_MIN) vendor/bin/php-cs-fixer fix --dry-run --diff --using-cache=no --show-progress=none

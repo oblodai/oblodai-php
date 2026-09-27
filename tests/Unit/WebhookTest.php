@@ -39,11 +39,14 @@ final class WebhookTest extends TestCase
 
         self::assertInstanceOf($class, $model);
         self::assertTrue(Verifier::isKnownEvent($delivery->event));
-        self::assertSame('d-1', $delivery->id);
-        self::assertSame('e-1', $delivery->eventId);
-        self::assertSame($type . '.x', $delivery->eventType);
-        self::assertSame(1755600001, $delivery->eventTime);
+        // The id/event headers are not signed: reported under `unverified` only.
+        self::assertSame('d-1', $delivery->unverified->deliveryId);
+        self::assertSame('e-1', $delivery->unverified->eventId);
+        self::assertSame($type . '.x', $delivery->unverified->eventType);
+        self::assertSame(1755600001, $delivery->unverified->eventTime);
         self::assertSame(self::TS, $delivery->sentAt);
+        // The dedupe key comes from the signed body.
+        self::assertSame(sprintf('%s:%s:3', $type, Verifier::objectId($delivery->event)), $delivery->eventKey);
     }
 
     /** @return iterable<string, array{string, string}> */
@@ -194,7 +197,7 @@ final class WebhookTest extends TestCase
         ]);
     }
 
-    public function testFlagsRehearsalDeliveriesFromEitherTheBodyOrTheHeader(): void
+    public function testFlagsRehearsalDeliveriesFromTheSignedBodyOnly(): void
     {
         // A live delivery: neither the body flag nor the header.
         $live = Verifier::verify(self::body(), self::headers(), 'whsec', now: self::TS);
@@ -212,10 +215,38 @@ final class WebhookTest extends TestCase
         self::assertTrue($rehearsal->isTest);
         self::assertTrue(Verifier::isTestEvent($rehearsal->event));
 
-        // The header alone is enough, even if a body somehow omits the flag.
+        // The header is NOT signed: added to a captured live delivery it must not get a real payment
+        // dropped as a rehearsal. It is reported under `unverified` only.
         unset($headers[strtolower(Signing::HEADER_WEBHOOK_SIGNATURE)]);
         $headers[strtolower(Signing::HEADER_WEBHOOK_SIGNATURE)] = Signer::signWebhook('whsec', self::TS, self::body());
-        self::assertTrue(Verifier::verify(self::body(), $headers, 'whsec', now: self::TS)->isTest);
+        $forged = Verifier::verify(self::body(), $headers, 'whsec', now: self::TS);
+        self::assertFalse($forged->isTest);
+        self::assertTrue($forged->unverified->test);
+
+        // …and a signed test body stays a test whatever the header says.
+        $headers = [
+            Signing::HEADER_WEBHOOK_TIMESTAMP => (string) self::TS,
+            Signing::HEADER_WEBHOOK_SIGNATURE => Signer::signWebhook('whsec', self::TS, $raw),
+            Signing::HEADER_WEBHOOK_TEST => 'false',
+        ];
+        self::assertTrue(Verifier::verify($raw, $headers, 'whsec', now: self::TS)->isTest);
+    }
+
+    public function testTheDedupeKeyIgnoresAReplayedEventIdHeader(): void
+    {
+        $raw = (string) json_encode(Samples::of(Verifier::EVENT_MODELS['payment'], ['type' => 'payment', 'uuid' => 'u-1', 'sequence' => 4]));
+        $headers = static fn (string $eventId): array => [
+            Signing::HEADER_WEBHOOK_TIMESTAMP => (string) self::TS,
+            Signing::HEADER_WEBHOOK_SIGNATURE => Signer::signWebhook('whsec', self::TS, $raw),
+            Signing::HEADER_WEBHOOK_EVENT_ID => $eventId,
+        ];
+        $original = Verifier::verify($raw, $headers('e-1'), 'whsec', now: self::TS);
+        $replayed = Verifier::verify($raw, $headers('e-forged'), 'whsec', now: self::TS);
+
+        self::assertSame('payment:u-1:4', $original->eventKey);
+        self::assertSame($original->eventKey, $replayed->eventKey);
+        self::assertNull(Verifier::eventKey(['type' => 'payment', 'uuid' => 'u-1']), 'no sequence, no key');
+        self::assertNull(Verifier::eventKey(['type' => 'teleport', 'uuid' => 'u-1', 'sequence' => 1]), 'unknown kind');
     }
 
     public function testObjectIdIsTheFieldTheContractNamesForTheKind(): void

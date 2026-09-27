@@ -8,8 +8,10 @@ namespace Oblodai\Core;
  * Injectable clock for signing. The core rejects timestamps further from its own time than
  * {@see \Oblodai\Generated\Signing::SKEW_SECONDS}; a host with a drifting clock would get
  * `merchant.bad_signature` on every call. The transport learns the server's time from the `Date`
- * header of a signature-failure response, re-signs once, and keeps the offset only if that
- * re-signed attempt got past authentication.
+ * header of a signature-failure response, re-signs once with it, and adopts the offset for the
+ * whole client only when that re-signed attempt succeeds (2xx). A `Date` further off than
+ * {@see Clock::MAX_PLAUSIBLE_OFFSET_SECONDS} is ignored: one response — from a broken proxy or a
+ * hostile peer — never moves the signing clock further.
  *
  * The offset is shared by every call made through one client, and calls can interleave (Fibers,
  * Swoole, ReactPHP — anywhere a request can suspend at its socket). So it is never written blindly:
@@ -19,8 +21,8 @@ namespace Oblodai\Core;
  */
 class Clock
 {
-    /** Offsets beyond this are implausible drift and are ignored (a broken proxy `Date`). */
-    public const MAX_PLAUSIBLE_OFFSET_SECONDS = 24 * 3600;
+    /** Offsets beyond this (±15 min) are implausible drift and are ignored (a broken proxy `Date`). */
+    public const MAX_PLAUSIBLE_OFFSET_SECONDS = 900;
 
     private int $offsetSec = 0;
 
@@ -47,6 +49,12 @@ class Clock
         $offset = $this->offsetSec;
 
         return [$this->base() + $offset, $offset];
+    }
+
+    /** Current unix time shifted by a candidate offset instead of the adopted one. */
+    public function nowWith(int $offsetSec): int
+    {
+        return $this->base() + $offsetSec;
     }
 
     /** Server-minus-local offset currently applied, seconds. */

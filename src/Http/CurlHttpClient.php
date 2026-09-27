@@ -31,7 +31,7 @@ final class CurlHttpClient implements HttpClient
     ) {
     }
 
-    public function send(HttpRequest $request, float $timeoutSeconds): HttpResponse
+    public function send(#[\SensitiveParameter] HttpRequest $request, float $timeoutSeconds): HttpResponse
     {
         $reuse = !$this->busy;
         if ($reuse) {
@@ -57,7 +57,7 @@ final class CurlHttpClient implements HttpClient
         }
     }
 
-    private function exchange(CurlHandle $handle, HttpRequest $request, float $timeoutSeconds): HttpResponse
+    private function exchange(CurlHandle $handle, #[\SensitiveParameter] HttpRequest $request, float $timeoutSeconds): HttpResponse
     {
         curl_reset($handle);
 
@@ -135,7 +135,7 @@ final class CurlHttpClient implements HttpClient
                     'response body exceeds the %d-byte ceiling for %s %s and was not read',
                     $limit,
                     $request->method,
-                    $request->url
+                    $request->displayUrl
                 )
             );
         }
@@ -159,6 +159,34 @@ final class CurlHttpClient implements HttpClient
             $body,
             (string) curl_getinfo($handle, CURLINFO_EFFECTIVE_URL)
         );
+    }
+
+    /**
+     * The caller's cURL options can hold a proxy password or a client-key passphrase: dumps and
+     * serializations list only which options are set, never their values.
+     *
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array
+    {
+        return [
+            'curlOptions' => array_fill_keys(array_keys($this->curlOptions), '[redacted]'),
+            'connectTimeoutSeconds' => $this->connectTimeoutSeconds,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function __serialize(): array
+    {
+        return $this->__debugInfo();
+    }
+
+    /** @param array<string, mixed> $data */
+    public function __unserialize(array $data): void
+    {
+        // A restored client has no caller options (they were never serialized) and a fresh handle.
+        $this->curlOptions = [];
+        $this->connectTimeoutSeconds = is_float($data['connectTimeoutSeconds'] ?? null) ? $data['connectTimeoutSeconds'] : 10.0;
     }
 
     public function __destruct()
