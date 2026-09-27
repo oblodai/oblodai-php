@@ -22,10 +22,8 @@ final class HttpRequest
     /** @param array<string, string> $headers */
     public function __construct(
         public readonly string $method,
-        #[\SensitiveParameter]
-        public readonly string $url,
-        #[\SensitiveParameter]
-        public readonly array $headers = [],
+        #[\SensitiveParameter] public readonly string $url,
+        #[\SensitiveParameter] public readonly array $headers = [],
         public readonly ?string $body = null,
         /** Hard ceiling on the response body an implementation may buffer, bytes. */
         public readonly int $maxResponseBytes = self::MAX_JSON_BYTES,

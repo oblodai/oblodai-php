@@ -30,8 +30,7 @@ final class Config implements JsonSerializable
         public readonly string $baseUrl,
         public readonly ?Credentials $credentials = null,
         public readonly ?Logger $logger = null,
-        #[\SensitiveParameter]
-        Secret|string|null $adminToken = null,
+        #[\SensitiveParameter] Secret|string|null $adminToken = null,
     ) {
         unset($adminToken); // deprecated and ignored: never stored, never sent
     }

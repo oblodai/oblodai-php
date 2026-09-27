@@ -145,10 +145,8 @@ final class Transport
     public function call(
         RouteSpec $route,
         ?array $body = null,
-        #[\SensitiveParameter]
-        array $query = [],
-        #[\SensitiveParameter]
-        array $pathParams = [],
+        #[\SensitiveParameter] array $query = [],
+        #[\SensitiveParameter] array $pathParams = [],
         ?RequestOptions $options = null,
     ): mixed {
         return $this->callRaw($route, $body, $query, $pathParams, $options)->parse();
@@ -167,10 +165,8 @@ final class Transport
     public function callRaw(
         RouteSpec $route,
         ?array $body = null,
-        #[\SensitiveParameter]
-        array $query = [],
-        #[\SensitiveParameter]
-        array $pathParams = [],
+        #[\SensitiveParameter] array $query = [],
+        #[\SensitiveParameter] array $pathParams = [],
         ?RequestOptions $options = null,
     ): RawResponse {
         $options ??= new RequestOptions();
@@ -253,10 +249,8 @@ final class Transport
     private function execute(
         RouteSpec $route,
         ?array $body,
-        #[\SensitiveParameter]
-        array $query,
-        #[\SensitiveParameter]
-        array $pathParams,
+        #[\SensitiveParameter] array $query,
+        #[\SensitiveParameter] array $pathParams,
         RequestOptions $options,
         string $requestId,
     ): HttpResponse {

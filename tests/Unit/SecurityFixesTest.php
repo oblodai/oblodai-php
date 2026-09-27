@@ -11,11 +11,13 @@ use Oblodai\Core\RequestInfo;
 use Oblodai\Core\RequestOptions;
 use Oblodai\Core\Retry;
 use Oblodai\Exception\ConfigException;
+use Oblodai\Exception\ContractException;
 use Oblodai\Exception\OblodaiException;
 use Oblodai\Exception\SignatureException;
 use Oblodai\Exception\TransportException;
 use Oblodai\Generated\Model\PaymentView;
 use Oblodai\Generated\Signing;
+use Oblodai\Generated\Wire;
 use Oblodai\Helper\Money;
 use Oblodai\Http\CurlHttpClient;
 use Oblodai\Http\HttpRequest;
@@ -148,10 +150,10 @@ final class SecurityFixesTest extends TestCase
             self::fail('expected a ConfigException');
         } catch (ConfigException $e) {
             self::assertSame(ConfigException::BAD_PATH_PARAM, $e->errorCode);
-            // The message masks the token; the SDK's own frames hide it too (the generated method's
-            // own `$token` argument is outside the hand-written core).
+            // The message masks the token, and no frame carries it: the generated method marks its
+            // secret path parameter #[\SensitiveParameter] like the hand-written core does.
             self::assertStringNotContainsString('CLAIMTOKEN_secret', $e->getMessage());
-            self::assertTraceHasNo($e, self::SECRET);
+            self::assertTraceHasNo($e, self::SECRET, 'CLAIMTOKEN_secret');
         }
     }
 
@@ -178,6 +180,13 @@ final class SecurityFixesTest extends TestCase
     }
 
     // --- M4 / L1 / R9: validation regexes are anchored with \z -------------------------------
+
+    public function testAWireIntegerRefusesATrailingNewline(): void
+    {
+        self::assertSame(42, Wire::int('42'));
+        $this->expectException(ContractException::class);
+        Wire::int("42\n");
+    }
 
     public function testMoneyRefusesATrailingNewline(): void
     {

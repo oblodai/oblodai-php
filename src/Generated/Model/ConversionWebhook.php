@@ -43,6 +43,7 @@ final class ConversionWebhook extends Model
         'created_at',
         'document_url',
         'event_at',
+        'event_id',
         'fee_percent',
         'from',
         'id',
@@ -114,6 +115,15 @@ final class ConversionWebhook extends Model
         /** Event kind: payment | payout | wallet | conversion — which body arrived. */
         public readonly string $type,
         /**
+         * The id of the object state this body carries — signed, and the key to deduplicate on: the
+         * same for every retry and every resend (/v1/payment/resend) of the same state, different
+         * as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to
+         * the X-Webhook-Event-Id header, which is not signed — prefer this field. Always sent by
+         * current cores; a delivery from an older core may lack it — then deduplicate on
+         * type:id:sequence from the body.
+         */
+        public readonly ?string $event_id = null,
+        /**
          * How much was credited, in the to currency. Present only for completed; refunded has no
          * such field.
          */
@@ -121,7 +131,8 @@ final class ConversionWebhook extends Model
         /**
          * Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always
          * true — inside the signature. A live event never carries this field: your handler must
-         * ignore a body with test: true even if the signature is valid.
+         * ignore a body with test: true even if the signature is valid. This field, not the
+         * unsigned X-Webhook-Test header, is what marks a rehearsal.
          */
         public readonly ?bool $test = null,
         /** Fields newer than this SDK, exactly as received. */
@@ -151,6 +162,7 @@ final class ConversionWebhook extends Model
             status: Wire::enum(ConversionWebhookStatus::class, Wire::req($data, 'status')),
             to: Wire::str(Wire::req($data, 'to')),
             type: Wire::str(Wire::req($data, 'type')),
+            event_id: isset($data['event_id']) ? Wire::str($data['event_id']) : null,
             received: isset($data['received']) ? Wire::decimal($data['received']) : null,
             test: isset($data['test']) ? Wire::bool($data['test']) : null,
             extra: Wire::extra($data, self::FIELDS),
@@ -176,6 +188,9 @@ final class ConversionWebhook extends Model
         $out['status'] = Wire::dump($this->status);
         $out['to'] = Wire::dump($this->to);
         $out['type'] = Wire::dump($this->type);
+        if ($this->event_id !== null) {
+            $out['event_id'] = Wire::dump($this->event_id);
+        }
         if ($this->received !== null) {
             $out['received'] = Wire::dump($this->received);
         }

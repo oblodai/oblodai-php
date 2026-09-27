@@ -10,8 +10,9 @@ declare(strict_types=1);
  * Four rules:
  *  1. verify over the RAW request bytes — a re-encoded parse will not match the signature;
  *  2. ignore rehearsals (`$delivery->isTest`, the signed body's `test: true`) before anything else;
- *  3. deduplicate on `$delivery->eventKey` (type:objectId:sequence from the SIGNED body), stable
- *     per state — never on the X-Webhook-* id headers, which are not signed;
+ *  3. deduplicate on `$delivery->eventKey` (the SIGNED body's event_id, fallback
+ *     type:objectId:sequence from an older core), stable per state — never on the X-Webhook-* id
+ *     headers, which are not signed;
  *  4. drop out-of-order deliveries with `Verifier::isStale($event, $lastSequence)`, keeping the
  *     last sequence per object: its `type` and `Verifier::objectId($event)` (a payment's `uuid`,
  *     a conversion's `id` — whatever the contract names for the kind).

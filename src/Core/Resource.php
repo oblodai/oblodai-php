@@ -134,10 +134,8 @@ abstract class Resource
         RouteSpec $route,
         ?array $body,
         ?RequestOptions $options,
-        #[\SensitiveParameter]
-        array $pathParams = [],
-        #[\SensitiveParameter]
-        array $query = [],
+        #[\SensitiveParameter] array $pathParams = [],
+        #[\SensitiveParameter] array $query = [],
         ?callable $parse = null,
     ): mixed {
         $options ??= new RequestOptions();
@@ -169,10 +167,8 @@ abstract class Resource
         RouteSpec $route,
         ?array $body,
         ?RequestOptions $options,
-        #[\SensitiveParameter]
-        array $pathParams = [],
-        #[\SensitiveParameter]
-        array $query = [],
+        #[\SensitiveParameter] array $pathParams = [],
+        #[\SensitiveParameter] array $query = [],
         ?callable $parse = null,
     ): Page {
         $options ??= new RequestOptions();
@@ -243,10 +239,8 @@ abstract class Resource
         RouteSpec $route,
         ?array $body,
         ?RequestOptions $options,
-        #[\SensitiveParameter]
-        array $pathParams = [],
-        #[\SensitiveParameter]
-        array $query = [],
+        #[\SensitiveParameter] array $pathParams = [],
+        #[\SensitiveParameter] array $query = [],
     ): FileResult {
         $options ??= new RequestOptions();
         $raw = $this->transport->callRaw($route, $body, $query, $pathParams, $options);

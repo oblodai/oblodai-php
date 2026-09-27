@@ -20,8 +20,7 @@ final class Credentials implements JsonSerializable
 
     public function __construct(
         public readonly string $publicId,
-        #[\SensitiveParameter]
-        Secret|string $secret,
+        #[\SensitiveParameter] Secret|string $secret,
     ) {
         $this->key = $secret instanceof Secret ? $secret : new Secret($secret);
     }

@@ -50,8 +50,7 @@ final class Signer
     }
 
     public static function sign(
-        #[\SensitiveParameter]
-        string $secret,
+        #[\SensitiveParameter] string $secret,
         int $ts,
         string $method,
         string $requestUri,

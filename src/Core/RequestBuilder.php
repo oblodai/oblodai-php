@@ -59,13 +59,10 @@ final class RequestBuilder
     public static function build(
         string $baseUrl,
         RouteSpec $route,
-        #[\SensitiveParameter]
-        array $pathParams = [],
-        #[\SensitiveParameter]
-        array $query = [],
+        #[\SensitiveParameter] array $pathParams = [],
+        #[\SensitiveParameter] array $query = [],
         string $body = '',
-        #[\SensitiveParameter]
-        ?Credentials $credentials = null,
+        #[\SensitiveParameter] ?Credentials $credentials = null,
         ?string $idempotencyKey = null,
         int $ts = 0,
         string $userAgent = '',

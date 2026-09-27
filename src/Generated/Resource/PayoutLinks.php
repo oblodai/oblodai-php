@@ -250,7 +250,7 @@ final class PayoutLinks extends Resource
      * @return PayoutClaimView|PayoutClaimLockedView|array<string, mixed>
      */
     public function getPayoutClaim(
-        string $token,
+        #[\SensitiveParameter] string $token,
         ?RequestOptions $options = null,
     ): PayoutClaimView|PayoutClaimLockedView|array {
         return $this->request(
@@ -298,7 +298,7 @@ final class PayoutLinks extends Resource
      * @param ClaimRequest|array{address: string, memo?: string, passcode?: string} $params
      */
     public function claimPayout(
-        string $token,
+        #[\SensitiveParameter] string $token,
         ClaimRequest|array $params,
         ?RequestOptions $options = null,
     ): PayoutClaimed {

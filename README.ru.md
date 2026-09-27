@@ -324,8 +324,9 @@ if ($delivery->isTest) {                    // a rehearsal (signed body `test: t
 Незнакомый этому SDK `type` события — тоже не отказ: `$delivery->event` хранит тело,
 `Verifier::model()` возвращает null, а `Verifier::isKnownEvent()` — false.
 
-`$delivery->eventKey` (`type:objectId:sequence`, из подписанного тела) называет СОСТОЯНИЕ, которое
-несёт доставка: одинаков для всех повторов и переотправок; храните обработанные и пропускайте
+`$delivery->eventKey` — `event_id` из подписанного тела (запасной вариант `type:objectId:sequence`
+для доставки от старого ядра без него) — называет СОСТОЯНИЕ, которое несёт доставка: одинаков для
+всех повторов и переотправок (переотправка повышает `sequence`, но `event_id` не меняет); храните обработанные и пропускайте
 повторы. Заголовки `X-Webhook-Id` / `X-Webhook-Event-Id` / `X-Webhook-Event` / `X-Webhook-Test`
 **не подписаны** — при повторе в них может стоять что угодно, — поэтому они отдаются только в
 `$delivery->unverified` и никогда не должны решать, обрабатывать ли доставку; `$delivery->isTest`

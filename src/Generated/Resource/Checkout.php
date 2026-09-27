@@ -45,8 +45,10 @@ final class Checkout extends Resource
      *
      * Error codes: aml.sof_not_found, internal, request.overloaded, request.rate_limited
      */
-    public function getSourceOfFundsForm(string $token, ?RequestOptions $options = null): SoFView
-    {
+    public function getSourceOfFundsForm(
+        #[\SensitiveParameter] string $token,
+        ?RequestOptions $options = null,
+    ): SoFView {
         return $this->request(
             Routes::get('getSourceOfFundsForm'),
             null,
@@ -72,7 +74,7 @@ final class Checkout extends Resource
      * @param SoFSubmitRequest|array{contact?: string, evidence?: string, origin: string} $params
      */
     public function submitSourceOfFunds(
-        string $token,
+        #[\SensitiveParameter] string $token,
         SoFSubmitRequest|array $params,
         ?RequestOptions $options = null,
     ): SoFSubmitted {

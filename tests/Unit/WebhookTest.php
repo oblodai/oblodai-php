@@ -249,6 +249,38 @@ final class WebhookTest extends TestCase
         self::assertNull(Verifier::eventKey(['type' => 'teleport', 'uuid' => 'u-1', 'sequence' => 1]), 'unknown kind');
     }
 
+    public function testTheDedupeKeyIsTheSignedEventIdAndSurvivesAResend(): void
+    {
+        $eventId = '7f1c5a2e-9b1d-5c3e-8a4f-0d2b6e9c1a33';
+        $deliver = self::deliverPayment(...);
+        $original = $deliver(['sequence' => 6, Signing::WEBHOOK_EVENT_ID_FIELD => $eventId], $eventId);
+        // A resend: the same event_id, a higher sequence, a forged header — the same key.
+        $resend = $deliver(['sequence' => 9, Signing::WEBHOOK_EVENT_ID_FIELD => $eventId], 'e-forged');
+
+        self::assertSame($eventId, $original->eventKey);
+        self::assertSame($original->eventKey, $resend->eventKey);
+        self::assertSame('e-forged', $resend->unverified->eventId);
+        self::assertSame('other-state', $deliver(['sequence' => 10, Signing::WEBHOOK_EVENT_ID_FIELD => 'other-state'], $eventId)->eventKey);
+        // An older core without event_id: fallback type:id:sequence from the body, never the header.
+        self::assertSame('payment:u-1:6', $deliver(['sequence' => 6], $eventId)->eventKey);
+        // The model keeps the optional event_id.
+        $model = Verifier::model($original->event);
+        self::assertInstanceOf(Verifier::EVENT_MODELS['payment'], $model);
+        self::assertSame($eventId, $model->event_id ?? null);
+    }
+
+    /** @param array<string, mixed> $fields */
+    private static function deliverPayment(array $fields, string $headerEventId): \Oblodai\Webhook\Delivery
+    {
+        $raw = (string) json_encode(Samples::of(Verifier::EVENT_MODELS['payment'], array_merge(['type' => 'payment', 'uuid' => 'u-1'], $fields)));
+
+        return Verifier::verify($raw, [
+            Signing::HEADER_WEBHOOK_TIMESTAMP => (string) self::TS,
+            Signing::HEADER_WEBHOOK_SIGNATURE => Signer::signWebhook('whsec', self::TS, $raw),
+            Signing::HEADER_WEBHOOK_EVENT_ID => $headerEventId,
+        ], 'whsec', now: self::TS);
+    }
+
     public function testObjectIdIsTheFieldTheContractNamesForTheKind(): void
     {
         self::assertSame(Facts::WEBHOOK_KINDS, array_keys(Facts::WEBHOOK_ID_FIELDS));

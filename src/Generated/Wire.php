@@ -80,7 +80,7 @@ final class Wire
         if (is_float($value) && floor($value) === $value && abs($value) < PHP_INT_MAX) {
             return (int) $value;
         }
-        if (is_string($value) && preg_match('/^-?\d+$/', $value) === 1) {
+        if (is_string($value) && preg_match('/\A-?\d+\z/', $value) === 1) {
             return (int) $value;
         }
 

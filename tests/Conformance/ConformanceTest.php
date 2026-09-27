@@ -433,6 +433,26 @@ final class ConformanceTest extends TestCase
         self::assertSame($rehearsal, $got->unverified->test, 'unverified->test (the rehearsal header of the spec)');
         $payload = json_decode(self::str($delivery, 'payload'), true);
         self::assertSame(is_array($payload) && ($payload['test'] ?? null) === true, $got->isTest, 'isTest comes from the signed body only');
+        $suite = self::suite('webhook_delivery');
+        // The dedupe key is the signed body field the spec names (dedupe_key.field_pointer), else
+        // the fallback type:id:sequence — never a header.
+        if (isset($suite['dedupe_key'])) {
+            /** @var array{field_pointer: string, fallback: string} $dedupe */
+            $dedupe = $suite['dedupe_key'];
+            $field = self::resolve(['x-oblodai-signing' => $signing], $dedupe['field_pointer']);
+            self::assertIsString($field);
+            self::assertNotSame('', $field, 'dedupe_key.field_pointer');
+            self::assertSame('type:id:sequence', $dedupe['fallback']);
+            self::assertIsArray($payload);
+            /** @var array<string, mixed> $payload */
+            $want = is_string($payload[$field] ?? null) && $payload[$field] !== ''
+                ? $payload[$field]
+                : sprintf('%s:%s:%s', self::str($payload, 'type'), (string) Verifier::objectId($payload), self::int($payload, 'sequence'));
+            self::assertSame($want, $got->eventKey, 'dedupe key from the signed body');
+        }
+        if (array_key_exists('fields_unverified', $suite)) {
+            self::assertTrue($suite['fields_unverified']);
+        }
         $kind = self::str($delivery, 'kind');
         self::assertTrue(Verifier::isKnownEvent($got->event), $kind);
         self::assertSame($kind, $got->event['type']);

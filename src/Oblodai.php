@@ -90,8 +90,7 @@ final class Oblodai
      */
     public function __construct(
         ?string $publicId = null,
-        #[\SensitiveParameter]
-        ?string $secret = null,
+        #[\SensitiveParameter] ?string $secret = null,
         ?string $baseUrl = null,
         ?HttpClient $http = null,
         int|float|null $timeout = null,
@@ -99,8 +98,7 @@ final class Oblodai
         ?Retry $retry = null,
         ?Logger $logger = null,
         array $headers = [],
-        #[\SensitiveParameter]
-        ?string $adminToken = null,
+        #[\SensitiveParameter] ?string $adminToken = null,
         ?bool $allowInsecureBaseUrl = null,
         ?Clock $clock = null,
         ?array $env = null,

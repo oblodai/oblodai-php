@@ -177,7 +177,8 @@ final class Webhooks extends Resource
      * Sends a sample body to the given `url` — to check that your handler works. The rehearsal body
      * carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its
      * `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a
-     * body with `test: true` even if the signature is valid.
+     * body with `test: true` even if the signature is valid. Only the body's `test` counts: the
+     * header is not signed.
      *
      * Requires role: Finance when called with a CLI key.
      *
@@ -211,7 +212,8 @@ final class Webhooks extends Resource
      * Delivers a sample webhook of type payment to `url_callback`. The rehearsal body carries
      * `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its
      * `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a
-     * body with `test: true` even if the signature is valid.
+     * body with `test: true` even if the signature is valid. Only the body's `test` counts: the
+     * header is not signed.
      *
      * Requires role: Finance when called with a CLI key.
      *
@@ -252,7 +254,8 @@ final class Webhooks extends Resource
      * Delivers a sample webhook of type wallet (a static wallet deposit). The rehearsal body
      * carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its
      * `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a
-     * body with `test: true` even if the signature is valid.
+     * body with `test: true` even if the signature is valid. Only the body's `test` counts: the
+     * header is not signed.
      *
      * Requires role: Finance when called with a CLI key.
      *
@@ -293,7 +296,7 @@ final class Webhooks extends Resource
      * Delivers a sample webhook of type payout. The rehearsal body carries `"test": true` (inside
      * the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live
      * event NEVER carries these markers: your handler must ignore a body with `test: true` even if
-     * the signature is valid.
+     * the signature is valid. Only the body's `test` counts: the header is not signed.
      *
      * Requires role: Finance when called with a CLI key.
      *
@@ -336,7 +339,7 @@ final class Webhooks extends Resource
      * default completed). The rehearsal body carries `"test": true` (inside the signature) and the
      * `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries
      * these markers: your handler must ignore a body with `test: true` even if the signature is
-     * valid.
+     * valid. Only the body's `test` counts: the header is not signed.
      *
      * Requires role: Finance when called with a CLI key.
      *

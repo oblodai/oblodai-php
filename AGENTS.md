@@ -63,7 +63,7 @@ Verify over the **raw** bytes. `SignatureException` → answer 401; `WebhookPayl
 (`webhook.bad_payload`) → the MAC verified but the body is unreadable, answer 2xx and alert;
 `ConfigException` → your receiver is misconfigured. `$delivery->isTest` (signed body `test: true`)
 marks a rehearsal: always acknowledge and ignore it. Deduplicate on `$delivery->eventKey`
-(`type:objectId:sequence` from the signed body; the X-Webhook-* id/test headers are unsigned and
+(the signed body's `event_id`, fallback `type:objectId:sequence`; the X-Webhook-* id/test headers are unsigned and
 live only under `$delivery->unverified`); drop out-of-order events with
 `Verifier::isStale($delivery->event, $lastSequence)`. During a rotation pass `previousSecret:` for
 ≥26 h.

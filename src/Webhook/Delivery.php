@@ -20,10 +20,11 @@ final class Delivery
          */
         public readonly array $event,
         /**
-         * The deduplication key, from the signed body only: `<type>:<objectId>:<sequence>`
-         * ({@see Verifier::eventKey()}). The same for the original, every retry and every resend of
-         * one state; different once the state changes. Null for a kind this SDK does not model or a
-         * body without an object id or `sequence` — acknowledge such a delivery, do not act on it.
+         * The deduplication key, from the signed body only ({@see Verifier::eventKey()}): the body's
+         * `event_id`, fallback `<type>:<objectId>:<sequence>` for a delivery from an older core
+         * without it. The same for the original, every retry and every resend of one state;
+         * different once the state changes. Null when the body has no `event_id` and no object id or
+         * `sequence` — acknowledge such a delivery, do not act on it.
          */
         public readonly ?string $eventKey = null,
         /** Header `HEADER_WEBHOOK_TIMESTAMP` — unix seconds when this attempt was sent (covered by the MAC). */

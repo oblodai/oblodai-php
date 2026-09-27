@@ -24,7 +24,8 @@ use Oblodai\Generated\Signing;
  *   HEADER_EVENT, HEADER_ID, HEADER_EVENT_ID, HEADER_EVENT_TIME, HEADER_TEST: advisory and NOT
  *     signed — reported under {@see Delivery::$unverified} only
  *
- * Deduplicate on {@see Delivery::$eventKey} (signed body), order by the body's `sequence`
+ * Deduplicate on {@see Delivery::$eventKey} (the signed body's `event_id`, fallback
+ * `type:id:sequence`), order by the body's `sequence`
  * (signed), and ignore deliveries whose signed body says `test: true` ({@see Delivery::$isTest}).
  *
  * Always verify over the RAW request bytes (`file_get_contents('php://input')`); a re-serialized
@@ -89,10 +90,8 @@ final class Verifier
     public static function verify(
         string $rawBody,
         array $headers,
-        #[\SensitiveParameter]
-        string $secret,
-        #[\SensitiveParameter]
-        ?string $previousSecret = null,
+        #[\SensitiveParameter] string $secret,
+        #[\SensitiveParameter] ?string $previousSecret = null,
         int $toleranceSec = self::DEFAULT_TOLERANCE_SECONDS,
         ?int $now = null,
     ): Delivery {
@@ -193,15 +192,20 @@ final class Verifier
     }
 
     /**
-     * The deduplication key of a delivery, from the signed body only: `<type>:<objectId>:<sequence>`
-     * (`payment:3c4e…:6`). Every retry and resend of one state carries the same key; the next state
-     * of the object carries a higher `sequence` and so a new key. Null when the body has no object
-     * id ({@see Verifier::objectId()}) or no integer `sequence`.
+     * The deduplication key of a delivery, from the signed body only: its `event_id` (the field
+     * {@see Signing::WEBHOOK_EVENT_ID_FIELD} names) — the same for every retry and every resend of
+     * one state, new once the state changes (a resend raises `sequence` but keeps `event_id`). A
+     * delivery from an older core without `event_id` falls back to `<type>:<objectId>:<sequence>`
+     * (`payment:3c4e…:6`). Null when neither is present. Never taken from a header.
      *
      * @param array<string, mixed> $event
      */
     public static function eventKey(array $event): ?string
     {
+        $signedId = $event[Signing::WEBHOOK_EVENT_ID_FIELD] ?? null;
+        if (is_string($signedId) && $signedId !== '') {
+            return $signedId;
+        }
         $id = self::objectId($event);
         $type = $event['type'] ?? null;
         $sequence = $event['sequence'] ?? null;

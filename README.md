@@ -321,8 +321,9 @@ signature failure and nothing else.** An event `type` this SDK does not model is
 either — `$delivery->event` keeps the body, `Verifier::model()` returns null and
 `Verifier::isKnownEvent()` false.
 
-`$delivery->eventKey` (`type:objectId:sequence`, built from the signed body) names the STATE a
-delivery carries — the same for every retry and resend of it; keep the ones you handled and skip
+`$delivery->eventKey` — the signed body's `event_id` (fallback `type:objectId:sequence` for a
+delivery from an older core without it) — names the STATE a delivery carries: the same for every
+retry and resend of it (a resend raises `sequence` but keeps `event_id`); keep the ones you handled and skip
 repeats. The `X-Webhook-Id` / `X-Webhook-Event-Id` / `X-Webhook-Event` / `X-Webhook-Test` headers
 are **not signed** — a replay can carry any values there — so they are reported only under
 `$delivery->unverified` and must never decide whether a delivery is processed; `$delivery->isTest`

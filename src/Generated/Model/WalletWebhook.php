@@ -38,6 +38,7 @@ final class WalletWebhook extends Model
         'address',
         'currency',
         'event_at',
+        'event_id',
         'is_final',
         'network',
         'order_id',
@@ -85,9 +86,19 @@ final class WalletWebhook extends Model
         /** Static wallet id. */
         public readonly string $uuid,
         /**
+         * The id of the object state this body carries — signed, and the key to deduplicate on: the
+         * same for every retry and every resend (/v1/payment/resend) of the same state, different
+         * as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to
+         * the X-Webhook-Event-Id header, which is not signed — prefer this field. Always sent by
+         * current cores; a delivery from an older core may lack it — then deduplicate on
+         * type:id:sequence from the body.
+         */
+        public readonly ?string $event_id = null,
+        /**
          * Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always
          * true — inside the signature. A live event never carries this field: your handler must
-         * ignore a body with test: true even if the signature is valid.
+         * ignore a body with test: true even if the signature is valid. This field, not the
+         * unsigned X-Webhook-Test header, is what marks a rehearsal.
          */
         public readonly ?bool $test = null,
         /** Fields newer than this SDK, exactly as received. */
@@ -112,6 +123,7 @@ final class WalletWebhook extends Model
             txid: Wire::str(Wire::req($data, 'txid')),
             type: Wire::str(Wire::req($data, 'type')),
             uuid: Wire::str(Wire::req($data, 'uuid')),
+            event_id: isset($data['event_id']) ? Wire::str($data['event_id']) : null,
             test: isset($data['test']) ? Wire::bool($data['test']) : null,
             extra: Wire::extra($data, self::FIELDS),
         );
@@ -134,6 +146,9 @@ final class WalletWebhook extends Model
         $out['txid'] = Wire::dump($this->txid);
         $out['type'] = Wire::dump($this->type);
         $out['uuid'] = Wire::dump($this->uuid);
+        if ($this->event_id !== null) {
+            $out['event_id'] = Wire::dump($this->event_id);
+        }
         if ($this->test !== null) {
             $out['test'] = Wire::dump($this->test);
         }

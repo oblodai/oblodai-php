@@ -59,6 +59,7 @@ final class PayoutWebhook extends Model
         'currency',
         'document_url',
         'event_at',
+        'event_id',
         'fee_bearer',
         'is_final',
         'is_refund',
@@ -160,6 +161,15 @@ final class PayoutWebhook extends Model
         /** Payout id. */
         public readonly string $uuid,
         /**
+         * The id of the object state this body carries — signed, and the key to deduplicate on: the
+         * same for every retry and every resend (/v1/payment/resend) of the same state, different
+         * as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to
+         * the X-Webhook-Event-Id header, which is not signed — prefer this field. Always sent by
+         * current cores; a delivery from an older core may lack it — then deduplicate on
+         * type:id:sequence from the body.
+         */
+        public readonly ?string $event_id = null,
+        /**
          * Your payout number (reference). null for a refund: a refund has no identifier of yours,
          * see payment_order_id.
          */
@@ -174,7 +184,8 @@ final class PayoutWebhook extends Model
         /**
          * Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always
          * true — inside the signature. A live event never carries this field: your handler must
-         * ignore a body with test: true even if the signature is valid.
+         * ignore a body with test: true even if the signature is valid. This field, not the
+         * unsigned X-Webhook-Test header, is what marks a rehearsal.
          */
         public readonly ?bool $test = null,
         /** Fields newer than this SDK, exactly as received. */
@@ -210,6 +221,7 @@ final class PayoutWebhook extends Model
             type: Wire::str(Wire::req($data, 'type')),
             updated_at: Wire::str(Wire::req($data, 'updated_at')),
             uuid: Wire::str(Wire::req($data, 'uuid')),
+            event_id: isset($data['event_id']) ? Wire::str($data['event_id']) : null,
             order_id: isset($data['order_id']) ? Wire::str($data['order_id']) : null,
             payment_order_id: isset($data['payment_order_id']) ? Wire::str($data['payment_order_id']) : null,
             refund_for: isset($data['refund_for']) ? Wire::str($data['refund_for']) : null,
@@ -243,6 +255,9 @@ final class PayoutWebhook extends Model
         $out['type'] = Wire::dump($this->type);
         $out['updated_at'] = Wire::dump($this->updated_at);
         $out['uuid'] = Wire::dump($this->uuid);
+        if ($this->event_id !== null) {
+            $out['event_id'] = Wire::dump($this->event_id);
+        }
         if ($this->order_id !== null) {
             $out['order_id'] = Wire::dump($this->order_id);
         }

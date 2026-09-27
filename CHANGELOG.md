@@ -15,8 +15,10 @@ All notable changes to this package are documented here. The format follows
   read — no longer carry them. A forged webhook no longer copies the endpoint secret into the
   error tracker.
 - **Breaking — webhooks:** `Delivery` no longer reports the unsigned delivery headers as if they
-  were verified. The new `$delivery->eventKey` (`type:objectId:sequence`, also
-  `Verifier::eventKey($event)`) is built from the signed body and is the deduplication key;
+  were verified. The new `$delivery->eventKey` (also `Verifier::eventKey($event)`) is
+  built from the signed body and is the deduplication key: dedupe on `event_id` (fallback
+  `type:id:sequence` for a delivery from an older core without it; `Signing::WEBHOOK_EVENT_ID_FIELD`
+  names the field). The webhook models gain the optional `event_id`;
   `$delivery->isTest` now comes from the signed body's `test` only. `id`, `eventId`, `eventType` and
   `eventTime` moved to `$delivery->unverified` (`deliveryId`, `eventId`, `eventType`, `eventTime`,
   and `test` for the `X-Webhook-Test` header). The example receiver ignores rehearsals first and

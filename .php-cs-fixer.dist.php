@@ -20,6 +20,9 @@ return (new PhpCsFixer\Config())
         'blank_line_before_statement' => ['statements' => ['return', 'throw', 'try']],
         'concat_space' => ['spacing' => 'one'],
         'declare_strict_types' => true,
+        // The generator writes a parameter attribute on the parameter's line
+        // (`#[\SensitiveParameter] string $token,`); hand-written code follows it.
+        'method_argument_space' => ['on_multiline' => 'ensure_fully_multiline', 'attribute_placement' => 'same_line', 'after_heredoc' => false],
         'no_unused_imports' => true,
         'ordered_imports' => ['sort_algorithm' => 'alpha'],
         'phpdoc_align' => false,
